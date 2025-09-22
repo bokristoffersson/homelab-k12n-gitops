@@ -23,7 +23,8 @@ sudo cat /var/lib/rancher/k3s/server/node-token
 #### Worker Node (Raspberry Pi 5 with NVMe HAT)
 ```bash
 # Join the worker node to the cluster
-curl -sfL https://get.k3s.io | K3S_URL=https://p0.local:6443 K3S_TOKEN=<NODE_TOKEN> sh -
+curl -sfL https://get.k3s.io | K3S_URL=https://p0.local:6443 K3S_TOKEN=<NODE_TOKEN> sh - --node-name worker-pi5 --data-dir /mnt/data/k3s
+# NVMe mounted at /mnt/data
 ```
 
 #### Verify Cluster
