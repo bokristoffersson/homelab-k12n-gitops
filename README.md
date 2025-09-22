@@ -5,7 +5,7 @@
 - **Control Plane**: Raspberry Pi 4 (`p0.local`)
 - **Worker Node**: Raspberry Pi 5 with NVMe HAT
 - **GitOps**: FluxCD with GitHub App authentication
-- **Repository Structure**: Environment-based (test/prod) with Kustomize overlays
+- **Repository Structure**: Environment-based (homelab) with Kustomize overlays
 
 ## 🚀 Setup Steps Completed
 
