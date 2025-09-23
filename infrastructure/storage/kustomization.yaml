@@ -3,3 +3,5 @@ kind: Kustomization
 resources:
   - nvme-storageclass.yaml
   - nvme-pv.yaml
+  - nvme-prometheus-pv.yaml
+  - nvme-loki-pv.yaml

@@ -1,0 +1,29 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: loki
+      version: "6.11.*"
+      sourceRef:
+        kind: HelmRepository
+        name: loki
+        namespace: flux-system
+  values:
+    singleBinary:
+      persistence:
+        enabled: true
+        storageClassName: nvme-local
+        existingClaim: loki-storage
+        size: 10Gi
+      resources:
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
