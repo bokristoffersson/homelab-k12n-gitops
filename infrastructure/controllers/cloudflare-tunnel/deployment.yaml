@@ -71,7 +71,7 @@ data:
     ingress:
       # Whoami service
       - hostname: whoami.k12n.com
-        service: http://whoami.default.svc.cluster.local:80
+        service: http://homelab-whoami.default.svc.cluster.local:80
       
       # Catch-all rule (required)
       - service: http_status:404
