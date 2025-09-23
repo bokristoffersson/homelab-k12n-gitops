@@ -3,3 +3,5 @@ kind: Kustomization
 resources:
   - jetstack.yaml
   - sealed-secrets.yaml
+  - grafana.yaml
+  - prometheus-community.yaml
