@@ -1,0 +1,8 @@
+# cert-manager.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cert-manager
+  labels:
+    purpose: ssl-certificates
+    managed-by: gitops

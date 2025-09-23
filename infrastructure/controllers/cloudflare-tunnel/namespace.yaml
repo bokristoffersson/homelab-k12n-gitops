@@ -1,0 +1,8 @@
+# cloudflare-tunnel.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cloudflare-tunnel
+  labels:
+    purpose: secure-tunnel
+    managed-by: gitops
