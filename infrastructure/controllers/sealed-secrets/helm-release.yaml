@@ -1,0 +1,26 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: sealed-secrets
+  namespace: flux-system
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: sealed-secrets
+      version: 2.17.7
+      sourceRef:
+        kind: HelmRepository
+        name: sealed-secrets
+        namespace: flux-system
+  releaseName: sealed-secrets
+  targetNamespace: kube-system # where the controller will be installed
+  install:
+    createNamespace: true
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # optional overrides from the chart
+    fullnameOverride: sealed-secrets
+    # controller name, key rotation options, etc., can be set here
