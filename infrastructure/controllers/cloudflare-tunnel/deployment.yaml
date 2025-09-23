@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: cloudflare-tunnel
+spec:
+  selector:
+    matchLabels:
+      app: cloudflared
+  replicas: 2  # For high availability
+  template:
+    metadata:
+      labels:
+        app: cloudflared
+    spec:
+      containers:
+      - name: cloudflared
+        image: cloudflare/cloudflared:latest
+        args:
+        - tunnel
+        - --config
+        - /etc/cloudflared/config/config.yaml
+        - run
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: 2000
+          failureThreshold: 1
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        volumeMounts:
+        - name: config
+          mountPath: /etc/cloudflared/config
+          readOnly: true
+        - name: creds
+          mountPath: /etc/cloudflared/creds
+          readOnly: true
+        resources:
+          limits:
+            memory: 128Mi
+            cpu: 100m
+          requests:
+            memory: 64Mi
+            cpu: 50m
+      volumes:
+      - name: creds
+        secret:
+          secretName: tunnel-credentials
+      - name: config
+        configMap:
+          name: cloudflared
+          items:
+          - key: config.yaml
+            path: config.yaml
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared
+  namespace: cloudflare-tunnel
+data:
+  config.yaml: |
+    tunnel: 0d5b8112-e5ad-41aa-a226-9569a6a1fa6e  # Replace with your tunnel ID
+    credentials-file: /etc/cloudflared/creds/token
+    
+    # Metrics for monitoring
+    metrics: 0.0.0.0:2000
+    
+    # Ingress rules
+    ingress:
+      # Whoami service
+      - hostname: whoami.k12n.com
+        service: http://whoami.default.svc.cluster.local:80
+      
+      # Catch-all rule (required)
+      - service: http_status:404

@@ -1,14 +1,29 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: infrastructure
+  name: infrastructure-sources
   namespace: flux-system
 spec:
   interval: 10m
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: "./infrastructure"
+  path: "./infrastructure/sources"      # <-- Denna pekar på sources/
   prune: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure-controllers
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: "./infrastructure/controllers"   # <-- Denna pekar på controllers/
+  prune: true
+  dependsOn:
+    - name: infrastructure-sources       # <-- Controllers väntar på sources
   wait: true
-  timeout: 5m
+  timeout: 10m

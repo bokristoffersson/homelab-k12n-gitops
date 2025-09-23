@@ -4,6 +4,8 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - cloudflare-credentials-sealed.yaml
+  - helmrelease.yaml
+  - clusterissuer.yaml
 
 commonLabels:
   app: cert-manager
