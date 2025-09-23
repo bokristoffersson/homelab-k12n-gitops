@@ -4,4 +4,4 @@ metadata:
   name: nvme-local
 provisioner: kubernetes.io/no-provisioner  # Manual PV creation
 volumeBindingMode: WaitForFirstConsumer
-reclaimPolicy: Retains
+reclaimPolicy: Retain
