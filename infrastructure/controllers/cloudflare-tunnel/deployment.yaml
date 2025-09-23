@@ -25,11 +25,12 @@ spec:
         command:
         - cloudflared
         - tunnel
+        - --no-autoupdate
+        - --loglevel
+        - debug
         - --config
         - /etc/cloudflared/config.yaml
         - run
-        - --token
-        - $(TUNNEL_TOKEN)
         livenessProbe:
           httpGet:
             path: /ready
