@@ -36,6 +36,7 @@ spec:
           readOnly: true
         - name: credentials
           mountPath: /etc/cloudflared/cred.json
+          subPath: cered.json
           readOnly: true
         resources:
           limits:
