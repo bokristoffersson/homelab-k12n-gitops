@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - tunnel-credentials-sealed.yaml
+  - cloudflare-tunnel-secret-sealed.yaml
   - deployment.yaml
 
 commonLabels:

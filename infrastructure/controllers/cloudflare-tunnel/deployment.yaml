@@ -15,19 +15,10 @@ spec:
     spec:
       containers:
       - name: cloudflared
-        image: cloudflare/cloudflared:2025.9.0
-        env:
-        - name: TUNNEL_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: cloudflare-tunnel-token
-              key: token
-        command:
-        - cloudflared
+        image: cloudflare/cloudflared:latest-arm64
+        args:
         - tunnel
         - --no-autoupdate
-        - --loglevel
-        - debug
         - --config
         - /etc/cloudflared/config.yaml
         - run
@@ -43,6 +34,9 @@ spec:
           mountPath: /etc/cloudflared/config.yaml
           subPath: config.yaml
           readOnly: true
+        - name: credentials
+          mountPath: /etc/cloudflared/cred.json
+          readOnly: true
         resources:
           limits:
             memory: 128Mi
@@ -54,6 +48,9 @@ spec:
       - name: config
         configMap:
           name: cloudflared-config
+      - name: credentials
+        secret:
+          secretName: cloudflare-tunnel-secret
 
 ---
 apiVersion: v1
@@ -63,8 +60,8 @@ metadata:
   namespace: cloudflare-tunnel
 data:
   config.yaml: |
-    tunnel: 0d5b8112-e5ad-41aa-a226-9569a6a1fa6e  # Replace with your tunnel ID
-    
+    tunnel: 3e1b5cb1-f28b-4d3c-b43f-546e6c0db8aa  # Replace with your tunnel ID
+    credentials-file: /etc/cloudflared/cred.json
     # Metrics for monitoring
     metrics: 0.0.0.0:2000
     
