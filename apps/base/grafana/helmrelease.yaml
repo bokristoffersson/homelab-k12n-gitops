@@ -20,9 +20,14 @@ spec:
         datasources:
           - name: Prometheus
             type: prometheus
-            url: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:8080  # Adjust service name/namespace
+            url: http://prometheus-prometheus-server.monitoring.svc.cluster.local:9090
             access: proxy
             isDefault: true
+          - name: Loki
+            type: loki
+            access: proxy
+            url: http://loki.monitoring.svc.cluster.local:3100
+            isDefault: false
     persistence:
       enabled: true
       storageClassName: nvme-local
