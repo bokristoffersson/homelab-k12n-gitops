@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - cloudflare-tunnel-secret-sealed.yaml
+  - cloudflared-cert-secret-sealed.yaml
   - deployment.yaml
 
 commonLabels:

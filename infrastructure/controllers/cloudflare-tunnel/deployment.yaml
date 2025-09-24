@@ -38,6 +38,10 @@ spec:
           mountPath: /etc/cloudflared/cred.json
           subPath: cred.json
           readOnly: true
+        - name: cert
+          mountPath: /etc/cloudflared/cert.pem
+          subPath: cert.pem
+          readOnly: true
         resources:
           limits:
             memory: 128Mi
@@ -52,6 +56,9 @@ spec:
       - name: credentials
         secret:
           secretName: cloudflare-tunnel-secret
+      - name: cert
+        secret:
+          secretName: cloudflared-cert-secret
 
 ---
 apiVersion: v1
@@ -63,6 +70,7 @@ data:
   config.yaml: |
     tunnel: 3e1b5cb1-f28b-4d3c-b43f-546e6c0db8aa  # Replace with your tunnel ID
     credentials-file: /etc/cloudflared/cred.json
+    origincert: /etc/cloudflared/cert.pem
     # Metrics for monitoring
     metrics: 0.0.0.0:2000
     
