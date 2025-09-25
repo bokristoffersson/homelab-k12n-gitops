@@ -56,17 +56,3 @@ spec:
       type: ClusterIP
       port: 80
 
-  dashboards:
-    default:
-      loki-logs:
-        gnetId: 13639
-        revision: 2
-        datasource: Loki
-      kubernetes-logs:
-        gnetId: 15141
-        revision: 1
-        datasource: Loki
-      node-exporter:
-        gnetId: 1860
-        revision: 1
-        datasource: Prometheus
