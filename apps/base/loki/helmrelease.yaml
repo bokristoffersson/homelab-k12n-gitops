@@ -27,12 +27,7 @@ spec:
       retries: 3
 
   values:
-    persistence:
-      enabled: true
-      storageClass: nvme-local
-      size: 50Gi
-      accessModes:
-        - ReadWriteOnce
+
     loki:
       commonConfig:
         replication_factor: 1
@@ -60,6 +55,13 @@ spec:
 
     singleBinary:
       replicas: 1
+
+      persistence:
+        enabled: true
+        storageClass: nvme-local
+        size: 50Gi
+        accessModes:
+          - ReadWriteOnce
 
     # Zero out replica counts of other deployment modes
     backend:
