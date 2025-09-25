@@ -17,9 +17,7 @@ spec:
     singleBinary:
       persistence:
         enabled: true
-        storageClassName: nvme-local
         existingClaim: loki-storage
-        size: 10Gi
       resources:
         limits:
           cpu: "500m"
