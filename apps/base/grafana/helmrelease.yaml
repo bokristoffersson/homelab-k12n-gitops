@@ -22,12 +22,20 @@ spec:
             type: prometheus
             url: http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
             access: proxy
-            isDefault: true
+            isDefault: false
+
           - name: Loki
             type: loki
             access: proxy
             url: http://loki.monitoring.svc.cluster.local:3100
             isDefault: false
+            jsonData:
+              maxLines: 1000
+              derivedFields:
+                - datasourceUid: prometheus
+                  matcherRegex: "trace_id=(\\w+)"
+                  name: "TraceID"
+                  url: "$${__value.raw}"
     persistence:
       enabled: true
       storageClassName: nvme-local
@@ -47,3 +55,18 @@ spec:
     service:
       type: ClusterIP
       port: 80
+
+  dashboards:
+    default:
+      loki-logs:
+        gnetId: 13639
+        revision: 2
+        datasource: Loki
+      kubernetes-logs:
+        gnetId: 15141
+        revision: 1
+        datasource: Loki
+      node-exporter:
+        gnetId: 1860
+        revision: 1
+        datasource: Prometheus

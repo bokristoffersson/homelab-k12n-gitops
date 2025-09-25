@@ -1,0 +1,252 @@
+# apps/monitoring/alloy/helmrelease.yaml
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: alloy
+  namespace: monitoring
+spec:
+  interval: 15m
+  chart:
+    spec:
+      chart: alloy
+      version: "0.6.0"
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+      interval: 15m
+
+  dependsOn:
+    - name: loki
+      namespace: monitoring
+
+  values:
+    crds:
+      create: false
+
+    alloy:
+      configMap:
+        create: true
+        content: |
+          // ==== LOGGING PIPELINE ====
+          
+          // Discover Kubernetes pods
+          discovery.kubernetes "pods" {
+            role = "pod"
+          }
+
+          // Relabel and filter pods for log collection
+          discovery.relabel "kubernetes_pods" {
+            targets = discovery.kubernetes.pods.targets
+          
+            // Build log file path
+            rule {
+              source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+              separator     = "/"
+              target_label  = "__path__"
+              replacement   = "/var/log/pods/*$1/*.log"
+            }
+          
+            // Add useful labels
+            rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              target_label  = "pod"
+            }
+          
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              target_label  = "namespace"
+            }
+          
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              target_label  = "container"
+            }
+          
+            rule {
+              source_labels = ["__meta_kubernetes_pod_node_name"]
+              target_label  = "node"
+            }
+          
+            rule {
+              source_labels = ["__meta_kubernetes_pod_label_app"]
+              target_label  = "app"
+            }
+          
+            rule {
+              source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+              target_label  = "app_name"
+            }
+          
+            // Drop logs from system namespaces (optional)
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              regex         = "kube-.*|flux-system"
+              action        = "drop"
+            }
+          }
+
+          // Kubernetes log source with CRI parsing
+          loki.source.kubernetes "pods" {
+            targets    = discovery.relabel.kubernetes_pods.output
+            forward_to = [loki.process.kubernetes.receiver]
+          }
+
+          // Process logs (parse CRI format, extract log levels, etc.)
+          loki.process "kubernetes" {
+            forward_to = [loki.write.loki.receiver]
+          
+            stage.cri {}
+          
+            // Extract log level from common formats
+            stage.regex {
+              expression = "(?i)(?P<level>debug|info|warn|warning|error|fatal|panic)"
+            }
+          
+            stage.labels {
+              values = {
+                level = "",
+              }
+            }
+          
+            // Drop empty lines
+            stage.drop {
+              expression = "^\\s*$"
+            }
+          }
+
+          // Write to Loki
+          loki.write "loki" {
+            endpoint {
+              url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+          
+              // Add retry and backoff for reliability
+              retry_backoff {
+                initial_interval = "500ms"
+                max_interval     = "5m"
+                max_elapsed_time = "10m"
+              }
+            }
+          
+            // External labels for all logs
+            external_labels = {
+              cluster = "homelab",
+              job     = "kubernetes-pods",
+            }
+          }
+          
+          // ==== METRICS PIPELINE (Complement Prometheus) ====
+          
+          // Discover Kubernetes services for additional metrics
+          discovery.kubernetes "services" {
+            role = "service"
+          }
+
+          discovery.relabel "services" {
+            targets = discovery.kubernetes.services.targets
+          
+            rule {
+              source_labels = ["__meta_kubernetes_service_annotation_prometheus_io_scrape"]
+              action        = "keep"
+              regex         = "true"
+            }
+          
+            rule {
+              source_labels = ["__meta_kubernetes_service_annotation_prometheus_io_path"]
+              target_label  = "__metrics_path__"
+              regex         = "(.+)"
+            }
+          
+            rule {
+              source_labels = ["__address__", "__meta_kubernetes_service_annotation_prometheus_io_port"]
+              target_label  = "__address__"
+              regex         = "(.+)(?::\\d+);(\\d+)"
+              replacement   = "$1:$2"
+            }
+          }
+
+          // Scrape additional metrics and send to Prometheus
+          prometheus.scrape "kubernetes_services" {
+            targets    = discovery.relabel.services.output
+            forward_to = [prometheus.remote_write.prometheus.receiver]
+          
+            scrape_interval = "30s"
+            scrape_timeout  = "10s"
+          }
+
+          // Remote write to your existing Prometheus
+          prometheus.remote_write "prometheus" {
+            endpoint {
+              url = "http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write"
+            }
+          
+            external_labels = {
+              cluster = "homelab",
+              source  = "alloy",
+            }
+          }
+
+    controller:
+      type: daemonset
+
+    serviceAccount:
+      create: true
+
+    rbac:
+      create: true
+
+    tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      - effect: NoExecute
+        operator: Exists
+
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+    securityContext:
+      privileged: false
+      runAsUser: 0
+      runAsGroup: 0
+      fsGroup: 0
+
+    # Pi-specific node selector
+    nodeSelector:
+      kubernetes.io/arch: arm64
+
+    # Mount host paths for log collection
+    volumeMounts:
+      - name: varlog
+        mountPath: /var/log
+        readOnly: true
+      - name: varlibdockercontainers
+        mountPath: /var/lib/docker/containers
+        readOnly: true
+      - name: etcmachineinfo
+        mountPath: /etc/machine-info
+        readOnly: true
+
+    volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+      - name: etcmachineinfo
+        hostPath:
+          path: /etc/machine-info
+
+    service:
+      enabled: true
+      type: ClusterIP
+
+    serviceMonitor:
+      enabled: true  # Monitor Alloy itself with Prometheus
+      additionalLabels:
+        app.kubernetes.io/name: alloy
