@@ -6,6 +6,8 @@ metadata:
   namespace: monitoring
 spec:
   interval: 15m
+  nodeSelector:
+    node-type: worker-pi5
   chart:
     spec:
       chart: loki
@@ -25,69 +27,63 @@ spec:
       retries: 3
 
   values:
-    deploymentMode: SingleBinary
-
+    persistence:
+      enabled: true
+      storageClass: nvme-local
+      size: 50Gi
+      accessModes:
+        - ReadWriteOnce
     loki:
-      auth_enabled: false
-
       commonConfig:
         replication_factor: 1
-
-      limits_config:
-        retention_period: 168h  # 7 days for Pi storage
-        ingestion_rate_mb: 16   # Limit for Pi resources
-        ingestion_burst_size_mb: 32
-        max_query_parallelism: 1 # Single query thread for Pi
-
-      compactor:
-        retention_enabled: true
-        delete_request_store: filesystem
-
-      storage:
-        type: filesystem
-        filesystem:
-          chunks_directory: /var/loki/chunks
-          rules_directory: /var/loki/rules
-
       schemaConfig:
         configs:
-          - from: "2024-01-01"
+          - from: "2024-04-01"
             store: tsdb
-            object_store: filesystem
+            object_store: s3
             schema: v13
             index:
               prefix: loki_index_
               period: 24h
+      pattern_ingester:
+        enabled: true
+      limits_config:
+        allow_structured_metadata: true
+        volume_enabled: true
+      ruler:
+        enable_api: true
+
+    minio:
+      enabled: true
+
+    deploymentMode: SingleBinary
 
     singleBinary:
       replicas: 1
 
-      persistence:
-        enabled: true
-        existingClaim: loki-storage
+    # Zero out replica counts of other deployment modes
+    backend:
+      replicas: 0
+    read:
+      replicas: 0
+    write:
+      replicas: 0
 
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 1Gi
-        requests:
-          cpu: 100m
-          memory: 256Mi
-
-      nodeSelector:
-        kubernetes.io/arch: arm64  # Ensure Pi compatibility
-
-    chunksCache:
-      enabled: false
-    resultsCache:
-      enabled: false
-    lokiCanary:
-      enabled: false
-    test:
-      enabled: false
-
-    monitoring:
-      serviceMonitor:
-        enabled: true  # Since you have Prometheus
-        labels:
-          app.kubernetes.io/name: loki
+    ingester:
+      replicas: 0
+    querier:
+      replicas: 0
+    queryFrontend:
+      replicas: 0
+    queryScheduler:
+      replicas: 0
+    distributor:
+      replicas: 0
+    compactor:
+      replicas: 0
+    indexGateway:
+      replicas: 0
+    bloomCompactor:
+      replicas: 0
+    bloomGateway:
+      replicas: 0
