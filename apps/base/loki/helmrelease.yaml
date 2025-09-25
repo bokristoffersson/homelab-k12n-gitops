@@ -54,3 +54,12 @@ spec:
     gateway:
       service:
         type: LoadBalancer
+    nginxConfig:
+      httpSnippet: |
+        client_max_body_size 100M;
+      serverSnippet: |
+        client_max_body_size 100M;
+      logFormat: |-
+        main '$remote_addr - $remote_user [$time_local] $status '
+              '"$request" $body_bytes_sent "$http_referer" '
+              '"$http_user_agent" "$http_x_forwarded_for"';
