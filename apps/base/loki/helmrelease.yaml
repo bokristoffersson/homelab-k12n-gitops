@@ -6,8 +6,6 @@ metadata:
   namespace: monitoring
 spec:
   interval: 15m
-  nodeSelector:
-    node-type: worker-pi5
   chart:
     spec:
       chart: loki
