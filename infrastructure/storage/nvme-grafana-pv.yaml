@@ -6,7 +6,7 @@ spec:
   capacity:
     storage: 10Gi  # Adjust based on NVMe size
   accessModes:
-  - ReadWriteOnce
+    - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   storageClassName: nvme-local
   local:
