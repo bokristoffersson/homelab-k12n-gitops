@@ -62,7 +62,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m0s
-  path: ./infrastructure/controllers/metallb/config
+  path: "./infrastructure/controllers/metallb/config"
   prune: true
   sourceRef:
     kind: GitRepository
