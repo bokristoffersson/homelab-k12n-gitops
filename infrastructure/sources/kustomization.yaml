@@ -6,3 +6,4 @@ resources:
   - grafana.yaml
   - prometheus-community.yaml
   - loki.yaml
+  - metallb.yaml
