@@ -1,0 +1,219 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-1
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/1  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: storage
+          operator: In
+          values:
+          - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-2
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/2  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-3
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/3  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-4
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/4  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-5
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/5  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-6
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/6  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-7
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/7  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-8
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/8  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-9
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/9  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-10
+spec:
+  capacity:
+    storage: 10Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/10  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
