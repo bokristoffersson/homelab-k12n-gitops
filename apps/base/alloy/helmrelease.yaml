@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: alloy
-      version: "0.6.0"
+      version: "1.0.2"
       sourceRef:
         kind: HelmRepository
         name: grafana
@@ -21,232 +21,279 @@ spec:
       namespace: monitoring
 
   values:
+    nameOverride: null
+
+    namespaceOverride: null
+
+    fullnameOverride: null
+
+    global:
+      image:
+        registry: ""
+
+        pullSecrets: [ ]
+
+      podSecurityContext: { }
+
     crds:
-      create: false
+      create: true
 
     alloy:
       configMap:
         create: true
         content: |
-          // ==== LOGGING PIPELINE ====
-          
-          // Discover Kubernetes pods
+          logging {
+              level  = "info"
+              format = "logfmt"
+          }
+
           discovery.kubernetes "pods" {
-            role = "pod"
+              role = "pod"
           }
 
-          // Relabel and filter pods for log collection
-          discovery.relabel "kubernetes_pods" {
-            targets = discovery.kubernetes.pods.targets
-          
-            // Build log file path
-            rule {
-              source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
-              separator     = "/"
-              target_label  = "__path__"
-              replacement   = "/var/log/pods/*$1/*.log"
-            }
-          
-            // Add useful labels
-            rule {
-              source_labels = ["__meta_kubernetes_pod_name"]
-              target_label  = "pod"
-            }
-          
-            rule {
-              source_labels = ["__meta_kubernetes_namespace"]
-              target_label  = "namespace"
-            }
-          
-            rule {
-              source_labels = ["__meta_kubernetes_pod_container_name"]
-              target_label  = "container"
-            }
-          
-            rule {
-              source_labels = ["__meta_kubernetes_pod_node_name"]
-              target_label  = "node"
-            }
-          
-            rule {
-              source_labels = ["__meta_kubernetes_pod_label_app"]
-              target_label  = "app"
-            }
-          
-            rule {
-              source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
-              target_label  = "app_name"
-            }
-          
-            // Drop logs from system namespaces (optional)
-            rule {
-              source_labels = ["__meta_kubernetes_namespace"]
-              regex         = "kube-.*|flux-system"
-              action        = "drop"
-            }
+          discovery.kubernetes "nodes" {
+              role = "node"
           }
 
-          // Kubernetes log source with CRI parsing
-          loki.source.kubernetes "pods" {
-            targets    = discovery.relabel.kubernetes_pods.output
-            forward_to = [loki.process.kubernetes.receiver]
-          }
-
-          // Process logs (parse CRI format, extract log levels, etc.)
-          loki.process "kubernetes" {
-            forward_to = [loki.write.loki.receiver]
-          
-            stage.cri {}
-          
-            // Extract log level from common formats
-            stage.regex {
-              expression = "(?i)(?P<level>debug|info|warn|warning|error|fatal|panic)"
-            }
-          
-            stage.labels {
-              values = {
-                level = "",
-              }
-            }
-          
-            // Drop empty lines
-            stage.drop {
-              expression = "^\\s*$"
-            }
-          }
-
-          // Write to Loki
-          loki.write "loki" {
-            endpoint {
-              url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
-          
-              // Add retry and backoff for reliability
-              retry_backoff {
-                initial_interval = "500ms"
-                max_interval     = "5m"
-                max_elapsed_time = "10m"
-              }
-            }
-          
-            // External labels for all logs
-            external_labels = {
-              cluster = "homelab",
-              job     = "kubernetes-pods",
-            }
-          }
-          
-          // ==== METRICS PIPELINE (Complement Prometheus) ====
-          
-          // Discover Kubernetes services for additional metrics
           discovery.kubernetes "services" {
-            role = "service"
+              role = "service"
           }
 
-          discovery.relabel "services" {
-            targets = discovery.kubernetes.services.targets
-          
-            rule {
-              source_labels = ["__meta_kubernetes_service_annotation_prometheus_io_scrape"]
-              action        = "keep"
-              regex         = "true"
-            }
-          
-            rule {
-              source_labels = ["__meta_kubernetes_service_annotation_prometheus_io_path"]
-              target_label  = "__metrics_path__"
-              regex         = "(.+)"
-            }
-          
-            rule {
-              source_labels = ["__address__", "__meta_kubernetes_service_annotation_prometheus_io_port"]
-              target_label  = "__address__"
-              regex         = "(.+)(?::\\d+);(\\d+)"
-              replacement   = "$1:$2"
-            }
+          discovery.kubernetes "endpoints" {
+              role = "endpoints"
           }
 
-          // Scrape additional metrics and send to Prometheus
-          prometheus.scrape "kubernetes_services" {
-            targets    = discovery.relabel.services.output
-            forward_to = [prometheus.remote_write.prometheus.receiver]
-          
-            scrape_interval = "30s"
-            scrape_timeout  = "10s"
+          discovery.kubernetes "endpointslices" {
+              role = "endpointslice"
           }
 
-          // Remote write to your existing Prometheus
-          prometheus.remote_write "prometheus" {
+          discovery.kubernetes "ingresses" {
+              role = "ingress"
+          }    
+          loki.source.kubernetes "pods" {
+            targets    = discovery.kubernetes.pods.targets
+            forward_to = [loki.write.default.receiver]
+          }
+
+          loki.write "default" {
             endpoint {
-              url = "http://prometheus-server.monitoring.svc.cluster.local:80/api/v1/write"
-            }
-          
-            external_labels = {
-              cluster = "homelab",
-              source  = "alloy",
+              url = "http://loki:3100/loki/api/v1/push"
             }
           }
 
-    controller:
-      type: daemonset
+        name: null
+        key: null
 
-    serviceAccount:
-      create: true
+      clustering:
+        enabled: false
+
+        name: ""
+
+        portName: http
+
+      stabilityLevel: "generally-available"
+
+      storagePath: /tmp/alloy
+
+      listenAddr: 0.0.0.0
+
+      listenPort: 12345
+
+      listenScheme: HTTP
+
+      uiPathPrefix: /
+
+      enableReporting: true
+
+      extraEnv: [ ]
+
+      envFrom: [ ]
+
+      extraArgs: [ ]
+
+      extraPorts: [ ]
+
+      hostAliases: [ ]
+
+      mounts:
+        varlog: false
+        dockercontainers: false
+
+        extra: [ ]
+
+      securityContext: { }
+
+      resources: { }
+
+      lifecycle: { }
+
+      livenessProbe: { }
+
+    image:
+      registry: "docker.io"
+      repository: grafana/alloy
+      tag: null
+      digest: null
+      pullPolicy: IfNotPresent
+      pullSecrets: [ ]
 
     rbac:
       create: true
 
-    tolerations:
-      - effect: NoSchedule
-        operator: Exists
-      - effect: NoExecute
-        operator: Exists
+    serviceAccount:
+      create: true
+      additionalLabels: { }
+      annotations: { }
+      name: null
+      automountServiceAccountToken: true
 
-    resources:
-      limits:
-        cpu: 500m
-        memory: 512Mi
-      requests:
-        cpu: 100m
-        memory: 128Mi
+    configReloader:
+      enabled: true
+      image:
+        registry: "quay.io"
+        repository: prometheus-operator/prometheus-config-reloader
+        tag: v0.81.0
+        digest: ""
+      customArgs: [ ]
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "50Mi"
+      securityContext: { }
 
-    securityContext:
-      privileged: false
-      runAsUser: 0
-      runAsGroup: 0
-      fsGroup: 0
+    controller:
+      type: 'daemonset'
 
-    # Pi-specific node selector
-    nodeSelector:
-      kubernetes.io/arch: arm64
+      replicas: 1
 
-    # Mount host paths for log collection
-    volumeMounts:
-      - name: varlog
-        mountPath: /var/log
-        readOnly: true
-      - name: varlibdockercontainers
-        mountPath: /var/lib/docker/containers
-        readOnly: true
-      - name: etcmachineinfo
-        mountPath: /etc/machine-info
-        readOnly: true
+      extraAnnotations: { }
 
-    volumes:
-      - name: varlog
-        hostPath:
-          path: /var/log
-      - name: varlibdockercontainers
-        hostPath:
-          path: /var/lib/docker/containers
-      - name: etcmachineinfo
-        hostPath:
-          path: /etc/machine-info
+      parallelRollout: true
+
+      minReadySeconds: 10
+
+      hostNetwork: false
+
+      hostPID: false
+
+      dnsPolicy: ClusterFirst
+
+      terminationGracePeriodSeconds: null
+
+      updateStrategy: { }
+
+      nodeSelector: { }
+
+      tolerations: [ ]
+
+      topologySpreadConstraints: [ ]
+
+      priorityClassName: ''
+
+      podAnnotations: { }
+
+      podLabels: { }
+
+      podDisruptionBudget:
+        enabled: false
+        minAvailable: null
+        maxUnavailable: null
+
+      enableStatefulSetAutoDeletePVC: false
+
+      autoscaling:
+        enabled: false
+        minReplicas: 1
+        maxReplicas: 5
+        targetCPUUtilizationPercentage: 0
+        targetMemoryUtilizationPercentage: 80
+
+        scaleDown:
+          policies: [ ]
+          selectPolicy: Max
+          stabilizationWindowSeconds: 300
+
+        scaleUp:
+          policies: [ ]
+          selectPolicy: Max
+          stabilizationWindowSeconds: 0
+
+        horizontal:
+          enabled: false
+
+          minReplicas: 1
+          maxReplicas: 5
+          targetCPUUtilizationPercentage: 0
+          targetMemoryUtilizationPercentage: 80
+
+          scaleDown:
+            policies: [ ]
+            selectPolicy: Max
+            stabilizationWindowSeconds: 300
+
+          scaleUp:
+            policies: [ ]
+            selectPolicy: Max
+            stabilizationWindowSeconds: 0
+        vertical:
+          enabled: false
+
+          recommenders: [ ]
+
+          resourcePolicy:
+            containerPolicies:
+              - containerName: alloy
+                controlledResources:
+                  - cpu
+                  - memory
+                controlledValues: "RequestsAndLimits"
+                maxAllowed: { }
+                minAllowed: { }
+
+          updatePolicy:
+
+      affinity: { }
+
+      volumes:
+        extra: [ ]
+
+      volumeClaimTemplates: [ ]
+
+      initContainers: [ ]
+
+      extraContainers: [ ]
 
     service:
       enabled: true
       type: ClusterIP
+      nodePort: 31128
+      clusterIP: ''
+      internalTrafficPolicy: Cluster
+      annotations: { }
 
     serviceMonitor:
-      enabled: true  # Monitor Alloy itself with Prometheus
-      additionalLabels:
-        app.kubernetes.io/name: alloy
+      enabled: false
+      additionalLabels: { }
+      interval: ""
+      metricRelabelings: [ ]
+
+      tlsConfig: { }
+
+      relabelings: [ ]
+    ingress:
+      enabled: false
+      annotations:
+        { }
+      labels: { }
+      path: /
+      faroPort: 12347
+
+      pathType: Prefix
+
+      hosts:
+        - chart-example.local
+      extraPaths: [ ]
+
+      tls: [ ]
+
+    extraObjects: [ ]
