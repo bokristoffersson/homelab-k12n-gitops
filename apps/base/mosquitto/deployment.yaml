@@ -28,7 +28,7 @@ spec:
               mountPath: /mosquitto/config/mosquitto.conf
               subPath: mosquitto.conf
             - name: mosquitto-data
-              mountPath: /mnt/data/mosquitto/data
+              mountPath: /mosquitto/data
           resources:
             requests:
               memory: "64Mi"
