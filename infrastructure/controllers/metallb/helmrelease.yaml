@@ -67,6 +67,16 @@ spec:
       frr:
         enabled: false  # Set to true if you need BGP
 
+    # Configure IPAddressPool and L2Advertisement via Helm values
+    # This creates the resources as part of the Helm release
+    configInline:
+      address-pools:
+        - name: default
+          protocol: layer2
+          addresses:
+            # IMPORTANT: Update this IP range to match your network!
+            - 192.168.50.230-192.168.50.250
+
     # Prometheus monitoring (optional)
     prometheus:
       serviceAccount: metallb-prometheus
