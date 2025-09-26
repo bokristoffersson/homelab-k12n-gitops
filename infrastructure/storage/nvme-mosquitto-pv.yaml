@@ -9,6 +9,9 @@ spec:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   storageClassName: nvme-local
+  claimRef:
+    namespace: default
+    name: mosquitto-storage
   local:
     path: /mnt/data/mosquitto/data
   nodeAffinity:
