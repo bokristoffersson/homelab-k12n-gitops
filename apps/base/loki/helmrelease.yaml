@@ -37,10 +37,6 @@ spec:
         volume_enabled: true
       ruler:
         enable_api: true
-      storage:
-        type: filesystem
-        filesystem:
-          directory: /mnt/data/loki
 
     chunksCache:
       allocatedMemory: 500
