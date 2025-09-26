@@ -45,16 +45,16 @@ spec:
             claimName: mosquitto-storage
 
 ---
-# Optional: LoadBalancer service for external access
+# Service
 apiVersion: v1
 kind: Service
 metadata:
-  name: mosquitto-external
+  name: mosquitto-service
   namespace: default
   labels:
     app: mosquitto
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
     - port: 1883
       targetPort: 1883
@@ -62,3 +62,4 @@ spec:
       name: mqtt
   selector:
     app: mosquitto
+
