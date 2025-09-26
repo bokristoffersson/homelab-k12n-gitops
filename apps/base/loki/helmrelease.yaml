@@ -5,8 +5,6 @@ metadata:
   name: loki
   namespace: monitoring
 spec:
-  nodeSelector:
-    storage=nvme
   interval: 15m
   chart:
     spec:
