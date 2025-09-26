@@ -1,0 +1,13 @@
+# PersistentVolumeClaim for data persistence
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mosquitto-storage
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: nvme-local

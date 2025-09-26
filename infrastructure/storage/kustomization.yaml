@@ -5,3 +5,4 @@ resources:
   - nvme-grafana-pv.yaml
   - nvme-prometheus-pv.yaml
   - nvme-loki-pv.yaml
+  - nvme-mosquitto-pv.yaml

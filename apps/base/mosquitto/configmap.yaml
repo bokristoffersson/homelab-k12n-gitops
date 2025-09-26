@@ -1,0 +1,26 @@
+---
+# ConfigMap for Mosquitto configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mosquitto-config
+  namespace: default
+data:
+  mosquitto.conf: |
+    # Basic Mosquitto configuration
+    listener 1883
+    allow_anonymous true
+    
+    # Persistence
+    persistence true
+    persistence_location /mnt/data/mosquitto/data/
+    
+    # Logging
+    log_dest stdout
+    log_type error
+    log_type warning
+    log_type notice
+    log_type information
+    
+    # Connection logging
+    connection_messages true
