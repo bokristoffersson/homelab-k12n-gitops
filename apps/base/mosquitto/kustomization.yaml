@@ -3,7 +3,7 @@ kind: Kustomization
 namespace: default
 resources:
   - pvc.yaml
-  - configmap.yaml
-  - deployment.yaml
-  - traefik.yaml
-  - ingresstcp.yaml
+#  - configmap.yaml
+#  - deployment.yaml
+#  - traefik.yaml
+#  - ingresstcp.yaml
