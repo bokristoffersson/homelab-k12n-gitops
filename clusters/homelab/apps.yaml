@@ -9,6 +9,9 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/homelab
+  resources:
+    - ./apps/homelab/whoami
+    - ./apps/homelab/prometheus
+    - ./apps/homelab/grafana
   prune: true
   wait: true
