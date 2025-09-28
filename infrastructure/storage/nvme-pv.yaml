@@ -57,7 +57,7 @@ kind: PersistentVolume
 metadata:
   name: grafana-pv
   labels:
-    app: prometheus
+    app: grafana
     component: grafana
 spec:
   capacity:
