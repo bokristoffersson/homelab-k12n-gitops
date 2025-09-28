@@ -14,32 +14,51 @@ spec:
         name: prometheus-community
         namespace: flux-system
   values:
+    # Prometheus configuration
     prometheus:
       prometheusSpec:
         storageSpec:
-          nodeSelector: storage=nvme
           volumeClaimTemplate:
-            storageClassName: nvme-local
-            accessModes: [ "ReadWriteOnce" ]
-            resources:
-              requests:
-                storage: 50Gi # Adjust size as needed
+            spec:
+              storageClassName: nvme-storage
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 50Gi
+              selector:
+                matchLabels:
+                  app: prometheus
+                  component: server
+        retention: 15d
+        retentionSize: 45GB
 
+    # AlertManager configuration
     alertmanager:
       alertmanagerSpec:
-        nodeSelector: storage=nvme
         storage:
           volumeClaimTemplate:
-            storageClassName: nvme-local
-            accessModes: [ "ReadWriteOnce" ]
-            resources:
-              requests:
-                storage: 10Gi # Adjust size as needed
+            spec:
+              storageClassName: nvme-storage
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 10Gi
+              selector:
+                matchLabels:
+                  app: prometheus
+                  component: alertmanager
 
+    # Grafana configuration (uses default storage or configure similarly)
     grafana:
-      enabled: true
-      nodeSelector: storage=nvme
       persistence:
         enabled: true
-        storageClassName: nvme-local
-        size: 20Gi # Adjust size as needed
+        storageClassName: nvme-storage
+        size: 10Gi
+        accessModes:
+          - ReadWriteOnce
+        selector:
+          matchLabels:
+            app: grafana
+            component: grafana
