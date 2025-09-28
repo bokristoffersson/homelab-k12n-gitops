@@ -17,6 +17,7 @@ spec:
     prometheus:
       prometheusSpec:
         storageSpec:
+          nodeSelector: storage=nvme
           volumeClaimTemplate:
             storageClassName: nvme-local
             accessModes: [ "ReadWriteOnce" ]
@@ -26,6 +27,7 @@ spec:
 
     alertmanager:
       alertmanagerSpec:
+        nodeSelector: storage=nvme
         storage:
           volumeClaimTemplate:
             storageClassName: nvme-local
@@ -36,8 +38,8 @@ spec:
 
     grafana:
       enabled: true
+      nodeSelector: storage=nvme
       persistence:
         enabled: true
-        type: pvc
         storageClassName: nvme-local
         size: 20Gi # Adjust size as needed
