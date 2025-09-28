@@ -2,9 +2,9 @@ apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
 metadata:
   name: kube-prometheus-stack
-  namespace: monitoring
+  namespace: monitoring # Create this namespace first
 spec:
-  interval: 5m
+  interval: 15m
   chart:
     spec:
       chart: kube-prometheus-stack
@@ -13,10 +13,21 @@ spec:
         kind: HelmRepository
         name: prometheus-community
         namespace: flux-system
+      interval: 15m
   values:
-    # Prometheus configuration
+    # Global nodeSelector to force all components to worker-pi5
+    global:
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
+    
+    # Prometheus configuration - ENABLE persistent storage
     prometheus:
       prometheusSpec:
+        # Force to specific node
+        nodeSelector:
+          kubernetes.io/hostname: worker-pi5
+        
+        # Enable persistent storage
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -26,16 +37,18 @@ spec:
               resources:
                 requests:
                   storage: 50Gi
-              selector:
-                matchLabels:
-                  app: prometheus
-                  component: server
+        
         retention: 15d
         retentionSize: 45GB
-
-    # AlertManager configuration
+    
+    # AlertManager configuration - ENABLE persistent storage  
     alertmanager:
       alertmanagerSpec:
+        # Force to specific node
+        nodeSelector:
+          kubernetes.io/hostname: worker-pi5
+
+        # Enable persistent storage
         storage:
           volumeClaimTemplate:
             spec:
@@ -45,20 +58,17 @@ spec:
               resources:
                 requests:
                   storage: 10Gi
-              selector:
-                matchLabels:
-                  app: prometheus
-                  component: alertmanager
-
-    # Grafana configuration (uses default storage or configure similarly)
+    
+    # Grafana configuration
     grafana:
+      # Force to specific node
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
+      
+      # Enable persistent storage
       persistence:
         enabled: true
         storageClassName: nvme-storage
-        size: 10Gi
+        size: 5Gi
         accessModes:
           - ReadWriteOnce
-        selector:
-          matchLabels:
-            app: grafana
-            component: grafana
