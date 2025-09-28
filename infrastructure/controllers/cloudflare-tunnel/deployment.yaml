@@ -82,7 +82,7 @@ data:
       
       # grafana
       - hostname: grafana.k12n.com
-        service: http://grafana.grafana.svc.cluster.local:80
+        service: http://kube-prometheus-stack-grafana.monitoring.svc.cluster.local:80
       
       # Catch-all rule (required)
       - service: http_status:404
