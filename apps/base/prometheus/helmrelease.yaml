@@ -72,7 +72,7 @@ spec:
         size: 5Gi
         accessModes:
           - ReadWriteOnce
-          -
+
       admin:
         existingSecret: grafana-admin
         userKey: admin-user
