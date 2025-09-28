@@ -1,263 +1,78 @@
+# Static PV for Prometheus Server (adjust size as needed)
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: nvme-1
+  name: prometheus-server-pv
+  labels:
+    app: prometheus
+    component: server
 spec:
   capacity:
-    storage: 10Gi  # Adjust based on NVMe size
+    storage: 50Gi
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
+  storageClassName: nvme-storage
   local:
-    path: /mnt/data/1  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-      - matchExpressions:
-        - key: storage
-          operator: In
-          values:
-          - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-2
-spec:
-  capacity:
-    storage: 10Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/2  # Subdirectory on NVMe
+    path: /mnt/data/prometheus-server
   nodeAffinity:
     required:
       nodeSelectorTerms:
         - matchExpressions:
-            - key: storage
+            - key: kubernetes.io/hostname
               operator: In
               values:
-                - nvme
+                - worker-pi5
+
 ---
+# Static PV for AlertManager (if using)
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: nvme-3
+  name: alertmanager-pv
+  labels:
+    app: prometheus
+    component: alertmanager
 spec:
   capacity:
-    storage: 10Gi  # Adjust based on NVMe size
+    storage: 10Gi
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
+  storageClassName: nvme-storage
   local:
-    path: /mnt/data/3  # Subdirectory on NVMe
+    path: /mnt/data/alertmanager
   nodeAffinity:
     required:
       nodeSelectorTerms:
         - matchExpressions:
-            - key: storage
+            - key: kubernetes.io/hostname
               operator: In
               values:
-                - nvme
+                - worker-pi5
 ---
+# Static PV for AlertManager (if using)
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: nvme-4
+  name: grafana-pv
+  labels:
+    app: prometheus
+    component: grafana
 spec:
   capacity:
-    storage: 10Gi  # Adjust based on NVMe size
+    storage: 10Gi
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
+  storageClassName: nvme-storage
   local:
-    path: /mnt/data/4  # Subdirectory on NVMe
+    path: /mnt/data/grafana
   nodeAffinity:
     required:
       nodeSelectorTerms:
         - matchExpressions:
-            - key: storage
+            - key: kubernetes.io/hostname
               operator: In
               values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-5
-spec:
-  capacity:
-    storage: 10Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/5  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-6
-spec:
-  capacity:
-    storage: 10Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/6  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-7
-spec:
-  capacity:
-    storage: 10Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/7  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-8
-spec:
-  capacity:
-    storage: 10Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/8  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-9
-spec:
-  capacity:
-    storage: 10Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/9  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-10
-spec:
-  capacity:
-    storage: 10Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/10  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-11
-spec:
-  capacity:
-    storage: 20Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/11  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: nvme-12
-spec:
-  capacity:
-    storage: 50Gi  # Adjust based on NVMe size
-  accessModes:
-    - ReadWriteMany
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-local
-  local:
-    path: /mnt/data/12  # Subdirectory on NVMe
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: storage
-              operator: In
-              values:
-                - nvme
+                - worker-pi5
