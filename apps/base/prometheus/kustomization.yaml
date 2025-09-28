@@ -4,3 +4,4 @@ namespace: monitoring
 resources:
   - namespace.yaml
   - helmrelease.yaml
+  - grafana-secret-sealed.yaml
