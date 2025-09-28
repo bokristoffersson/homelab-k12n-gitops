@@ -72,7 +72,8 @@ spec:
         size: 5Gi
         accessModes:
           - ReadWriteOnce
-
+      initChownData:
+        enabled: false
       env:
         GF_SECURITY_ADMIN_USER:
           valueFrom:
