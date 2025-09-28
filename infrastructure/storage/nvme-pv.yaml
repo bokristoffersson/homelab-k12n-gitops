@@ -217,3 +217,47 @@ spec:
               operator: In
               values:
                 - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-11
+spec:
+  capacity:
+    storage: 20Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/11  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nvme-12
+spec:
+  capacity:
+    storage: 50Gi  # Adjust based on NVMe size
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nvme-local
+  local:
+    path: /mnt/data/12  # Subdirectory on NVMe
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: storage
+              operator: In
+              values:
+                - nvme

@@ -8,7 +8,7 @@ spec:
   chart:
     spec:
       chart: kube-prometheus-stack
-      version: "65.1.*"
+      version: 77.12.0
       sourceRef:
         kind: HelmRepository
         name: prometheus-community
@@ -16,93 +16,28 @@ spec:
   values:
     prometheus:
       prometheusSpec:
-        # Enable persistent storage
         storageSpec:
           volumeClaimTemplate:
-            spec:
-              storageClassName: nvme-local
-              accessModes:
-                - ReadWriteOnce
-              resources:
-                requests:
-                  storage: 10Gi
-        # Resource limits for Prometheus server
-        resources:
-          limits:
-            cpu: "2000m"      # Prometheus needs more CPU
-            memory: "4Gi"     # Prometheus needs more memory
-          requests:
-            cpu: "500m"
-            memory: "2Gi"
-        # Retention settings
-        retention: "30d"      # How long to keep metrics
-        retentionSize: "8GB"  # Size-based retention
+            storageClassName: nvme-local
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 50Gi # Adjust size as needed
 
-        # Optional: Specify node affinity for nvme-local storage
-        nodeSelector:
-        # Uncomment if your nvme-local storage is only on specific nodes
-        # storage-type: nvme
-
-        # Optional: Pod anti-affinity to avoid scheduling on same node as replicas
-        affinity: {}
-
-        # Security context
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 65534
-          fsGroup: 65534
-
-    # AlertManager configuration (also uses storage)
     alertmanager:
       alertmanagerSpec:
         storage:
           volumeClaimTemplate:
-            spec:
-              storageClassName: nvme-local
-              accessModes:
-                - ReadWriteOnce
-              resources:
-                requests:
-                  storage: 2Gi
-        resources:
-          limits:
-            cpu: "200m"
-            memory: "256Mi"
-          requests:
-            cpu: "50m"
-            memory: "128Mi"
+            storageClassName: nvme-local
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 10Gi # Adjust size as needed
 
-    # Grafana configuration (if you want to enable it later)
     grafana:
-      enabled: false  # Keep disabled as you specified
-      # When enabled, also configure storage:
-      # persistence:
-      #   enabled: true
-      #   storageClassName: nvme-local
-      #   size: 1Gi
-
-    # Optional: Configure node-exporter tolerations if needed
-    nodeExporter:
       enabled: true
-      # If you have tainted nodes, add tolerations:
-      # tolerations:
-      # - key: "dedicated"
-      #   operator: "Equal"
-      #   value: "monitoring"
-      #   effect: "NoSchedule"
-
-    # Optional: Configure kube-state-metrics
-    kubeStateMetrics:
-      enabled: true
-
-    # Optional: Prometheus Operator configuration
-    prometheusOperator:
-      enabled: true
-      # Resources for the operator itself
-      resources:
-        limits:
-          cpu: "200m"
-          memory: "200Mi"
-        requests:
-          cpu: "100m"
-          memory: "100Mi"
+      persistence:
+        enabled: true
+        type: pvc
+        storageClassName: nvme-local
+        size: 20Gi # Adjust size as needed
