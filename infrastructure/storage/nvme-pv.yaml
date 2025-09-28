@@ -1,78 +1,29 @@
-# Static PV for Prometheus Server (adjust size as needed)
-apiVersion: v1
-kind: PersistentVolume
+# First, create the storage class for your NVMe storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
 metadata:
-  name: prometheus-server-pv
-  labels:
-    app: prometheus
-    component: server
-spec:
-  capacity:
-    storage: 50Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-storage
-  local:
-    path: /mnt/data/prometheus-server
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - worker-pi5
+  name: nvme-storage
+provisioner: rancher.io/local-path # k3s local-path provisioner
+parameters:
+  nodePath: /mnt/nvme/local-path-storage # Directory where local-path will create subdirs
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+allowVolumeExpansion: true
 
 ---
-# Static PV for AlertManager (if using)
+# Node-specific storage configuration
 apiVersion: v1
-kind: PersistentVolume
+kind: ConfigMap
 metadata:
-  name: alertmanager-pv
-  labels:
-    app: prometheus
-    component: alertmanager
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-storage
-  local:
-    path: /mnt/data/alertmanager
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - worker-pi5
----
-# Static PV for AlertManager (if using)
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: grafana-pv
-  labels:
-    app: grafana
-    component: grafana
-spec:
-  capacity:
-    storage: 10Gi
-  accessModes:
-    - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: nvme-storage
-  local:
-    path: /mnt/data/grafana
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - worker-pi5
+  name: local-path-config
+  namespace: kube-system
+data:
+  config.json: |-
+    {
+      "nodePathMap": [
+        {
+          "node": "worker-pi5",
+          "paths": ["/mnt/nvme/local-path-storage"]
+        }
+      ]
+    }
