@@ -73,7 +73,14 @@ spec:
         accessModes:
           - ReadWriteOnce
 
-      admin:
-        existingSecret: grafana-admin
-        userKey: admin-user
-        passwordKey: admin-password
+      env:
+        GF_SECURITY_ADMIN_USER:
+          valueFrom:
+             secretKeyRef:
+               name: grafana-admin
+               key: admin-user
+        GF_SECURITY_ADMIN_PASSWORD:
+          valueFrom:
+           secretKeyRef:
+             name: grafana-admin
+             key: admin-password
