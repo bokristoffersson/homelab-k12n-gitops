@@ -35,14 +35,3 @@ spec:
       # Node affinity to pin to worker-pi5
       nodeSelector:
         kubernetes.io/hostname: worker-pi5
-
-      # Alternative: use affinity for more control
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: In
-                    values:
-                      - worker-pi5
