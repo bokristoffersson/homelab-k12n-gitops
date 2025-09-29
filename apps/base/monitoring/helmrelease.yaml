@@ -15,19 +15,13 @@ spec:
         namespace: flux-system
       interval: 15m
   values:
-    # Global nodeSelector to force all components to worker-pi5
-    global:
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
-    
-    # Prometheus configuration - ENABLE persistent storage
+
     prometheus:
       prometheusSpec:
-        # Force to specific node
+
         nodeSelector:
           kubernetes.io/hostname: worker-pi5
-        
-        # Enable persistent storage
+
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -40,15 +34,13 @@ spec:
         
         retention: 15d
         retentionSize: 45GB
-    
-    # AlertManager configuration - ENABLE persistent storage  
+
     alertmanager:
       alertmanagerSpec:
-        # Force to specific node
+
         nodeSelector:
           kubernetes.io/hostname: worker-pi5
 
-        # Enable persistent storage
         storage:
           volumeClaimTemplate:
             spec:
@@ -58,30 +50,27 @@ spec:
               resources:
                 requests:
                   storage: 10Gi
-    
-    # Grafana configuration
+
     grafana:
-      # Force to specific node
       nodeSelector:
         kubernetes.io/hostname: worker-pi5
-      
-      # Enable persistent storage
+
       persistence:
         enabled: true
         storageClassName: nvme-storage
         size: 5Gi
         accessModes:
           - ReadWriteOnce
-      initChownData:
-        enabled: false
-      env:
-        GF_SECURITY_ADMIN_USER:
-          valueFrom:
-             secretKeyRef:
-               name: grafana-admin
-               key: admin-user
-        GF_SECURITY_ADMIN_PASSWORD:
-          valueFrom:
-           secretKeyRef:
-             name: grafana-admin
-             key: admin-password
+
+      admin:
+        existingSecret: grafana-admin
+        userKey: admin-user
+        passwordKey: admin-password
+
+      sidecar:
+        dashboards:
+          enabled: true
+          searchNamespace: ALL
+        datasources:
+          enabled: true
+          searchNamespace: ALL
