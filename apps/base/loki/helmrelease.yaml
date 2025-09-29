@@ -17,21 +17,45 @@ spec:
       interval: 15m
 
   values:
+    deploymentMode: SimpleScalable
+
     loki:
-      auth_enabled: false
       commonConfig:
         replication_factor: 1
-      storage:
-        type: filesystem
 
-    # Single binary deployment (simpler for homelabs)
-    singleBinary:
+      storage:
+        type: s3
+        s3:
+          s3ForcePathStyle: true
+          insecure: true
+        bucketNames:
+          chunks: loki-chunks
+          ruler: loki-ruler
+
+    # Write component (ingests logs)
+    write:
       replicas: 1
       persistence:
-        enabled: true
         storageClass: nvme-storage
-        size: 20Gi
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
 
-      # Node affinity to pin to worker-pi5
+    # Read component (queries logs)
+    read:
+      replicas: 1
+
+    # Backend component (compaction, retention)
+    backend:
+      replicas: 1
+      persistence:
+        storageClass: nvme-storage
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
+
+    # Enable MinIO
+    minio:
+      enabled: true
+      persistence:
+        storageClass: nvme-storage
       nodeSelector:
         kubernetes.io/hostname: worker-pi5
