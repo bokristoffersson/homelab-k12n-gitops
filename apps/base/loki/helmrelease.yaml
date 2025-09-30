@@ -55,7 +55,3 @@ spec:
     # Enable MinIO
     minio:
       enabled: true
-      persistence:
-        storageClass: nvme-storage
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
