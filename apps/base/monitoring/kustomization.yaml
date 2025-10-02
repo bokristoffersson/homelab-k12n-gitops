@@ -3,5 +3,4 @@ kind: Kustomization
 namespace: monitoring
 resources:
   - namespace.yaml
-  - grafana-secret-sealed.yaml
   - helmrelease.yaml
