@@ -52,25 +52,4 @@ spec:
                   storage: 10Gi
 
     grafana:
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
-
-      persistence:
-        enabled: true
-        storageClassName: nvme-storage
-        size: 5Gi
-        accessModes:
-          - ReadWriteOnce
-
-      admin:
-        existingSecret: grafana-admin
-        userKey: admin-user
-        passwordKey: admin-password
-
-      sidecar:
-        dashboards:
-          enabled: true
-          searchNamespace: ALL
-        datasources:
-          enabled: true
-          searchNamespace: ALL
+      enabled: false
