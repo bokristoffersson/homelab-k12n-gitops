@@ -24,6 +24,12 @@ spec:
   values:
     loki:
       loki:
+        storage:
+          type: s3
+          bucketNames:
+            chunks: loki-chunks
+            ruler: loki-ruler
+            admin: loki-admin
         commonConfig:
           replication_factor: 1
         schemaConfig:
@@ -48,6 +54,16 @@ spec:
         persistence:
           size: 10Gi
           storageClass: nvme-storage
+        buckets:
+          - name: loki-chunks
+            policy: none
+            purge: false
+          - name: loki-ruler
+            policy: none
+            purge: false
+          - name: loki-admin
+            policy: none
+            purge: false
         nodeSelector:
           kubernetes.io/hostname: worker-pi5
 
