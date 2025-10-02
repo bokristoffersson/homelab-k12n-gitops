@@ -17,6 +17,12 @@ spec:
     nodeSelector:
       kubernetes.io/hostname: worker-pi5
 
+    persistence:
+      enabled: true
+      type: pvc
+      storageClassName: nvme-local
+      size: 10Gi
+
     datasources:
       datasources.yaml:
         apiVersion: 1
@@ -39,10 +45,6 @@ spec:
                   matcherRegex: "trace_id=(\\w+)"
                   name: "TraceID"
                   url: "$${__value.raw}"
-    persistence:
-      enabled: true
-      storageClassName: nvme-local
-      size: 10Gi
     admin:
       existingSecret: grafana-admin
       userKey: admin-user
