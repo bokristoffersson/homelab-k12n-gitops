@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - grafana-secret-sealed.yaml
-  - pvc.yaml
   - helmrelease.yaml
 
 commonLabels:
