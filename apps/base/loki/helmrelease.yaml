@@ -21,6 +21,8 @@ spec:
     - name: kube-prometheus-stack
       namespace: monitoring
 
+  deploymentMode: SingleBinary
+
   values:
     loki:
       storage:
