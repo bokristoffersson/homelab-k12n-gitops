@@ -19,9 +19,7 @@ spec:
 
     persistence:
       enabled: true
-      type: pvc
       storageClassName: nvme-local
-      size: 10Gi
 
     datasources:
       datasources.yaml:
@@ -45,10 +43,12 @@ spec:
                   matcherRegex: "trace_id=(\\w+)"
                   name: "TraceID"
                   url: "$${__value.raw}"
+
     admin:
       existingSecret: grafana-admin
       userKey: admin-user
       passwordKey: admin-password
+
     resources:
       limits:
         cpu: "500m"
@@ -56,6 +56,7 @@ spec:
       requests:
         cpu: "100m"
         memory: "128Mi"
+
     service:
       type: ClusterIP
       port: 80
