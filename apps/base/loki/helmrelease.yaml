@@ -42,7 +42,7 @@ spec:
     deploymentMode: SimpleScalable
 
     backend:
-      replicas: 2
+      replicas: 1
       persistence:
         storageClass: nvme-storage
       nodeSelector:
@@ -50,7 +50,7 @@ spec:
     read:
       replicas: 2
     write:
-      replicas: 3 # To ensure data durability with replication
+      replicas: 1 # To ensure data durability with replication
       persistence:
         storageClass: nvme-storage
       nodeSelector:
@@ -66,4 +66,4 @@ spec:
 
     gateway:
       service:
-        type: LoadBalancer
+        type: ClusterIP
