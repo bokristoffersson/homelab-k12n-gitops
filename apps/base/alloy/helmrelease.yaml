@@ -61,7 +61,6 @@ spec:
           loki.source.kubernetes "logs" {
             targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
-            # optional: enrich with metadata
             extra_labels = {
               cluster = "homelab"
             }
