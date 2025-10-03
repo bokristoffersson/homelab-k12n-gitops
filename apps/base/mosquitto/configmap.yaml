@@ -10,7 +10,7 @@ data:
     # Basic Mosquitto configuration
     listener 1883
     allow_anonymous true
-    protocal: mqtt
+    protocol: mqtt
     
     max_keepalive 60
     max_connections -1
