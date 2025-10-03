@@ -1,4 +1,3 @@
-# apps/monitoring/alloy/helmrelease.yaml
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -21,303 +20,87 @@ spec:
       namespace: monitoring
 
   values:
-    nameOverride: null
-
-    namespaceOverride: null
-
-    fullnameOverride: null
-
-    global:
-      image:
-        registry: ""
-
-        pullSecrets: [ ]
-
-      podSecurityContext: { }
-
-    crds:
-      create: true
-
     alloy:
       configMap:
         create: true
         content: |
-          
           logging {
             level  = "info"
             format = "logfmt"
           }
-                    
+          
+          // Discover all pods in the cluster
           discovery.kubernetes "pods" {
             role = "pod"
           }
           
-          local.file_match "pods" {
-            path_targets = [
-              {
-                __path__ = "/var/log/pods/*/*/*.log"
-              }
-            ]
-          }
-
-          loki.source.kubernetes "logs" {
-            targets    = discovery.kubernetes.pods.targets
-            forward_to = [loki.write.default.receiver]
-          }
-
-          discovery.kubernetes "nodes" {
-              role = "node"
-          }
-
-          discovery.kubernetes "services" {
-              role = "service"
-          }
-
-          discovery.kubernetes "endpoints" {
-              role = "endpoints"
-          }
-
-          discovery.kubernetes "endpointslices" {
-              role = "endpointslice"
-          }
-
-          discovery.kubernetes "ingresses" {
-              role = "ingress"
-          }  
+          // Add labels from Kubernetes metadata
+          discovery.relabel "kubernetes_pods" {
+            targets = discovery.kubernetes.pods.targets
           
+            // Add namespace label
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              target_label  = "namespace"
+            }
+          
+            // Add pod name
+            rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              target_label  = "pod"
+            }
+          
+            // Add container name
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              target_label  = "container"
+            }
+          
+            // Add node name
+            rule {
+              source_labels = ["__meta_kubernetes_pod_node_name"]
+              target_label  = "node"
+            }
+          }
+          
+          // Scrape logs from Kubernetes pods
+          loki.source.kubernetes "pods" {
+            targets    = discovery.relabel.kubernetes_pods.output
+            forward_to = [loki.process.add_labels.receiver]
+          }
+          
+          // Add custom labels
           loki.process "add_labels" {
+            forward_to = [loki.write.default.receiver]
+          
             stage.static_labels {
               values = {
-                cluster = "homelab"
+                cluster = "homelab",
               }
             }
-            forward_to = [loki.write.default.receiver]
           }
-                    
-          loki.source.kubernetes "pods" {
-            targets    = discovery.kubernetes.pods.targets
-            forward_to = [loki.write.default.receiver]
-          }
-
+          
+          // Send logs to Loki
           loki.write "default" {
             endpoint {
-              url = "http://loki:3100/loki/api/v1/push"
+              url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
             }
           }
 
-        name: null
-        key: null
-
-      clustering:
-        enabled: false
-
-        name: ""
-
-        portName: http
-
-      stabilityLevel: "generally-available"
-
-      storagePath: /tmp/alloy
-
-      listenAddr: 0.0.0.0
-
-      listenPort: 12345
-
-      listenScheme: HTTP
-
-      uiPathPrefix: /
-
-      enableReporting: true
-
-      extraEnv: [ ]
-
-      envFrom: [ ]
-
-      extraArgs: [ ]
-
-      extraPorts: [ ]
-
-      hostAliases: [ ]
-
+      # Enable volume mounts for log access
       mounts:
-        varlog: false
-        dockercontainers: false
+        varlog: true
 
-        extra: [ ]
+    controller:
+      type: 'daemonset'
 
-      securityContext: { }
-
-      resources: { }
-
-      lifecycle: { }
-
-      livenessProbe: { }
-
-    image:
-      registry: "docker.io"
-      repository: grafana/alloy
-      tag: null
-      digest: null
-      pullPolicy: IfNotPresent
-      pullSecrets: [ ]
+      # Tolerations to run on all nodes including control plane
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
 
     rbac:
       create: true
 
     serviceAccount:
       create: true
-      additionalLabels: { }
-      annotations: { }
-      name: null
-      automountServiceAccountToken: true
-
-    configReloader:
-      enabled: true
-      image:
-        registry: "quay.io"
-        repository: prometheus-operator/prometheus-config-reloader
-        tag: v0.81.0
-        digest: ""
-      customArgs: [ ]
-      resources:
-        requests:
-          cpu: "10m"
-          memory: "50Mi"
-      securityContext: { }
-
-    controller:
-      type: 'daemonset'
-
-      replicas: 1
-
-      extraAnnotations: { }
-
-      parallelRollout: true
-
-      minReadySeconds: 10
-
-      hostNetwork: false
-
-      hostPID: false
-
-      dnsPolicy: ClusterFirst
-
-      terminationGracePeriodSeconds: null
-
-      updateStrategy: { }
-
-      nodeSelector: { }
-
-      tolerations: [ ]
-
-      topologySpreadConstraints: [ ]
-
-      priorityClassName: ''
-
-      podAnnotations: { }
-
-      podLabels: { }
-
-      podDisruptionBudget:
-        enabled: false
-        minAvailable: null
-        maxUnavailable: null
-
-      enableStatefulSetAutoDeletePVC: false
-
-      autoscaling:
-        enabled: false
-        minReplicas: 1
-        maxReplicas: 5
-        targetCPUUtilizationPercentage: 0
-        targetMemoryUtilizationPercentage: 80
-
-        scaleDown:
-          policies: [ ]
-          selectPolicy: Max
-          stabilizationWindowSeconds: 300
-
-        scaleUp:
-          policies: [ ]
-          selectPolicy: Max
-          stabilizationWindowSeconds: 0
-
-        horizontal:
-          enabled: false
-
-          minReplicas: 1
-          maxReplicas: 5
-          targetCPUUtilizationPercentage: 0
-          targetMemoryUtilizationPercentage: 80
-
-          scaleDown:
-            policies: [ ]
-            selectPolicy: Max
-            stabilizationWindowSeconds: 300
-
-          scaleUp:
-            policies: [ ]
-            selectPolicy: Max
-            stabilizationWindowSeconds: 0
-        vertical:
-          enabled: false
-
-          recommenders: [ ]
-
-          resourcePolicy:
-            containerPolicies:
-              - containerName: alloy
-                controlledResources:
-                  - cpu
-                  - memory
-                controlledValues: "RequestsAndLimits"
-                maxAllowed: { }
-                minAllowed: { }
-
-          updatePolicy:
-
-      affinity: { }
-
-      volumes:
-        extra: [ ]
-
-      volumeClaimTemplates: [ ]
-
-      initContainers: [ ]
-
-      extraContainers: [ ]
-
-    service:
-      enabled: true
-      type: ClusterIP
-      nodePort: 31128
-      clusterIP: ''
-      internalTrafficPolicy: Cluster
-      annotations: { }
-
-    serviceMonitor:
-      enabled: false
-      additionalLabels: { }
-      interval: ""
-      metricRelabelings: [ ]
-
-      tlsConfig: { }
-
-      relabelings: [ ]
-    ingress:
-      enabled: false
-      annotations:
-        { }
-      labels: { }
-      path: /
-      faroPort: 12347
-
-      pathType: Prefix
-
-      hosts:
-        - chart-example.local
-      extraPaths: [ ]
-
-      tls: [ ]
-
-    extraObjects: [ ]
