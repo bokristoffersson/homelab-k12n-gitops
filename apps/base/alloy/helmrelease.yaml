@@ -51,10 +51,10 @@ spec:
           discovery.kubernetes "pods" {
             role = "pod"
           }
-                    
+          
           local.file_match "pods" {
             path_targets = [
-              __path__ = "/var/log/pods/*/*/*.log"
+              "/var/log/pods/*/*/*.log"
             ]
           }
                     
@@ -91,7 +91,7 @@ spec:
             }
             forward_to = [loki.write.default.receiver]
           }
-          
+                    
           loki.source.kubernetes "pods" {
             targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
