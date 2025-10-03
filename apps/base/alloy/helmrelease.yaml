@@ -54,10 +54,12 @@ spec:
           
           local.file_match "pods" {
             path_targets = [
-              "/var/log/pods/*/*/*.log"
+              {
+                __path__ = "/var/log/pods/*/*/*.log"
+              }
             ]
           }
-                    
+
           loki.source.kubernetes "logs" {
             targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
