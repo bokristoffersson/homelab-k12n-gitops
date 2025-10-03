@@ -47,12 +47,35 @@ spec:
               format = "logfmt"
           }
 
-          discovery.kubernetes "namespaces" {
-              role = "namespace"
-          }
-          
           discovery.kubernetes "pods" {
               role = "pod"
+          }
+          
+          discovery.relabel "pods" {
+            targets = discovery.kubernetes.pods.targets
+          
+              // Add namespace label
+              rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              target_label  = "namespace"
+            }
+              
+              rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              target_label  = "pod"
+            }
+            
+              // Add container name
+              rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              target_label  = "container"
+            }
+            
+              // Add node name
+              rule {
+              source_labels = ["__meta_kubernetes_pod_node_name"]
+              target_label  = "node"
+            }
           }
 
           discovery.kubernetes "nodes" {
