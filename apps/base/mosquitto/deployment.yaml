@@ -17,6 +17,15 @@ spec:
     spec:
       nodeSelector:
         kubernetes.io/hostname: worker-pi5
+
+      initContainers:
+        - name: fix-permissions
+          image: busybox:latest
+          command: [ 'sh', '-c', 'chown -R 1883:1883 /mosquitto/data' ]
+          volumeMounts:
+            - name: mosquitto-data
+              mountPath: /mosquitto/data
+
       containers:
         - name: mosquitto
           image: eclipse-mosquitto:2.0
