@@ -66,6 +66,10 @@ metadata:
     app: mosquitto
 spec:
   type: LoadBalancer
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600
   ports:
     - port: 1883
       targetPort: 1883
