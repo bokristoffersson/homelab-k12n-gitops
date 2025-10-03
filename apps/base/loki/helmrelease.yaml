@@ -25,6 +25,15 @@ spec:
 
   values:
     deploymentMode: SingleBinary
+    singleBinary:
+      replicas: 1
+      persistence:
+        enabled: true
+        size: 10Gi
+        storageClass: nvme-storage
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
+
     loki:
       storage:
         type: s3
@@ -55,17 +64,6 @@ spec:
 
       ruler:
         enable_api: true
-
-      deploymentMode: SingleBinary
-
-      singleBinary:
-        replicas: 1
-        persistence:
-          enabled: true
-          size: 10Gi
-          storageClass: nvme-storage
-        nodeSelector:
-          kubernetes.io/hostname: worker-pi5
 
     minio:
       enabled: true
