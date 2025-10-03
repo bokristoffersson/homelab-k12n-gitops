@@ -49,19 +49,19 @@ spec:
           }
           
           # Discover Kubernetes pods
-            discovery.kubernetes "pods" {
+          discovery.kubernetes "pods" {
             role = "pod"
           }
           
           # Tail container logs from /var/log/pods
-            local.file_match "pods" {
+          local.file_match "pods" {
             path_targets = [{
               __path__ = "/var/log/pods/*/*/*.log"
             }]
           }
           
           # Parse container logs and attach Kubernetes metadata
-            loki.source.kubernetes "logs" {
+          loki.source.kubernetes "logs" {
             targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
             # optional: enrich with metadata
