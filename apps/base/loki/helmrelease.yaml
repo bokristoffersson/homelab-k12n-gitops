@@ -56,24 +56,6 @@ spec:
       ruler:
         enable_api: true
 
-      minio:
-        enabled: true
-        persistence:
-          size: 10Gi
-          storageClass: nvme-storage
-        buckets:
-          - name: loki-chunks
-            policy: none
-            purge: false
-          - name: loki-ruler
-            policy: none
-            purge: false
-          - name: loki-admin
-            policy: none
-            purge: false
-        nodeSelector:
-          kubernetes.io/hostname: worker-pi5
-
       deploymentMode: SingleBinary
 
       singleBinary:
@@ -85,29 +67,48 @@ spec:
         nodeSelector:
           kubernetes.io/hostname: worker-pi5
 
-      # Zero out replica counts of other deployment modes
-      backend:
-        replicas: 0
-      read:
-        replicas: 0
-      write:
-        replicas: 0
+    minio:
+      enabled: true
+      persistence:
+        size: 10Gi
+        storageClass: nvme-storage
+      buckets:
+        - name: loki-chunks
+          policy: none
+          purge: false
+        - name: loki-ruler
+          policy: none
+          purge: false
+        - name: loki-admin
+          policy: none
+          purge: false
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
 
-      ingester:
-        replicas: 0
-      querier:
-        replicas: 0
-      queryFrontend:
-        replicas: 0
-      queryScheduler:
-        replicas: 0
-      distributor:
-        replicas: 0
-      compactor:
-        replicas: 0
-      indexGateway:
-        replicas: 0
-      bloomCompactor:
-        replicas: 0
-      bloomGateway:
-        replicas: 0
+
+    # Zero out replica counts of other deployment modes
+    backend:
+      replicas: 0
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+
+    ingester:
+      replicas: 0
+    querier:
+      replicas: 0
+    queryFrontend:
+      replicas: 0
+    queryScheduler:
+      replicas: 0
+    distributor:
+      replicas: 0
+    compactor:
+      replicas: 0
+    indexGateway:
+      replicas: 0
+    bloomCompactor:
+      replicas: 0
+    bloomGateway:
+      replicas: 0
