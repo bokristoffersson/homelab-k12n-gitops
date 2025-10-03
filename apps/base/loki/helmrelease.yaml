@@ -42,6 +42,7 @@ spec:
           ruler: loki-ruler
           admin: loki-admin
 
+      auth_enabled: false
       commonConfig:
         replication_factor: 1
 
