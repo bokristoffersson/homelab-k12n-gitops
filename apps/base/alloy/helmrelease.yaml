@@ -61,9 +61,6 @@ spec:
           loki.source.kubernetes "logs" {
             targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
-            extra_labels = {
-              cluster = "homelab"
-            }
           }
 
           discovery.kubernetes "nodes" {
@@ -85,6 +82,15 @@ spec:
           discovery.kubernetes "ingresses" {
               role = "ingress"
           }  
+          
+          loki.process "add_labels" {
+            stage.static_labels {
+              values = {
+                cluster = "homelab"
+              }
+            }
+            forward_to = [loki.write.default.receiver]
+          }
           
           loki.source.kubernetes "pods" {
             targets    = discovery.kubernetes.pods.targets
