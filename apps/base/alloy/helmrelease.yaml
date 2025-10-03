@@ -44,7 +44,7 @@ spec:
         content: |
           
           logging {
-            level  = "info",
+            level  = "info"
             format = "logfmt"
           }
                     
@@ -59,8 +59,8 @@ spec:
           }
                     
           loki.source.kubernetes "logs" {
-            targets    = discovery.kubernetes.pods.targets,
-            forward_to = [loki.write.default.receiver],
+            targets    = discovery.kubernetes.pods.targets
+            forward_to = [loki.write.default.receiver]
             extra_labels = {
               cluster = "homelab"
             }
@@ -87,7 +87,7 @@ spec:
           }  
           
           loki.source.kubernetes "pods" {
-            targets    = discovery.kubernetes.pods.targets,
+            targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
           }
 
