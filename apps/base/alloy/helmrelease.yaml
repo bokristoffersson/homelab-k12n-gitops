@@ -47,20 +47,17 @@ spec:
             level  = "info"
             format = "logfmt"
           }
-          
-          # Discover Kubernetes pods
+                    
           discovery.kubernetes "pods" {
             role = "pod"
           }
-          
-          # Tail container logs from /var/log/pods
+                    
           local.file_match "pods" {
             path_targets = [{
               __path__ = "/var/log/pods/*/*/*.log"
             }]
           }
-          
-          # Parse container logs and attach Kubernetes metadata
+                    
           loki.source.kubernetes "logs" {
             targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
@@ -88,7 +85,8 @@ spec:
 
           discovery.kubernetes "ingresses" {
               role = "ingress"
-          }    
+          }  
+          
           loki.source.kubernetes "pods" {
             targets    = discovery.kubernetes.pods.targets
             forward_to = [loki.write.default.receiver]
