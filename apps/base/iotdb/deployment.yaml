@@ -16,6 +16,22 @@ metadata:
   name: iotdb-datanode-config
   namespace: iotdb
 data:
+  iotdb-datanode.properties: |
+    # RPC Configuration
+    dn_rpc_address=0.0.0.0
+    dn_rpc_port=6667
+    
+    # MQTT Configuration
+    enable_mqtt_service=true
+    mqtt_host=0.0.0.0
+    mqtt_port=1883
+    mqtt_max_message_size=1048576
+    
+    # REST Configuration
+    enable_rest_service=true
+    rest_service_port=18080
+    
+    # Internal addresses will be set via environment variables
   datanode-env.sh: |
     #!/bin/bash
     export IOTDB_HEAP_OPTS="-Xmx2G -Xms2G"
@@ -183,6 +199,9 @@ spec:
               mountPath: /iotdb/data
             - name: logs
               mountPath: /iotdb/logs
+            - name: config
+              mountPath: /iotdb/conf/iotdb-datanode.properties
+              subPath: iotdb-datanode.properties
           resources:
             requests:
               cpu: 500m
@@ -204,6 +223,10 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: iotdb-datanode-config
   volumeClaimTemplates:
     - metadata:
         name: data
