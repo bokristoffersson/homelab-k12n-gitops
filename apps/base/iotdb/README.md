@@ -7,7 +7,7 @@ This directory contains the GitOps configuration for deploying Apache IoTDB to y
 ```
 iotdb/
 ├── namespace.yaml              # Creates the iotdb namespace
-├── iotdb-deployment.yaml       # Complete IoTDB deployment (ConfigNode + DataNode)
+├── deployment.yaml             # Complete IoTDB deployment (ConfigNode + DataNode)
 └── grafana-datasource.yaml     # Grafana datasource configuration
 ```
 

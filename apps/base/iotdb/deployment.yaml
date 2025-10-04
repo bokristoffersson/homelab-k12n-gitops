@@ -70,10 +70,10 @@ spec:
     - name: mpp
       port: 10740
       targetPort: 10740
-    - name: data-consensus
+    - name: data-cons
       port: 10750
       targetPort: 10750
-    - name: schema-consensus
+    - name: schema-cons
       port: 10760
       targetPort: 10760
     - name: mqtt
@@ -276,7 +276,7 @@ spec:
             - containerPort: 10750
               name: data-consensus
             - containerPort: 10760
-              name: schema-consensus
+              name: schema-cons
             - containerPort: 1883
               name: mqtt
             - containerPort: 18080
