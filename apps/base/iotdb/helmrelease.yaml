@@ -1,0 +1,87 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: iotdb
+  namespace: iotdb
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: iotdb
+      version: '>=1.0.0'
+      sourceRef:
+        kind: HelmRepository
+        name: iotdb
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    # ConfigNode configuration
+    confignode:
+      replicas: 1
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 2000m
+          memory: 2Gi
+      persistence:
+        enabled: true
+        storageClass: nvme-storage
+        size: 10Gi
+
+    # DataNode configuration
+    datanode:
+      replicas: 1
+      nodeSelector:
+        kubernetes.io/hostname: worker-pi5
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: 4000m
+          memory: 4Gi
+      persistence:
+        enabled: true
+        storageClass: nvme-storage
+        data:
+          - size: 50Gi
+            storageClass: nvme-storage
+
+      # MQTT configuration for direct device connection
+      config:
+        # Enable MQTT protocol
+        enable_mqtt_service: true
+        mqtt_host: "0.0.0.0"
+        mqtt_port: 1883
+        mqtt_max_message_size: 1048576
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      rpcPort: 6667
+      mqttPort: 1883
+
+    # Expose MQTT service
+    mqttService:
+      enabled: true
+      type: LoadBalancer
+      port: 1883
+      annotations: {}
+        # metallb.universe.tf/address-pool: default
+
+    # Monitoring for Grafana integration
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+        interval: 30s

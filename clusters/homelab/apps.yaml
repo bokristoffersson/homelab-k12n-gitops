@@ -86,3 +86,29 @@ spec:
 #  path: ./apps/homelab/mosquitto
 #  prune: true
 #  wait: true
+
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: iotdb
+  namespace: flux-system
+spec:
+  interval: 10m
+  targetNamespace: iotdb
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./apps/homelab/iotdb
+  prune: true
+  wait: true
+  timeout: 5m
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: iotdb-confignode
+      namespace: iotdb
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: iotdb-datanode
+      namespace: iotdb
