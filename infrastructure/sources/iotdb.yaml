@@ -6,4 +6,4 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1h
-  url: https://apache.github.io/iotdb-bin-resources
+  url: https://julianfeinauer.github.io/apache-iotdb-single-node

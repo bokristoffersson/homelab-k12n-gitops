@@ -1,0 +1,242 @@
+# Apache IoTDB Deployment for K3s with FluxCD
+
+This directory contains the GitOps configuration for deploying Apache IoTDB to your k3s homelab cluster.
+
+## 📁 Directory Structure
+
+```
+iotdb/
+├── namespace.yaml              # Creates the iotdb namespace
+├── helmrepository.yaml         # Adds the community IoTDB Helm repository
+├── helmrelease.yaml           # Deploys IoTDB with custom configuration
+├── mqtt-service.yaml          # Exposes MQTT service via LoadBalancer
+└── grafana-datasource.yaml    # Grafana datasource configuration
+```
+
+## 🚀 Deployment Steps
+
+### 1. Add Files to Your GitOps Repository
+
+Place all files in your GitOps repository under the `iotdb/` directory:
+
+```bash
+cd /path/to/your/gitops-repo
+mkdir -p iotdb
+# Copy all files to iotdb/
+```
+
+### 2. Create the FluxCD Kustomization
+
+Apply the kustomization file to tell FluxCD to manage this deployment:
+
+```bash
+kubectl apply -f flux-system/kustomization-iotdb.yaml
+```
+
+### 3. Verify the Deployment
+
+Monitor the reconciliation:
+
+```bash
+# Watch FluxCD reconcile
+flux get kustomizations -w
+
+# Check HelmRelease status
+flux get helmreleases -n iotdb
+
+# Watch pods come up
+kubectl get pods -n iotdb -w
+```
+
+### 4. Wait for StatefulSet to be Ready
+
+```bash
+kubectl get statefulset -n iotdb
+# Wait until READY shows 1/1
+```
+
+## 🔌 Connecting MQTT Devices
+
+### Get the MQTT Service IP
+
+```bash
+kubectl get svc -n iotdb iotdb-mqtt
+```
+
+The output will show the EXTERNAL-IP assigned by your load balancer.
+
+### Configure Your MQTT Devices
+
+- **Host**: `<EXTERNAL-IP from above>`
+- **Port**: `1883`
+- **Username**: `root`
+- **Password**: `root`
+- **Topic Format**: `root.device.sensor`
+
+### Example MQTT Publish
+
+```bash
+mosquitto_pub -h <EXTERNAL-IP> -p 1883 -u root -P root \
+  -t "root/sg1/d1/s1" -m '{"time":1234567890,"value":123.45}'
+```
+
+## 📊 Grafana Integration
+
+### Option 1: Auto-Discovery (Recommended)
+
+If your Grafana is configured to auto-discover datasources via ConfigMap labels:
+
+1. The datasource will be automatically added
+2. Look for "IoTDB" in Grafana's datasources
+
+### Option 2: Manual Configuration
+
+If auto-discovery doesn't work:
+
+1. Go to Grafana → Configuration → Data Sources
+2. Add new data source → PostgreSQL
+3. Configure:
+   - **Host**: `iotdb-apache-iotdb.iotdb.svc.cluster.local:6667`
+   - **Database**: `root`
+   - **User**: `root`
+   - **Password**: `root`
+   - **SSL Mode**: `disable`
+
+### Query IoTDB Data in Grafana
+
+Use SQL queries to fetch time-series data:
+
+```sql
+SELECT time, s1 FROM root.sg1.d1 WHERE time > now() - 1h
+```
+
+## 🔧 Configuration Details
+
+### Storage
+
+- **StorageClass**: `nvme-storage` (your NVMe storage)
+- **Size**: 50Gi
+- **Node**: Pinned to `worker-pi5` using nodeSelector
+
+### Resources
+
+- **CPU Request**: 500m
+- **CPU Limit**: 4000m
+- **Memory Request**: 2Gi
+- **Memory Limit**: 4Gi
+
+### Services Exposed
+
+| Service | Type | Port | Purpose |
+|---------|------|------|---------|
+| iotdb-apache-iotdb | ClusterIP | 6667 | RPC/SQL queries |
+| iotdb-mqtt | LoadBalancer | 1883 | MQTT ingestion |
+| iotdb-rest | ClusterIP | 18080 | REST API |
+
+## 🔒 Security Considerations
+
+**⚠️ IMPORTANT**: The default credentials are `root:root`. For production use:
+
+1. Change the default password after deployment
+2. Consider creating additional users with limited privileges
+3. Enable authentication on MQTT if needed
+4. Use TLS/SSL for production deployments
+
+### Changing Default Password
+
+```bash
+# Connect to IoTDB
+kubectl exec -it -n iotdb iotdb-apache-iotdb-0 -- /iotdb/sbin/start-cli.sh -h localhost
+
+# In the CLI:
+ALTER USER root SET PASSWORD 'new_password';
+CREATE USER mqtt_user 'mqtt_password';
+```
+
+## 📈 Monitoring
+
+To view IoTDB logs:
+
+```bash
+kubectl logs -n iotdb iotdb-apache-iotdb-0 -f
+```
+
+To access the IoTDB CLI:
+
+```bash
+kubectl exec -it -n iotdb iotdb-apache-iotdb-0 -- /iotdb/sbin/start-cli.sh -h localhost -u root -pw root
+```
+
+## 🔄 Scaling and Upgrades
+
+### Update Configuration
+
+Edit `helmrelease.yaml` and commit changes. FluxCD will automatically apply them.
+
+### Manual Sync
+
+Force FluxCD to reconcile immediately:
+
+```bash
+flux reconcile helmrelease iotdb -n iotdb
+```
+
+## 🐛 Troubleshooting
+
+### Pods Not Starting
+
+```bash
+# Check events
+kubectl get events -n iotdb --sort-by='.lastTimestamp'
+
+# Describe the pod
+kubectl describe pod -n iotdb iotdb-apache-iotdb-0
+
+# Check PVC status
+kubectl get pvc -n iotdb
+```
+
+### MQTT Connection Issues
+
+1. Verify the service is exposed:
+   ```bash
+   kubectl get svc -n iotdb iotdb-mqtt
+   ```
+
+2. Check if MQTT port is accessible:
+   ```bash
+   nc -zv <EXTERNAL-IP> 1883
+   ```
+
+3. View IoTDB logs for MQTT activity:
+   ```bash
+   kubectl logs -n iotdb iotdb-apache-iotdb-0 | grep -i mqtt
+   ```
+
+### Storage Issues
+
+Verify PVC is bound:
+```bash
+kubectl get pvc -n iotdb
+```
+
+Check if the storageClass exists:
+```bash
+kubectl get storageclass nvme-storage
+```
+
+## 📚 Additional Resources
+
+- [Apache IoTDB Documentation](https://iotdb.apache.org/)
+- [IoTDB MQTT Protocol](https://iotdb.apache.org/UserGuide/latest/API/Programming-MQTT.html)
+- [FluxCD Documentation](https://fluxcd.io/docs/)
+
+## 🎯 Next Steps
+
+1. ✅ Deploy IoTDB
+2. ✅ Connect MQTT devices
+3. ✅ Configure Grafana
+4. 🔄 Set up retention policies
+5. 🔄 Configure backups
+6. 🔄 Enable authentication
+7. 🔄 Set up monitoring alerts

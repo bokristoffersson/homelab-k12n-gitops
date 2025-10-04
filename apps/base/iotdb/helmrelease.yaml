@@ -1,3 +1,4 @@
+---
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
 metadata:
@@ -7,8 +8,8 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: iotdb
-      version: '>=1.0.0'
+      chart: apache-iotdb
+      version: '>=0.1.0'
       sourceRef:
         kind: HelmRepository
         name: iotdb
@@ -21,57 +22,48 @@ spec:
     remediation:
       retries: 3
   values:
-    # ConfigNode configuration
-    confignode:
-      replicas: 1
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
-      resources:
-        requests:
-          cpu: 500m
-          memory: 1Gi
-        limits:
-          cpu: 2000m
-          memory: 2Gi
-      persistence:
-        enabled: true
-        storageClass: nvme-storage
-        size: 10Gi
+    # Node selector to pin to worker-pi5
+    nodeSelector:
+      kubernetes.io/hostname: worker-pi5
 
-    # DataNode configuration
-    datanode:
-      replicas: 1
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
-      resources:
-        requests:
-          cpu: 500m
-          memory: 2Gi
-        limits:
-          cpu: 4000m
-          memory: 4Gi
-      persistence:
-        enabled: true
-        storageClass: nvme-storage
-        data:
-          - size: 50Gi
-            storageClass: nvme-storage
+    # Resource configuration
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 4Gi
 
-      # MQTT configuration for direct device connection
-      config:
-        # Enable MQTT protocol
-        enable_mqtt_service: true
-        mqtt_host: "0.0.0.0"
-        mqtt_port: 1883
-        mqtt_max_message_size: 1048576
+    # Persistence configuration using your nvme-storage
+    persistence:
+      enabled: true
+      storageClass: nvme-storage
+      size: 50Gi
+      accessMode: ReadWriteOnce
+
+    # IoTDB configuration
+    config:
+      # Enable MQTT service for direct device connection
+      enable_mqtt_service: true
+      mqtt_host: "0.0.0.0"
+      mqtt_port: 1883
+      mqtt_max_message_size: 1048576
+
+      # REST API for Grafana
+      enable_rest_service: true
+      rest_service_port: 18080
+
+      # Memory settings
+      MAX_HEAP_SIZE: "2G"
+      HEAP_NEWSIZE: "512M"
 
     # Service configuration
     service:
       type: ClusterIP
-      rpcPort: 6667
-      mqttPort: 1883
+      port: 6667
 
-    # Expose MQTT service
+    # Expose MQTT as LoadBalancer
     mqttService:
       enabled: true
       type: LoadBalancer
@@ -79,9 +71,26 @@ spec:
       annotations: {}
         # metallb.universe.tf/address-pool: default
 
-    # Monitoring for Grafana integration
-    metrics:
+    # Expose REST API for Grafana
+    restService:
       enabled: true
-      serviceMonitor:
-        enabled: true
-        interval: 30s
+      type: ClusterIP
+      port: 18080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iotdb-mqtt
+  namespace: iotdb
+
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 1883
+      targetPort: 1883
+      protocol: TCP
+      name: mqtt
+  selector:
+    app.kubernetes.io/name: apache-iotdb
+    app.kubernetes.io/instance: iotdb
