@@ -12,7 +12,7 @@ data:
       - name: IoTDB
         type: mysql
         access: proxy
-        url: iotdb-datanode:6667
+        url: iotdb-service:6667
         database: root
         user: root
         jsonData:
