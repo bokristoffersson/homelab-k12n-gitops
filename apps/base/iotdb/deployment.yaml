@@ -287,9 +287,7 @@ spec:
             - name: dn_rpc_port
               value: "6667"
             - name: dn_internal_address
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
+              value: "iotdb-datanode-0.iotdb-datanode.iotdb.svc.cluster.local"
             - name: dn_internal_port
               value: "10730"
             - name: dn_mpp_data_exchange_port
