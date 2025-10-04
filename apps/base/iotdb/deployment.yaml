@@ -226,7 +226,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: iotdb-datanode-config
+            name: iotdb-confignode-config
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -360,6 +360,10 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: iotdb-datanode-config
   volumeClaimTemplates:
     - metadata:
         name: data
