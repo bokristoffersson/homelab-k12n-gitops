@@ -200,8 +200,8 @@ spec:
             - name: logs
               mountPath: /iotdb/logs
             - name: config
-              mountPath: /iotdb/conf/iotdb-datanode.properties
-              subPath: iotdb-datanode.properties
+              mountPath: /iotdb/conf/iotdb-confignode-config
+              subPath: iotdb-confignode-config
           resources:
             requests:
               cpu: 500m
@@ -336,6 +336,9 @@ spec:
               mountPath: /iotdb/data
             - name: logs
               mountPath: /iotdb/logs
+            - name: config
+              mountPath: /iotdb/conf/iotdb-datanode.properties
+              subPath: iotdb-datanode.properties
           resources:
             requests:
               cpu: 1000m
