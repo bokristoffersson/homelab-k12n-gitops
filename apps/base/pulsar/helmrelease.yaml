@@ -35,6 +35,7 @@ spec:
                   operator: In
                   values:
                     - worker-pi5
+      antiAffinity: false
 
     # Enable components for IoT/MQTT use case
     components:
@@ -80,7 +81,7 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
-        antiAffinity: false
+      antiAffinity: false
 
     # BookKeeper configuration (storage layer)
     bookkeeper:
@@ -125,7 +126,7 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
-        antiAffinity: false
+      antiAffinity: false
 
     # Broker configuration (message routing)
     broker:
@@ -163,7 +164,7 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
-        antiAffinity: false
+      antiAffinity: false
 
     # Proxy configuration (client access point)
     proxy:
@@ -203,8 +204,7 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
-        # Explicitly disable anti-affinity
-        antiAffinity: false
+      antiAffinity: false
 
     # Monitoring - using existing Prometheus/Grafana
     # Disable built-in monitoring stack
