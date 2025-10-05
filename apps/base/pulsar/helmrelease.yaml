@@ -61,14 +61,14 @@ spec:
           cpu: 250m
       persistence:
         data:
-          storageClassName: nvme-storage
+          storageClassName: "nvme-storage"
           size: 5Gi
       volumes:
         data:
-          storageClassName: nvme-storage
+          storageClassName: "nvme-storage"
           size: 5Gi
 
-      # Pin to worker-pi5
+      # Disable anti-affinity for single node deployment
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -78,6 +78,9 @@ spec:
                     operator: In
                     values:
                       - worker-pi5
+        podAntiAffinity: {}
+
+        antiAffinity: false
 
     # BookKeeper configuration (storage layer)
     bookkeeper:
@@ -89,18 +92,18 @@ spec:
 
       persistence:
         journal:
-          storageClassName: nvme-storage
+          storageClassName: "nvme-storage"
           size: 10Gi
         ledgers:
-          storageClassName: nvme-storage
+          storageClassName: "nvme-storage"
           size: 20Gi
 
       volumes:
         journal:
-          storageClassName: nvme-storage
+          storageClassName: "nvme-storage"
           size: 10Gi
         ledgers:
-          storageClassName: nvme-storage
+          storageClassName: "nvme-storage"
           size: 20Gi
 
       # Configuration for IoT workload
@@ -110,6 +113,7 @@ spec:
         nettyMaxFrameSizeBytes: "5253120"  # 5MB
         journalMaxGroupWaitMSec: "1"  # Low latency
 
+      # Disable anti-affinity for single node deployment
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -119,6 +123,9 @@ spec:
                     operator: In
                     values:
                       - worker-pi5
+        podAntiAffinity: {}
+
+        antiAffinity: false
 
     # Broker configuration (message routing)
     broker:
@@ -144,6 +151,7 @@ spec:
         # Performance tuning for IoT
         maxMessageSize: "5242880"  # 5MB
 
+      # Disable anti-affinity for single node deployment
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -153,6 +161,9 @@ spec:
                     operator: In
                     values:
                       - worker-pi5
+        podAntiAffinity: {}
+
+        antiAffinity: false
 
     # Proxy configuration (client access point)
     proxy:
@@ -180,6 +191,7 @@ spec:
         PULSAR_MEM: "-Xms256m -Xmx512m"
         webSocketServiceEnabled: "true"
 
+      # Disable anti-affinity for single node deployment
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -189,6 +201,10 @@ spec:
                     operator: In
                     values:
                       - worker-pi5
+        podAntiAffinity: {}
+
+        # Explicitly disable anti-affinity
+        antiAffinity: false
 
     # Monitoring - using existing Prometheus/Grafana
     # Disable built-in monitoring stack
