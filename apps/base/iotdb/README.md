@@ -1,6 +1,6 @@
 # Apache IoTDB Deployment for K3s with FluxCD
 
-This directory contains the GitOps configuration for deploying Apache IoTDB to your k3s homelab cluster using **native Kubernetes manifests** (no Helm required).
+Simple IoTDB deployment without MQTT - access via RPC/SQL only.
 
 ## 📁 Directory Structure
 
@@ -13,590 +13,151 @@ iotdb/
 
 ## 🏗️ Architecture
 
-This deployment creates:
-- **1 ConfigNode StatefulSet**: Manages cluster metadata and configuration
-- **1 DataNode StatefulSet**: Handles data storage and queries, with MQTT enabled
-- **Headless Services**: For StatefulSet pod discovery
-- **ClusterIP Service**: For RPC queries (iotdb-rpc)
-- **LoadBalancer Service**: For MQTT ingestion (iotdb-mqtt)
-- **ClusterIP Service**: For REST API (iotdb-rest)
+- **1 ConfigNode**: Manages cluster metadata
+- **1 DataNode**: Handles data storage and queries
+- Both pinned to `worker-pi5` node
+- Uses `nvme-storage` StorageClass
 
-Both nodes are pinned to `worker-pi5` using nodeSelector.
-
-## 🚀 Deployment Steps
-
-### 1. Add Files to Your GitOps Repository
-
-Place all files in your GitOps repository under the `iotdb/` directory:
+## 🚀 Quick Deployment
 
 ```bash
+# 1. Update your GitOps repo with the simplified manifest
 cd /path/to/your/gitops-repo
-mkdir -p iotdb
+# Copy the updated iotdb-deployment.yaml
 
-# Add these three files:
-# - namespace.yaml
-# - iotdb-deployment.yaml (the content from "IoTDB HelmRelease" artifact)
-# - grafana-datasource.yaml
-```
+# 2. Commit and push
+git add iotdb/
+git commit -m "Simplified IoTDB deployment - no MQTT"
+git push
 
-### 2. Create the FluxCD Kustomization
+# 3. Reconcile FluxCD
+flux reconcile source git flux-system
+flux reconcile kustomization iotdb -n flux-system
 
-Apply the kustomization file to tell FluxCD to manage this deployment:
-
-```bash
-kubectl apply -f flux-system/kustomization-iotdb.yaml
-```
-
-### 3. Verify the Deployment
-
-Monitor the reconciliation:
-
-```bash
-# Watch FluxCD reconcile
-flux get kustomizations -n flux-system -w
-
-# Check namespace
-kubectl get ns iotdb
-
-# Watch pods come up (ConfigNode first, then DataNode)
+# 4. Watch deployment
 kubectl get pods -n iotdb -w
 ```
 
-### 4. Wait for Both StatefulSets to be Ready
+## 📊 Accessing IoTDB
 
-```bash
-kubectl get statefulset -n iotdb
-
-# Expected output:
-# NAME                READY   AGE
-# iotdb-confignode    1/1     2m
-# iotdb-datanode      1/1     2m
-```
-
-**Note**: DataNode will wait for ConfigNode to be ready before starting.
-
-## 🔌 Connecting MQTT Devices
-
-### Get the MQTT Service IP
-
-```bash
-kubectl get svc -n iotdb iotdb-mqtt
-```
-
-The output will show the EXTERNAL-IP assigned by your load balancer (or pending if MetalLB needs configuration).
-
-### Configure Your MQTT Devices
-
-- **Host**: `<EXTERNAL-IP from above>`
-- **Port**: `1883`
-- **Username**: `root`
-- **Password**: `root`
-
-### MQTT Topic Format
-
-IoTDB uses a specific topic structure:
-```
-root/<storage_group>/<device>/<sensor>
-```
-
-Example topics:
-- `root/sg1/device1/temperature`
-- `root/home/sensor1/humidity`
-- `root/factory/machine1/pressure`
-
-### Example MQTT Publish
-
-```bash
-# Install mosquitto clients if needed
-# sudo apt-get install mosquitto-clients
-
-# Publish temperature data
-mosquitto_pub -h <EXTERNAL-IP> -p 1883 -u root -P root \
-  -t "root/home/livingroom/temperature" \
-  -m '36.5'
-
-# Publish with timestamp
-mosquitto_pub -h <EXTERNAL-IP> -p 1883 -u root -P root \
-  -t "root/home/livingroom/temperature" \
-  -m '{"time":1234567890000,"value":36.5}'
-```
-
-### Test MQTT Connection
-
-```bash
-# Subscribe to all topics to see incoming data
-mosquitto_sub -h <EXTERNAL-IP> -p 1883 -u root -P root -t '#' -v
-```
-
-## 📊 Grafana Integration
-
-### Option 1: Auto-Discovery (Recommended)
-
-If your Grafana is configured to auto-discover datasources via ConfigMap labels:
-
-1. The datasource will be automatically added
-2. Look for "IoTDB" in Grafana's datasources
-
-### Option 2: Manual Configuration
-
-If auto-discovery doesn't work:
-
-1. Go to Grafana → Configuration → Data Sources
-2. Add new data source → PostgreSQL (IoTDB supports PostgreSQL protocol)
-3. Configure:
-   - **Host**: `iotdb-rpc.iotdb.svc.cluster.local:6667`
-   - **Database**: `root`
-   - **User**: `root`
-   - **Password**: `root`
-   - **SSL Mode**: `disable`
-
-### Query IoTDB Data in Grafana
-
-Use SQL queries to fetch time-series data:
-
-```sql
--- Get last hour of temperature data
-SELECT time, temperature
-FROM root.home.livingroom
-WHERE time > now() - 1h
-
--- Get average per 5 minutes
-SELECT time_bucket('5m', time) as time_bucket,
-       AVG(temperature) as avg_temp
-FROM root.home.livingroom
-WHERE time > now() - 24h
-GROUP BY time_bucket
-ORDER BY time_bucket
-```
-
-## 🔧 Configuration Details
-
-### Storage
-
-- **StorageClass**: `nvme-storage` (your NVMe storage)
-- **ConfigNode**: 10Gi
-- **DataNode**: 50Gi
-- **Node**: Both pinned to `worker-pi5`
-
-### Resources
-
-**ConfigNode:**
-- CPU Request: 500m
-- CPU Limit: 2000m
-- Memory Request: 1Gi
-- Memory Limit: 2Gi
-
-**DataNode:**
-- CPU Request: 1000m
-- CPU Limit: 4000m
-- Memory Request: 2Gi
-- Memory Limit: 4Gi
-
-### Services Exposed
-
-| Service | Type | Port | Purpose |
-|---------|------|------|---------|
-| iotdb-confignode | Headless | 10710, 10720 | Internal cluster communication |
-| iotdb-datanode | Headless | Multiple | Internal cluster communication |
-| iotdb-rpc | ClusterIP | 6667 | SQL queries from within cluster |
-| iotdb-mqtt | LoadBalancer | 1883 | MQTT ingestion (external) |
-| iotdb-rest | ClusterIP | 18080 | REST API |
-
-## 🔍 Accessing IoTDB CLI
-
-Connect to the DataNode pod and use the CLI:
-
-```bash
-# Enter the DataNode pod
-kubectl exec -it -n iotdb iotdb-datanode-0 -- bash
-
-# Start the CLI
-cd /iotdb/sbin
-./start-cli.sh -h localhost -p 6667 -u root -pw root
-
-# Try some queries
-IoTDB> show databases
-IoTDB> show timeseries
-IoTDB> select * from root.**
-IoTDB> quit
-```
-
-## 🔒 Security Considerations
-
-**⚠️ IMPORTANT**: The default credentials are `root:root`. For production use:
-
-1. **Change the default password** after deployment
-2. **Create additional users** with limited privileges
-3. **Enable MQTT authentication** if needed
-4. **Use TLS/SSL** for production deployments
-5. **Restrict network access** using NetworkPolicies
-
-### Changing Default Password
+### Via CLI
 
 ```bash
 # Connect to IoTDB CLI
-kubectl exec -it -n iotdb iotdb-datanode-0 -- /iotdb/sbin/start-cli.sh -h localhost -u root -pw root
+kubectl exec -it -n iotdb iotdb-datanode-0 -- \
+  /iotdb/sbin/start-cli.sh -h localhost -u root -pw root
 
-# In the CLI:
-IoTDB> ALTER USER root SET PASSWORD 'your_new_secure_password';
-IoTDB> CREATE USER mqtt_user 'mqtt_password';
-IoTDB> GRANT WRITE ON root.** TO USER mqtt_user;
+# Try some commands
+IoTDB> show cluster
+IoTDB> show databases
+IoTDB> CREATE DATABASE root.test
+IoTDB> INSERT INTO root.test.device1(timestamp,temperature) VALUES(now(), 25.5)
+IoTDB> SELECT * FROM root.test.device1
 ```
 
-## 📈 Monitoring and Logs
-
-### View Logs
+### Via Port Forward (for external tools)
 
 ```bash
-# ConfigNode logs
-kubectl logs -n iotdb iotdb-confignode-0 -f
-
-# DataNode logs
-kubectl logs -n iotdb iotdb-datanode-0 -f
-
-# Check MQTT activity
-kubectl logs -n iotdb iotdb-datanode-0 | grep -i mqtt
+# Forward RPC port to your local machine
+kubectl port-forward -n iotdb svc/iotdb-service 6667:6667
 ```
 
-### Check Cluster Status
+Then connect from your local machine using any IoTDB client to `localhost:6667`.
+
+## 📈 Grafana Integration
+
+The datasource ConfigMap is configured to connect to:
+- **Host**: `iotdb-service.iotdb.svc.cluster.local:6667`
+- **Database**: `root`
+- **User**: `root`
+- **Password**: `root`
+
+### Query Examples
+
+```sql
+-- Get recent data
+SELECT time, temperature FROM root.test.device1 WHERE time > now() - 1h
+
+-- Aggregate data
+SELECT avg(temperature) as avg_temp 
+FROM root.test.device1 
+WHERE time > now() - 24h 
+GROUP BY time(5m)
+```
+
+## 🔧 Storage Configuration
+
+- **ConfigNode**: 10Gi data + 5Gi logs
+- **DataNode**: 50Gi data + 5Gi logs
+- **StorageClass**: `nvme-storage`
+- **Node**: Both on `worker-pi5`
+
+## 🔍 Monitoring
 
 ```bash
-# From within DataNode
-kubectl exec -it -n iotdb iotdb-datanode-0 -- /iotdb/sbin/start-cli.sh -h localhost -u root -pw root
+# Check cluster status
+kubectl exec -it -n iotdb iotdb-datanode-0 -- \
+  /iotdb/sbin/start-cli.sh -h localhost -u root -pw root
 
 IoTDB> show cluster
-IoTDB> show regions
-IoTDB> show databases
-```
+IoTDB> show datanodes
 
-### Resource Usage
+# Check logs
+kubectl logs -n iotdb iotdb-confignode-0
+kubectl logs -n iotdb iotdb-datanode-0
 
-```bash
-# Pod resource usage
+# Check resource usage
 kubectl top pods -n iotdb
-
-# PVC status
-kubectl get pvc -n iotdb
 ```
 
-## 🔄 Scaling and Maintenance
+## 🔒 Security
 
-### Update Configuration
+**Default credentials**: `root:root`
 
-To modify IoTDB settings:
-
-1. Edit `iotdb-deployment.yaml`
-2. Commit and push changes
-3. FluxCD will automatically reconcile
-
-Or force immediate sync:
+To change:
 ```bash
-flux reconcile kustomization iotdb -n flux-system
+kubectl exec -it -n iotdb iotdb-datanode-0 -- \
+  /iotdb/sbin/start-cli.sh -h localhost -u root -pw root
+
+IoTDB> ALTER USER root SET PASSWORD 'your_new_password';
+IoTDB> CREATE USER myuser 'mypassword';
+IoTDB> GRANT WRITE ON root.** TO USER myuser;
 ```
 
-### Restart Pods
+## 🐛 Troubleshooting
+
+```bash
+# Check pod status
+kubectl get pods -n iotdb
+
+# Check events
+kubectl get events -n iotdb --sort-by='.lastTimestamp'
+
+# Check PVCs
+kubectl get pvc -n iotdb
+
+# Describe problematic pods
+kubectl describe pod -n iotdb <pod-name>
+
+# View logs
+kubectl logs -n iotdb <pod-name> --tail=100
+```
+
+## 🔄 Restart/Update
 
 ```bash
 # Restart ConfigNode
-kubectl rollout restart statefulset/iotdb-confignode -n iotdb
+kubectl delete pod -n iotdb iotdb-confignode-0
 
 # Restart DataNode
-kubectl rollout restart statefulset/iotdb-datanode -n iotdb
+kubectl delete pod -n iotdb iotdb-datanode-0
+
+# Force FluxCD reconciliation
+flux reconcile kustomization iotdb -n flux-system
 ```
 
-### Backup Data
-
-```bash
-# Create a backup using IoTDB's built-in tools
-kubectl exec -it -n iotdb iotdb-datanode-0 -- bash
-
-# Inside pod, use IoTDB backup commands
-# See: https://iotdb.apache.org/UserGuide/latest/Maintenance-Tools/Backup-Restore-Tool.html
-```
-
-## 🐛 Troubleshooting
-
-### Pods Not Starting
-
-```bash
-# Check events
-kubectl get events -n iotdb --sort-by='.lastTimestamp'
-
-# Describe pods
-kubectl describe pod -n iotdb iotdb-confignode-0
-kubectl describe pod -n iotdb iotdb-datanode-0
-
-# Check PVC status
-kubectl get pvc -n iotdb
-```
-
-### DataNode Waiting for ConfigNode
-
-This is normal! DataNode has an initContainer that waits for ConfigNode to be ready.
-
-```bash
-# Check if ConfigNode is running
-kubectl get pod -n iotdb iotdb-confignode-0
-
-# Check DataNode init container logs
-kubectl logs -n iotdb iotdb-datanode-0 -c wait-for-confignode
-```
-
-### MQTT Connection Issues
-
-1. **Verify service is exposed:**
-   ```bash
-   kubectl get svc -n iotdb iotdb-mqtt
-   ```
-
-2. **Check if MQTT port is accessible:**
-   ```bash
-   nc -zv <EXTERNAL-IP> 1883
-   ```
-
-3. **Test with mosquitto:**
-   ```bash
-   mosquitto_pub -h <EXTERNAL-IP> -p 1883 -u root -P root -t "test" -m "hello"
-   ```
-
-4. **View MQTT-related logs:**
-   ```bash
-   kubectl logs -n iotdb iotdb-datanode-0 | grep -i mqtt
-   ```
-
-### Storage Issues
-
-```bash
-# Verify PVCs are bound
-kubectl get pvc -n iotdb
-
-# Check if storageClass exists
-kubectl get storageclass nvme-storage
-
-# Describe PVC for details
-kubectl describe pvc -n iotdb
-```
-
-### ConfigNode and DataNode Can't Communicate
-
-```bash
-# Test DNS resolution
-kubectl exec -it -n iotdb iotdb-datanode-0 -- nslookup iotdb-confignode-0.iotdb-confignode.iotdb.svc.cluster.local
-
-# Test network connectivity
-kubectl exec -it -n iotdb iotdb-datanode-0 -- nc -zv iotdb-confignode-0.iotdb-confignode.iotdb.svc.cluster.local 10710
-```
-
-## 📚 Additional Resources
+## 📚 Resources
 
 - [Apache IoTDB Documentation](https://iotdb.apache.org/)
-- [IoTDB MQTT Protocol](https://iotdb.apache.org/UserGuide/latest/API/Programming-MQTT.html)
 - [IoTDB SQL Reference](https://iotdb.apache.org/UserGuide/latest/SQL-Manual/SQL-Manual.html)
-- [FluxCD Documentation](https://fluxcd.io/docs/)
-
-## 📝 Example Use Cases
-
-### Home Automation
-```bash
-# Temperature sensor
-mosquitto_pub -h <IP> -p 1883 -u root -P root \
-  -t "root/home/bedroom/temperature" -m "22.5"
-
-# Motion sensor
-mosquitto_pub -h <IP> -p 1883 -u root -P root \
-  -t "root/home/hallway/motion" -m "1"
-```
-
-### Industrial IoT
-```bash
-# Machine vibration
-mosquitto_pub -h <IP> -p 1883 -u root -P root \
-  -t "root/factory/machine01/vibration" -m "0.05"
-
-# Energy consumption
-mosquitto_pub -h <IP> -p 1883 -u root -P root \
-  -t "root/factory/machine01/power" -m "1250.5"
-```
-
-## 🎯 Next Steps
-
-1. ✅ Deploy IoTDB
-2. ✅ Connect MQTT devices
-3. ✅ Configure Grafana
-4. 🔄 Set up retention policies (TTL)
-5. 🔄 Configure automated backups
-6. 🔄 Enable authentication for MQTT
-7. 🔄 Set up monitoring alerts
-8. 🔄 Create Grafana dashboards for your data>`
-- **Port**: `1883`
-- **Username**: `root`
-- **Password**: `root`
-- **Topic Format**: `root.device.sensor`
-
-### Example MQTT Publish
-
-```bash
-mosquitto_pub -h <EXTERNAL-IP> -p 1883 -u root -P root \
-  -t "root/sg1/d1/s1" -m '{"time":1234567890,"value":123.45}'
-```
-
-## 📊 Grafana Integration
-
-### Option 1: Auto-Discovery (Recommended)
-
-If your Grafana is configured to auto-discover datasources via ConfigMap labels:
-
-1. The datasource will be automatically added
-2. Look for "IoTDB" in Grafana's datasources
-
-### Option 2: Manual Configuration
-
-If auto-discovery doesn't work:
-
-1. Go to Grafana → Configuration → Data Sources
-2. Add new data source → PostgreSQL
-3. Configure:
-   - **Host**: `iotdb-apache-iotdb.iotdb.svc.cluster.local:6667`
-   - **Database**: `root`
-   - **User**: `root`
-   - **Password**: `root`
-   - **SSL Mode**: `disable`
-
-### Query IoTDB Data in Grafana
-
-Use SQL queries to fetch time-series data:
-
-```sql
-SELECT time, s1 FROM root.sg1.d1 WHERE time > now() - 1h
-```
-
-## 🔧 Configuration Details
-
-### Storage
-
-- **StorageClass**: `nvme-storage` (your NVMe storage)
-- **Size**: 50Gi
-- **Node**: Pinned to `worker-pi5` using nodeSelector
-
-### Resources
-
-- **CPU Request**: 500m
-- **CPU Limit**: 4000m
-- **Memory Request**: 2Gi
-- **Memory Limit**: 4Gi
-
-### Services Exposed
-
-| Service | Type | Port | Purpose |
-|---------|------|------|---------|
-| iotdb-apache-iotdb | ClusterIP | 6667 | RPC/SQL queries |
-| iotdb-mqtt | LoadBalancer | 1883 | MQTT ingestion |
-| iotdb-rest | ClusterIP | 18080 | REST API |
-
-## 🔒 Security Considerations
-
-**⚠️ IMPORTANT**: The default credentials are `root:root`. For production use:
-
-1. Change the default password after deployment
-2. Consider creating additional users with limited privileges
-3. Enable authentication on MQTT if needed
-4. Use TLS/SSL for production deployments
-
-### Changing Default Password
-
-```bash
-# Connect to IoTDB
-kubectl exec -it -n iotdb iotdb-apache-iotdb-0 -- /iotdb/sbin/start-cli.sh -h localhost
-
-# In the CLI:
-ALTER USER root SET PASSWORD 'new_password';
-CREATE USER mqtt_user 'mqtt_password';
-```
-
-## 📈 Monitoring
-
-To view IoTDB logs:
-
-```bash
-kubectl logs -n iotdb iotdb-apache-iotdb-0 -f
-```
-
-To access the IoTDB CLI:
-
-```bash
-kubectl exec -it -n iotdb iotdb-apache-iotdb-0 -- /iotdb/sbin/start-cli.sh -h localhost -u root -pw root
-```
-
-## 🔄 Scaling and Upgrades
-
-### Update Configuration
-
-Edit `helmrelease.yaml` and commit changes. FluxCD will automatically apply them.
-
-### Manual Sync
-
-Force FluxCD to reconcile immediately:
-
-```bash
-flux reconcile helmrelease iotdb -n iotdb
-```
-
-## 🐛 Troubleshooting
-
-### Pods Not Starting
-
-```bash
-# Check events
-kubectl get events -n iotdb --sort-by='.lastTimestamp'
-
-# Describe the pod
-kubectl describe pod -n iotdb iotdb-apache-iotdb-0
-
-# Check PVC status
-kubectl get pvc -n iotdb
-```
-
-### MQTT Connection Issues
-
-1. Verify the service is exposed:
-   ```bash
-   kubectl get svc -n iotdb iotdb-mqtt
-   ```
-
-2. Check if MQTT port is accessible:
-   ```bash
-   nc -zv <EXTERNAL-IP> 1883
-   ```
-
-3. View IoTDB logs for MQTT activity:
-   ```bash
-   kubectl logs -n iotdb iotdb-apache-iotdb-0 | grep -i mqtt
-   ```
-
-### Storage Issues
-
-Verify PVC is bound:
-```bash
-kubectl get pvc -n iotdb
-```
-
-Check if the storageClass exists:
-```bash
-kubectl get storageclass nvme-storage
-```
-
-## 📚 Additional Resources
-
-- [Apache IoTDB Documentation](https://iotdb.apache.org/)
-- [IoTDB MQTT Protocol](https://iotdb.apache.org/UserGuide/latest/API/Programming-MQTT.html)
-- [FluxCD Documentation](https://fluxcd.io/docs/)
-
-## 🎯 Next Steps
-
-1. ✅ Deploy IoTDB
-2. ✅ Connect MQTT devices
-3. ✅ Configure Grafana
-4. 🔄 Set up retention policies
-5. 🔄 Configure backups
-6. 🔄 Enable authentication
-7. 🔄 Set up monitoring alerts
+- [IoTDB REST API](https://iotdb.apache.org/UserGuide/latest/API/RestServiceV2.html)

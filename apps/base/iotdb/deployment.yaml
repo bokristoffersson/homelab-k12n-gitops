@@ -16,22 +16,6 @@ metadata:
   name: iotdb-datanode-config
   namespace: iotdb
 data:
-  iotdb-datanode.properties: |
-    # RPC Configuration
-    dn_rpc_address=0.0.0.0
-    dn_rpc_port=6667
-    
-    # MQTT Configuration
-    enable_mqtt_service=true
-    mqtt_host=0.0.0.0
-    mqtt_port=1883
-    mqtt_max_message_size=1048576
-    
-    # REST Configuration
-    enable_rest_service=true
-    rest_service_port=18080
-    
-    # Internal addresses will be set via environment variables
   datanode-env.sh: |
     #!/bin/bash
     export IOTDB_HEAP_OPTS="-Xmx2G -Xms2G"
@@ -92,12 +76,6 @@ spec:
     - name: schema-cons
       port: 10760
       targetPort: 10760
-    - name: mqtt
-      port: 1883
-      targetPort: 1883
-    - name: rest
-      port: 18080
-      targetPort: 18080
 
 ---
 # ClusterIP service for client connections
@@ -117,34 +95,6 @@ spec:
     - name: rpc
       port: 6667
       targetPort: 6667
-      protocol: TCP
-    - name: rest
-      port: 18080
-      targetPort: 18080
-      protocol: TCP
-
----
-# LoadBalancer service for MQTT
-apiVersion: v1
-kind: Service
-metadata:
-  name: iotdb-mqtt
-  namespace: iotdb
-  labels:
-    app: iotdb
-  annotations:
-  # Uncomment and configure if using MetalLB
-  # metallb.universe.tf/address-pool: default
-  # metallb.universe.tf/loadBalancerIPs: 192.168.1.100
-spec:
-  type: LoadBalancer
-  selector:
-    app: iotdb
-    component: datanode
-  ports:
-    - name: mqtt
-      port: 1883
-      targetPort: 1883
       protocol: TCP
 
 ---
@@ -199,9 +149,6 @@ spec:
               mountPath: /iotdb/data
             - name: logs
               mountPath: /iotdb/logs
-            - name: config
-              mountPath: /iotdb/conf/iotdb-confignode-config
-              subPath: iotdb-confignode-config
           resources:
             requests:
               cpu: 500m
@@ -223,10 +170,6 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-      volumes:
-        - name: config
-          configMap:
-            name: iotdb-confignode-config
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -297,13 +240,9 @@ spec:
             - containerPort: 10740
               name: mpp
             - containerPort: 10750
-              name: data-consensus
+              name: data-cons
             - containerPort: 10760
               name: schema-cons
-            - containerPort: 1883
-              name: mqtt
-            - containerPort: 18080
-              name: rest
           env:
             - name: dn_rpc_address
               value: "0.0.0.0"
@@ -321,24 +260,11 @@ spec:
               value: "10760"
             - name: dn_seed_config_node
               value: "iotdb-confignode-0.iotdb-confignode.iotdb.svc.cluster.local:10710"
-            - name: dn_mqtt_host
-              value: "0.0.0.0"
-            - name: dn_mqtt_port
-              value: "1883"
-            - name: enable_mqtt_service
-              value: "true"
-            - name: enable_rest_service
-              value: "true"
-            - name: rest_service_port
-              value: "18080"
           volumeMounts:
             - name: data
               mountPath: /iotdb/data
             - name: logs
               mountPath: /iotdb/logs
-            - name: config
-              mountPath: /iotdb/conf/iotdb-datanode.properties
-              subPath: iotdb-datanode.properties
           resources:
             requests:
               cpu: 1000m
@@ -360,10 +286,6 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
-      volumes:
-        - name: config
-          configMap:
-            name: iotdb-datanode-config
   volumeClaimTemplates:
     - metadata:
         name: data
