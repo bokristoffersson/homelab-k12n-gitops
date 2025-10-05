@@ -45,13 +45,20 @@ spec:
       broker: true
       proxy: true
 
-      # Functions for stream processing (optional, can disable to save resources)
+      # Autorecovery for bookkeeper
+      autorecovery: true
+
+      # Toolset for admin commands
+      toolset: true
+
+      # Functions for stream processing (disabled to save resources)
       functions: false
 
-      # Monitoring stack (optional)
+      # DISABLE all monitoring components
       pulsar_manager: false
       grafana: false
       prometheus: false
+      kube_prometheus_stack: false
 
     # Zookeeper configuration
     zookeeper:
@@ -81,6 +88,7 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
+      # Explicitly disable anti-affinity
       antiAffinity: false
 
     # BookKeeper configuration (storage layer)
@@ -126,6 +134,7 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
+      # Explicitly disable anti-affinity
       antiAffinity: false
 
     # Broker configuration (message routing)
@@ -164,6 +173,7 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
+      # Explicitly disable anti-affinity
       antiAffinity: false
 
     # Proxy configuration (client access point)
@@ -204,17 +214,35 @@ spec:
                       - worker-pi5
         podAntiAffinity: {}
 
+      # Explicitly disable anti-affinity
       antiAffinity: false
 
     # Monitoring - using existing Prometheus/Grafana
-    # Disable built-in monitoring stack
+    # CRITICAL: Disable built-in monitoring stack completely
+    kube-prometheus-stack:
+      enabled: false
+
+    grafana:
+      enabled: false
+
+    prometheus:
+      enabled: false
+
+    node_exporter:
+      enabled: false
+
+    # Disable all monitoring components
     monitoring:
       prometheus: false
       grafana: false
       node_exporter: false
       alert_manager: false
 
-    # Ensure metrics endpoints are enabled
-    prometheus:
-      # This ensures metrics are exposed even though we're not deploying Prometheus
-      enabled: true
+    # Extra components to disable
+    extra:
+      autoRecovery: true  # We want this for bookkeeper
+      bastion: false
+      monitoring: false
+
+    pulsar_manager:
+      enabled: false
