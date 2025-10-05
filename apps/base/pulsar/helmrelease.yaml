@@ -63,6 +63,10 @@ spec:
         data:
           storageClassName: nvme-storage
           size: 5Gi
+      volumes:
+        data:
+          storageClassName: nvme-storage
+          size: 5Gi
 
       # Pin to worker-pi5
       affinity:
@@ -84,6 +88,14 @@ spec:
           cpu: 500m
 
       persistence:
+        journal:
+          storageClassName: nvme-storage
+          size: 10Gi
+        ledgers:
+          storageClassName: nvme-storage
+          size: 20Gi
+
+      volumes:
         journal:
           storageClassName: nvme-storage
           size: 10Gi
@@ -178,9 +190,15 @@ spec:
                     values:
                       - worker-pi5
 
-    # Monitoring (lightweight for homelab)
+    # Monitoring - using existing Prometheus/Grafana
+    # Disable built-in monitoring stack
     monitoring:
       prometheus: false
       grafana: false
       node_exporter: false
       alert_manager: false
+
+    # Ensure metrics endpoints are enabled
+    prometheus:
+      # This ensures metrics are exposed even though we're not deploying Prometheus
+      enabled: true
