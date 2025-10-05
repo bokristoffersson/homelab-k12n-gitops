@@ -112,3 +112,24 @@ spec:
       kind: StatefulSet
       name: iotdb-datanode
       namespace: iotdb
+
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: pulsar
+  namespace: flux-system
+spec:
+  interval: 10m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system  # Your main flux repo
+  path: ./apps/homelab/pulsar  # Adjust path to where you store these files
+  prune: true
+  wait: true
+  timeout: 15m
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2beta1
+      kind: HelmRelease
+      name: pulsar
+      namespace: pulsar

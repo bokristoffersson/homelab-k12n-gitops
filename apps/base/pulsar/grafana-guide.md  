@@ -1,0 +1,291 @@
+# Pulsar Grafana Dashboards Setup
+
+This guide shows you how to import Pulsar dashboards into your existing Grafana instance.
+
+## Method 1: Import Official Pulsar Dashboards (Recommended)
+
+Apache Pulsar provides official Grafana dashboards that you can import directly.
+
+### Step 1: Access Dashboard JSONs
+
+The official Pulsar dashboards are available in the Pulsar Helm chart repository:
+
+```bash
+# Clone the repo to get dashboard files
+git clone https://github.com/apache/pulsar-helm-chart.git
+cd pulsar-helm-chart/charts/pulsar/dashboards
+```
+
+Or download directly from:
+- https://github.com/apache/pulsar-helm-chart/tree/master/charts/pulsar/dashboards
+
+### Step 2: Import into Grafana
+
+1. Log into your Grafana instance
+2. Go to **Dashboards** → **Import**
+3. Click **Upload JSON file**
+4. Select one of these dashboards:
+   - `pulsar-overview.json` - Overall cluster health
+   - `pulsar-messaging.json` - Message throughput and latency
+   - `pulsar-bookie.json` - BookKeeper metrics
+   - `pulsar-namespace.json` - Per-namespace metrics
+   - `pulsar-topic.json` - Per-topic metrics
+
+5. Select your Prometheus data source
+6. Click **Import**
+
+### Key Dashboards for IoT Use Case
+
+**Must-have:**
+- **Pulsar Overview** - Cluster health, broker status
+- **Pulsar Messaging** - Message rates, throughput, latency
+- **Pulsar Topic** - Individual topic metrics for your sensor data
+
+**Optional:**
+- **Pulsar Bookie** - Storage layer health
+- **Pulsar Namespace** - Namespace-level aggregations
+
+## Method 2: Use Grafana Dashboard IDs (If Available on grafana.com)
+
+Some community Pulsar dashboards might be available on grafana.com:
+
+1. Go to **Dashboards** → **Import**
+2. Try these dashboard IDs (if available):
+   - Search for "Apache Pulsar" on https://grafana.com/grafana/dashboards/
+3. Enter the dashboard ID and click **Load**
+4. Select your Prometheus datasource
+
+## Method 3: Create Custom Dashboard for Your IoT Metrics
+
+For your specific use case (heatpump, temperature sensors, power readings), create a custom dashboard:
+
+### Example Panel Queries
+
+**Message Rate by Topic:**
+```promql
+sum(rate(pulsar_broker_topic_msg_rate_in[5m])) by (topic)
+```
+
+**Message Throughput (bytes/sec):**
+```promql
+sum(rate(pulsar_broker_topic_bytes_rate_in[5m])) by (topic)
+```
+
+**End-to-End Latency:**
+```promql
+histogram_quantile(0.99, sum(rate(pulsar_broker_topic_msg_latency_bucket[5m])) by (le, topic))
+```
+
+**Backlog (unconsumed messages):**
+```promql
+sum(pulsar_broker_topic_backlog) by (topic)
+```
+
+**Consumer Lag:**
+```promql
+sum(pulsar_consumer_msg_backlog) by (subscription, topic)
+```
+
+**Storage Used:**
+```promql
+sum(pulsar_bookie_ledgers_total_disk_usage_bytes) / 1024 / 1024 / 1024
+```
+
+**Active Connections:**
+```promql
+sum(pulsar_broker_active_connections)
+```
+
+### Sample Dashboard JSON Template
+
+Create a file `pulsar-iot-dashboard.json`:
+
+```json
+{
+  "dashboard": {
+    "title": "Pulsar IoT Sensors",
+    "panels": [
+      {
+        "title": "Message Rate by Sensor Type",
+        "targets": [
+          {
+            "expr": "sum(rate(pulsar_broker_topic_msg_rate_in{topic=~\".*sensors.*\"}[5m])) by (topic)"
+          }
+        ],
+        "type": "graph"
+      },
+      {
+        "title": "Heatpump Message Latency (p99)",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(pulsar_broker_topic_msg_latency_bucket{topic=~\".*heatpump.*\"}[5m])) by (le))"
+          }
+        ],
+        "type": "graph"
+      },
+      {
+        "title": "Total Storage Used",
+        "targets": [
+          {
+            "expr": "sum(pulsar_bookie_ledgers_total_disk_usage_bytes) / 1024 / 1024 / 1024"
+          }
+        ],
+        "type": "gauge",
+        "unit": "GB"
+      }
+    ]
+  }
+}
+```
+
+## Verifying Metrics Collection
+
+Before importing dashboards, verify Prometheus is scraping Pulsar:
+
+### Check ServiceMonitor Status
+
+```bash
+# Check if ServiceMonitors are created
+kubectl get servicemonitor -n pulsar
+
+# Check Prometheus targets (if using Prometheus Operator)
+kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090
+# Then visit http://localhost:9090/targets
+```
+
+### Test Metrics Endpoint
+
+```bash
+# Port forward to broker
+kubectl port-forward -n pulsar svc/pulsar-broker 8080:8080
+
+# Curl metrics
+curl http://localhost:8080/metrics
+
+# Should see output like:
+# pulsar_broker_topic_msg_rate_in{...} 123.45
+# pulsar_broker_active_connections 5
+# etc.
+```
+
+### Check Prometheus for Pulsar Metrics
+
+In Prometheus UI (http://localhost:9090):
+
+```promql
+# Search for any Pulsar metrics
+{__name__=~"pulsar_.*"}
+
+# Or specifically:
+pulsar_broker_topic_msg_rate_in
+pulsar_broker_active_connections
+pulsar_bookie_ledgers_total_disk_usage_bytes
+```
+
+## Important Metrics to Monitor for Your Use Case
+
+### For Real-time Sensor Data
+
+1. **Message Rate** - Are sensors publishing regularly?
+   ```promql
+   pulsar_broker_topic_msg_rate_in{topic=~".*sensors.*"}
+   ```
+
+2. **Latency** - How fast are messages being processed?
+   ```promql
+   pulsar_broker_topic_msg_latency{quantile="0.99"}
+   ```
+
+3. **Backlog** - Are consumers keeping up?
+   ```promql
+   pulsar_broker_topic_backlog
+   ```
+
+### For Storage Management
+
+4. **Disk Usage** - Monitor NVMe storage
+   ```promql
+   pulsar_bookie_ledgers_total_disk_usage_bytes
+   ```
+
+5. **Retention** - Ensure old data is being cleaned up
+   ```promql
+   pulsar_broker_storage_size
+   ```
+
+### For System Health
+
+6. **Broker Health** - Is broker responsive?
+   ```promql
+   up{job="pulsar-broker"}
+   ```
+
+7. **Connection Count** - Active clients
+   ```promql
+   pulsar_broker_active_connections
+   ```
+
+## Alerting Rules (Optional)
+
+Create PrometheusRule for alerts:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pulsar-alerts
+  namespace: pulsar
+spec:
+  groups:
+  - name: pulsar
+    interval: 30s
+    rules:
+    - alert: PulsarBrokerDown
+      expr: up{job="pulsar-broker"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pulsar broker is down"
+
+    - alert: PulsarHighBacklog
+      expr: sum(pulsar_broker_topic_backlog) > 10000
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High message backlog detected"
+
+    - alert: PulsarStorageAlmostFull
+      expr: (pulsar_bookie_ledgers_total_disk_usage_bytes / pulsar_bookie_ledgers_total_disk_capacity_bytes) > 0.85
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pulsar storage usage above 85%"
+```
+
+## Dashboard Customization Tips
+
+1. **Filter by namespace**: Add template variable for `namespace=iot/sensors`
+2. **Topic filtering**: Use regex like `topic=~".*heatpump.*|.*temperature.*|.*power.*"`
+3. **Time ranges**: For IoT data, use shorter ranges (last 1h, 6h, 24h)
+4. **Refresh rate**: Set to 30s or 1m for near real-time monitoring
+5. **Annotations**: Add annotations for deployment events or maintenance windows
+
+## Troubleshooting
+
+**No metrics appearing:**
+- Check ServiceMonitor selector matches Pulsar service labels
+- Verify Prometheus has permission to scrape pulsar namespace
+- Check Prometheus logs for scrape errors
+
+**Metrics but no data in graphs:**
+- Verify data source is selected in dashboard
+- Check time range in Grafana
+- Ensure Pulsar is actually receiving messages
+
+**High cardinality warnings:**
+- Pulsar exposes many metrics per topic
+- Consider using recording rules to pre-aggregate
+- Limit dashboards to relevant topics only
