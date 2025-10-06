@@ -7,17 +7,16 @@ metadata:
   namespace: default
 data:
   mosquitto.conf: |
-    # Basic Mosquitto configuration
     listener 1883
-    allow_anonymous true
     protocol mqtt
     
-    max_keepalive 60
-    max_connections -1
+    # Authentication
+    allow_anonymous false
+    password_file /mosquitto/config/passwordfile
     
     # Persistence
     persistence true
-    persistence_location /mnt/data/mosquitto/data/
+    persistence_location /mosquitto/data/
     
     # Logging
     log_dest stdout
@@ -28,3 +27,8 @@ data:
     
     # Connection logging
     connection_messages true
+    
+    # Performance tuning
+    max_connections -1
+    max_inflight_messages 20
+    max_queued_messages 100

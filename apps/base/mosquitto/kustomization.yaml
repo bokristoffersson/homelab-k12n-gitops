@@ -4,6 +4,7 @@ namespace: default
 resources:
   - pvc.yaml
   - configmap.yaml
+  - mosquitto-auth-secret-sealed.yaml
   - deployment.yaml
   - traefik.yaml
   - ingresstcp.yaml
