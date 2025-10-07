@@ -27,20 +27,20 @@ spec:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
         ports:
-          - containerPort: 1883
-            name: mqtt
-          - containerPort: 9001
-            name: websocket
+        - containerPort: 1883
+          name: mqtt
+        - containerPort: 9001
+          name: websocket
         volumeMounts:
-          - name: mosquitto-config
-            mountPath: /mosquitto/config/mosquitto.conf
-            subPath: mosquitto.conf
-          - name: mosquitto-auth
-            mountPath: /mosquitto/config/passwordfile
-            subPath: passwordfile
-            readOnly: true
-          - name: mosquitto-data
-            mountPath: /mosquitto/data
+        - name: mosquitto-config
+          mountPath: /mosquitto/config/mosquitto.conf
+          subPath: mosquitto.conf
+        - name: mosquitto-auth
+          mountPath: /mosquitto/config/passwordfile
+          subPath: passwordfile
+          readOnly: true
+        - name: mosquitto-data
+          mountPath: /mosquitto/data
         resources:
           requests:
             memory: "64Mi"
