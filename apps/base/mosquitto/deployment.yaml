@@ -7,6 +7,8 @@ metadata:
     app: mosquitto
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: mosquitto
@@ -26,11 +28,28 @@ spec:
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
+
+        livenessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 1883
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
         ports:
         - containerPort: 1883
           name: mqtt
         - containerPort: 9001
           name: websocket
+
         volumeMounts:
         - name: mosquitto-conf
           mountPath: /mosquitto/config/mosquitto.conf
@@ -41,6 +60,7 @@ spec:
           readOnly: true
         - name: mosquitto-data
           mountPath: /mosquitto/data
+
         resources:
           requests:
             memory: "64Mi"
@@ -48,6 +68,11 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "100m"
+
+        env:
+          - name: TZ
+            value: "UTC"
+
       volumes:
       - name: mosquitto-conf
         configMap:
