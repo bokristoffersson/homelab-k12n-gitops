@@ -32,10 +32,10 @@ spec:
         - containerPort: 9001
           name: websocket
         volumeMounts:
-        - name: mosquitto-config
+        - name: mosquitto-conf
           mountPath: /mosquitto/config/mosquitto.conf
           subPath: mosquitto.conf
-        - name: mosquitto-auth
+        - name: mosquitto-credentials
           mountPath: /mosquitto/config/passwordfile
           subPath: passwordfile
           readOnly: true
@@ -49,11 +49,10 @@ spec:
             memory: "256Mi"
             cpu: "100m"
       volumes:
-      - name: mosquitto-config
+      - name: mosquitto-conf
         configMap:
           name: mosquitto-config
-          defaultMode: 0644
-      - name: mosquitto-auth
+      - name: mosquitto-credentials
         secret:
           secretName: mosquitto-auth
           defaultMode: 0400
