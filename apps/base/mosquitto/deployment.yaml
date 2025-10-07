@@ -1,55 +1,86 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mosquitto
   labels:
-    app: mosquitto
-
+    app.kubernetes.io/name: mosquitto
 spec:
+  revisionHistoryLimit: 3
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
-      app: mosquitto
+      app.kubernetes.io/name: mosquitto
   template:
     metadata:
       labels:
-        app: mosquitto
+        app.kubernetes.io/name: mosquitto
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
-
-      securityContext:
-        runAsUser: 1883
-        runAsGroup: 1883
-        fsGroup: 1883
-
+      initContainers:
+        - name: create-config
+          image: "eclipse-mosquitto:2.0.21"
+          command: ['sh', '-c', "cd /mosquitto/config/ && cp -v /tmp/mosquitto.conf mosquitto.conf && cp -v /tmp/password_file password_file"]
+          volumeMounts:
+            - name: mosquitto-conf
+              mountPath: /mosquitto/config
+            - name: mosquitto-base-config
+              mountPath: /tmp/mosquitto.conf
+              subPath: mosquitto.conf
+            - name: passwords
+              mountPath: /mosquitto/config/passwordfile
+              subPath: passwordfile
+            - name: base-passwords
+              mountPath: /tmp/password_file
+              subPath: password_file
       containers:
-      - name: mosquitto
-        image: eclipse-mosquitto:2.0
-
-        ports:
-        - containerPort: 1883
-          name: mqtt
-
-        volumeMounts:
-        - name: config
-          mountPath: /mosquitto/config/mosquitto.conf
-          subPath: mosquitto.conf
-        - name: passwords
-          mountPath: /mosquitto/config/passwordfile
-          subPath: passwordfile
-          readOnly: true
-        - name: data
-          mountPath: /mosquitto/data
-
+        - name: mosquitto
+          image: "eclipse-mosquitto:2.0.21"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: mqtt
+              containerPort: 1883
+              protocol: TCP
+          volumeMounts:
+            - name: mosquitto-data
+              mountPath: /mosquitto/data
+            - name: mosquitto-conf
+              mountPath: /mosquitto/config
+          livenessProbe:
+            tcpSocket:
+              port: 1883
+            initialDelaySeconds: 0
+            failureThreshold: 3
+            timeoutSeconds: 1
+            periodSeconds: 60
+          readinessProbe:
+            tcpSocket:
+              port: 1883
+            initialDelaySeconds: 0
+            failureThreshold: 3
+            timeoutSeconds: 1
+            periodSeconds: 60
+          startupProbe:
+            tcpSocket:
+              port: 1883
+            initialDelaySeconds: 0
+            failureThreshold: 30
+            timeoutSeconds: 1
+            periodSeconds: 5
       volumes:
-      - name: config
+      - name: mosquitto-base-config
         configMap:
           name: mosquitto-config
-      - name: passwords
+      - name: mosquitto-conf
+        persistentVolumeClaim:
+          claimName: mosquitto-conf
+      - name: base-passwords
         secret:
           secretName: mosquitto-auth
-          defaultMode: 0400
+      - name: passwords
+        persistentVolumeClaim:
+          claimName: mosquitto-passwords
       - name: data
         persistentVolumeClaim:
           claimName: mosquitto-storage
