@@ -18,15 +18,10 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: worker-pi5
 
-      initContainers:
-        - name: fix-permissions
-          image: busybox:latest
-          command: ['sh', '-c', 'chown -R 1883:1883 /mosquitto/data && chmod -R 755 /mosquitto/data']
-          volumeMounts:
-            - name: mosquitto-data
-              mountPath: /mosquitto/data
-          securityContext:
-            runAsUser: 0
+      securityContext:
+        runAsUser: 1883
+        runAsGroup: 1883
+        fsGroup: 1883
 
       containers:
         - name: mosquitto
