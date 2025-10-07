@@ -1,3 +1,39 @@
+---
+# ConfigMap for Mosquitto configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mosquitto-config
+  namespace: default
+data:
+  mosquitto.conf: |
+    listener 1883
+    protocol mqtt
+    
+    # Authentication
+    allow_anonymous false
+    password_file /mosquitto/config/passwordfile
+    
+    # Persistence
+    persistence true
+    persistence_location /mosquitto/data/
+    
+    # Logging
+    log_dest stdout
+    log_type error
+    log_type warning
+    log_type notice
+    log_type information
+    
+    # Connection logging
+    connection_messages true
+    
+    # Performance tuning
+    max_connections -1
+    max_inflight_messages 20
+    max_queued_messages 100
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
