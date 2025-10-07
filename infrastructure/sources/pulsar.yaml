@@ -1,8 +1,0 @@
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: HelmRepository
-metadata:
-  name: apache-pulsar
-  namespace: pulsar
-spec:
-  interval: 24h
-  url: https://pulsar.apache.org/charts
