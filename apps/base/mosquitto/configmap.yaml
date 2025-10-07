@@ -6,7 +6,7 @@ metadata:
   name: mosquitto-config
 data:
   mosquitto.conf: |
-    
+    # Mosquitto conf file
     listener 1883
     protocol mqtt
     
