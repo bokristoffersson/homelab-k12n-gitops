@@ -12,7 +12,7 @@ data:
     
     # Authentication
     allow_anonymous false
-    password_file /mosquitto/config/passwordfile
+    password_file /mosquitto/config/password_file
     
     # Persistence
     persistence true

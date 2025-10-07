@@ -28,9 +28,6 @@ spec:
             - name: mosquitto-base-config
               mountPath: /tmp/mosquitto.conf
               subPath: mosquitto.conf
-            - name: passwords
-              mountPath: /mosquitto/config/passwordfile
-              subPath: passwordfile
             - name: base-passwords
               mountPath: /tmp/password_file
               subPath: password_file
@@ -78,9 +75,6 @@ spec:
       - name: base-passwords
         secret:
           secretName: mosquitto-auth
-      - name: passwords
-        persistentVolumeClaim:
-          claimName: mosquitto-passwords
       - name: data
         persistentVolumeClaim:
           claimName: mosquitto-storage
