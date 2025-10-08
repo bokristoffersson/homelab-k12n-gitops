@@ -1,0 +1,22 @@
+apiVersion: longhorn.io/v1beta2
+kind: Node
+metadata:
+  name: p1 # node name for node with nvme storage
+  namespace: longhorn-system
+spec:
+  disks:
+    nvme-disk:
+      allowScheduling: true
+      evictionRequested: false
+      path: /mnt/nvme-longhorn
+      storageReserved: 10737418240  # 10Gi reserved
+      tags:
+        - nvme
+        - fast
+    default-disk:
+      allowScheduling: true
+      evictionRequested: false
+      path: /var/lib/longhorn
+      storageReserved: 5368709120  # 5Gi reserved
+  tags:
+    - nvme-node

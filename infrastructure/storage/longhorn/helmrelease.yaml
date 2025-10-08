@@ -1,0 +1,55 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: longhorn
+      version: 1.10
+      sourceRef:
+        kind: HelmRepository
+        name: longhorn
+        namespace: longhorn-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    persistence:
+      defaultClass: true
+      defaultClassReplicaCount: 2
+      reclaimPolicy: Retain
+    defaultSettings:
+      defaultReplicaCount: 2
+      guaranteedInstanceManagerCpu: 5
+      storageMinimalAvailablePercentage: 10
+      upgradeChecker: false
+      defaultDataPath: /var/lib/longhorn
+      defaultDataLocality: best-effort
+      replicaSoftAntiAffinity: true
+      replicaAutoBalance: best-effort
+      storageOverProvisioningPercentage: 200
+      nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+      concurrentAutomaticEngineUpgradePerNodeLimit: 1
+    ingress:
+      enabled: false
+    longhornManager:
+      priorityClass: system-cluster-critical
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+    longhornDriver:
+      priorityClass: system-cluster-critical
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+    longhornUI:
+      replicas: 1

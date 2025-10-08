@@ -11,26 +11,57 @@
 
 ### 1. K3s Cluster Setup
 
-#### Control Plane (Raspberry Pi 4)
-```bash
-# Install K3s on the control plane node
-curl -sfL https://get.k3s.io | sh -
-
-# Get the node token for worker nodes
-sudo cat /var/lib/rancher/k3s/server/node-token
+```
+# On server node prepare data directory for k3s
+mkdir /mnt/data/k3s
+sudo chown root:root /mnt/data/k3s
+sudo chmod 755 /mnt/data/k3s
 ```
 
-#### Worker Node (Raspberry Pi 5 with NVMe HAT)
+#### Control Plane (Raspberry Pi 5 with NVMe HAT)
+```bash
+# Install K3s on the control plane node, specify DNS name for Control plane for to use kubectl outside cluster
+curl -sfL https://get.k3s.io | sh -s - --data-dir /mnt/data/k3s --tls-san <CONTROL_PLANE_DNS_NAME>
+
+# FIxing Permission error see link: https://dev.to/olymahmud/resolving-the-k3s-config-file-permission-denied-error-27e5
+export KUBECONFIG=~/.kube/config
+mkdir -p ~/.kube
+sudo k3s kubectl config view --raw > "$KUBECONFIG"
+chmod 600 "$KUBECONFIG"
+nano ~/.profile
+# Add export KUBECONFIG=~/.kube/config
+ource ~/.profile
+
+# Get the node token for worker nodes
+sudo cat /mnt/data/k3s/server/node-token
+```
+
+```bash
+# On each agent node
+export K3S_NOE_NAME=agent001
+```
+
+#### Worker Node (Raspberry Pi 4)
 ```bash
 # Join the worker node to the cluster
-curl -sfL https://get.k3s.io | K3S_URL=https://p0.local:6443 K3S_TOKEN=<NODE_TOKEN> sh - --node-name worker-pi5 --data-dir /mnt/data/k3s
+curl -sfL https://get.k3s.io | K3S_URL=https://<CONTROL_PLANE_IP>:6443 K3S_TOKEN=<NODE_TOKEN> sh - 
 # NVMe mounted at /mnt/data
 ```
 
 #### Verify Cluster
 ```bash
 kubectl get nodes
-# Should show both Pi 4 (control-plane) and Pi 5 (worker) as Ready
+# Should show both Pi 5 (control-plane) and Pi 4 (agent001) as Ready
+```
+
+Add to ~/.profile
+```bash
+# Set alias
+alias k=kubectl
+```
+#### Setup kubectl on development computer
+```bash
+Copy ~/.kube/config from control-node to development computer.
 ```
 
 ### 2. GitOps Repository Structure
@@ -68,6 +99,7 @@ homelab-k12n-gitops/
 2. Note the **App ID** (numeric, e.g., `123456`)
 3. Note the **Installation ID** (from URL after installation)
 4. Generate and download private key (.pem file)
+```
 
 ### 4. Flux Installation and Bootstrap
 
@@ -96,6 +128,8 @@ flux create secret githubapp flux-system \
 ```
 
 #### Bootstrap Flux with FluxInstance
+[Bootstrap Flux with github app](https://fluxcd.io/blog/2025/04/flux-operator-github-app-bootstrap/)
+
 ```yaml
 apiVersion: fluxcd.controlplane.io/v1
 kind: FluxInstance
@@ -125,6 +159,20 @@ spec:
     ref: "refs/heads/main"
     path: "clusters/test"
     pullSecret: "flux-system"
+```
+
+```
+kubectl apply -f flux.yaml    # file above
+```
+
+### 5. Sealing secrets
+
+[Install kubeseal](https://github.com/bitnami-labs/sealed-secrets?tab=readme-ov-file#linux)
+```
+KUBESEAL_VERSION='0.32.2'
+curl -OL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION:?}/kubeseal-${KUBESEAL_VERSION:?}-linux-amd64.tar.gz"
+tar -xvzf kubeseal-${KUBESEAL_VERSION:?}-linux-amd64.tar.gz kubeseal
+sudo install -m 755 kubeseal /usr/local/bin/kubeseal
 ```
 
 ### 5. Test Application Deployment
