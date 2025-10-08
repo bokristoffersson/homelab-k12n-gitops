@@ -47,7 +47,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: "./infrastructure/controllers/sealed-secrets"   # <-- Denna pekar på controllers/
+  path: "./infrastructure/controllers"   # <-- Denna pekar på controllers/
   prune: true
   dependsOn:
     - name: infrastructure-sources
