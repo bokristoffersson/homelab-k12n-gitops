@@ -34,7 +34,7 @@ spec:
       defaultDataLocality: best-effort
       replicaSoftAntiAffinity: true
       replicaAutoBalance: best-effort
-      storageOverProvisioningPercentage: 200
+      storageOverProvisioningPercentage: "200"
       nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
       concurrentAutomaticEngineUpgradePerNodeLimit: 1
     ingress:
