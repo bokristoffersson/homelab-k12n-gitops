@@ -28,7 +28,7 @@ spec:
     defaultSettings:
       defaultReplicaCount: 2
       guaranteedInstanceManagerCpu: 5
-      storageMinimalAvailablePercentage: 10
+      storageMinimalAvailablePercentage: "10"
       upgradeChecker: false
       defaultDataPath: /var/lib/longhorn
       defaultDataLocality: best-effort
