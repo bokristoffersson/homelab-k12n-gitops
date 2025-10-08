@@ -26,8 +26,8 @@ spec:
       defaultClassReplicaCount: 2
       reclaimPolicy: Retain
     defaultSettings:
-      defaultReplicaCount: 2
-      guaranteedInstanceManagerCpu: 5
+      defaultReplicaCount: "2"
+      guaranteedInstanceManagerCpu: "5"
       storageMinimalAvailablePercentage: "10"
       upgradeChecker: false
       defaultDataPath: /var/lib/longhorn
@@ -36,7 +36,7 @@ spec:
       replicaAutoBalance: best-effort
       storageOverProvisioningPercentage: "200"
       nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
-      concurrentAutomaticEngineUpgradePerNodeLimit: 1
+      concurrentAutomaticEngineUpgradePerNodeLimit: "1"
     ingress:
       enabled: false
     longhornManager:
