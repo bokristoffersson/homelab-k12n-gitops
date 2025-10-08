@@ -18,14 +18,10 @@ spec:
 
     prometheus:
       prometheusSpec:
-
-        nodeSelector:
-          kubernetes.io/hostname: worker-pi5
-
         storageSpec:
           volumeClaimTemplate:
             spec:
-              storageClassName: nvme-storage
+              storageClassName: longhorn-nvme
               accessModes:
                 - ReadWriteOnce
               resources:
@@ -38,13 +34,10 @@ spec:
     alertmanager:
       alertmanagerSpec:
 
-        nodeSelector:
-          kubernetes.io/hostname: worker-pi5
-
         storage:
           volumeClaimTemplate:
             spec:
-              storageClassName: nvme-storage
+              storageClassName: longhorn-nvme
               accessModes:
                 - ReadWriteOnce
               resources:

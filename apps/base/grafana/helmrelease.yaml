@@ -15,12 +15,10 @@ spec:
         namespace: flux-system
   values:
     replicas: 1
-    nodeSelector:
-      kubernetes.io/hostname: worker-pi5
 
     persistence:
       enabled: true
-      storageClassName: nvme-storage
+      storageClassName: longhorn-nvme
 
     datasources:
       datasources.yaml:

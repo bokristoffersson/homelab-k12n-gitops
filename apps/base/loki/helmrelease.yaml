@@ -30,9 +30,7 @@ spec:
       persistence:
         enabled: true
         size: 10Gi
-        storageClass: nvme-storage
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
+        storageClass: longhorn-nvme
 
     loki:
       storage:
@@ -70,7 +68,7 @@ spec:
       enabled: true
       persistence:
         size: 10Gi
-        storageClass: nvme-storage
+        storageClass: longhorn-nvme
       buckets:
         - name: loki-chunks
           policy: none
@@ -81,8 +79,6 @@ spec:
         - name: loki-admin
           policy: none
           purge: false
-      nodeSelector:
-        kubernetes.io/hostname: worker-pi5
 
 
     # Zero out replica counts of other deployment modes
