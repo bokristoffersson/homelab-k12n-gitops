@@ -5,5 +5,4 @@ resources:
   - helmrelease.yaml
   - storageclass-default.yaml
   - storageclass-nvme.yaml
-  # Uncomment after creating and adjusting node-nvme.yaml
-  #- node-nvme.yaml
+  - node-nvme.yaml
