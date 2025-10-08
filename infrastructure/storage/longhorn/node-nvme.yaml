@@ -13,10 +13,5 @@ spec:
       tags:
         - nvme
         - fast
-    default-disk:
-      allowScheduling: true
-      evictionRequested: false
-      path: /var/lib/longhorn
-      storageReserved: 5368709120  # 5Gi reserved
   tags:
     - nvme-node
