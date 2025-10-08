@@ -8,7 +8,7 @@ spec:
     nvme-disk:
       allowScheduling: true
       evictionRequested: false
-      path: /mnt/nvme-longhorn
+      path: /mnt/data/nvme-longhorn
       storageReserved: 10737418240  # 10Gi reserved
       tags:
         - nvme
