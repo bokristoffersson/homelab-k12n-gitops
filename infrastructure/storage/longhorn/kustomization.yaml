@@ -4,5 +4,5 @@ resources:
   - namespace.yaml
   - helmrelease.yaml
  # - storageclass-default.yaml
-  - storageclass-nvme.yaml
+ # - storageclass-nvme.yaml
   - node-nvme.yaml

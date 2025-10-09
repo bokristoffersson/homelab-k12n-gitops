@@ -20,36 +20,33 @@ spec:
   upgrade:
     remediation:
       retries: 3
+
   values:
-    persistence:
-      defaultClass: true
-      defaultClassReplicaCount: 2
-      reclaimPolicy: Retain
     defaultSettings:
-      defaultReplicaCount: "2"
-      guaranteedInstanceManagerCpu: "5"
-      storageMinimalAvailablePercentage: "10"
-      upgradeChecker: false
+      # Disable automatic default disk creation
       defaultDataPath: ""
-      defaultDataLocality: best-effort
-      replicaSoftAntiAffinity: true
-      replicaAutoBalance: best-effort
-      storageOverProvisioningPercentage: "200"
-      nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
-      concurrentAutomaticEngineUpgradePerNodeLimit: "1"
-    ingress:
-      enabled: false
+      upgradeChecker: false
+
     longhornManager:
       priorityClass: system-cluster-critical
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
+      extraEnv:
+        - name: DEFAULT_DISK_PATH
+          value: ""  # disables auto-created /var/lib/longhorn
+
     longhornDriver:
       priorityClass: system-cluster-critical
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
+
     longhornUI:
       replicas: 1
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
