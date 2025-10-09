@@ -23,7 +23,7 @@ iotdb/
 ```bash
 # 1. Update your GitOps repo with the simplified manifest
 cd /path/to/your/gitops-repo
-# Copy the updated iotdb-deployment.yaml
+# Copy the updated iotdb-helmrelease.yaml
 
 # 2. Commit and push
 git add iotdb/
