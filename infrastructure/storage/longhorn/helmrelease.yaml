@@ -30,7 +30,7 @@ spec:
       guaranteedInstanceManagerCpu: "5"
       storageMinimalAvailablePercentage: "10"
       upgradeChecker: false
-      defaultDataPath: /var/lib/longhorn
+      defaultDataPath: ""
       defaultDataLocality: best-effort
       replicaSoftAntiAffinity: true
       replicaAutoBalance: best-effort
