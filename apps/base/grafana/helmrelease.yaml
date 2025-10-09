@@ -43,6 +43,40 @@ spec:
                   name: "TraceID"
                   url: "$${__value.raw}"
 
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+
+      # Import dashboards
+      dashboards:
+        default:
+          # Example: Import from grafana.com by dashboard ID
+          node-exporter:
+            gnetId: 1860
+            revision: 31
+            datasource: Prometheus
+
+          # Example: Import Kubernetes cluster monitoring
+          kubernetes-cluster:
+            gnetId: 7249
+            revision: 1
+            datasource: Prometheus
+
+          # Example: Import Loki dashboard
+          loki-dashboard:
+            gnetId: 13639
+            revision: 2
+            datasource: Loki
+
     admin:
       existingSecret: grafana-admin
       userKey: admin-user
