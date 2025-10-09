@@ -30,7 +30,7 @@ spec:
       persistence:
         enabled: true
         size: 10Gi
-        storageClass: longhorn-nvme
+        storageClass: longhorn
 
     loki:
       storage:
@@ -68,7 +68,7 @@ spec:
       enabled: true
       persistence:
         size: 10Gi
-        storageClass: longhorn-nvme
+        storageClass: longhorn
       buckets:
         - name: loki-chunks
           policy: none

@@ -21,7 +21,7 @@ spec:
         storageSpec:
           volumeClaimTemplate:
             spec:
-              storageClassName: longhorn-nvme
+              storageClassName: longhorn
               accessModes:
                 - ReadWriteOnce
               resources:
@@ -36,7 +36,7 @@ spec:
         storage:
           volumeClaimTemplate:
             spec:
-              storageClassName: longhorn-nvme
+              storageClassName: longhorn
               accessModes:
                 - ReadWriteOnce
               resources:
