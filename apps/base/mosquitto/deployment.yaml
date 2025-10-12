@@ -13,6 +13,19 @@ spec:
       labels:
         app: mosquitto
     spec:
+      initContainers:
+      - name: copy-config
+        image: eclipse-mosquitto:2.0.18
+        command: [ 'sh', '-c' ]
+        args:
+          - |
+            cp /tmp/config/* /mosquitto/config/
+            chmod 600 /mosquitto/config/passwordfile
+        volumeMounts:
+          - name: config-source
+            mountPath: /tmp/config
+          - name: config
+            mountPath: /mosquitto/config
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
