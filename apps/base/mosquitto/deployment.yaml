@@ -32,18 +32,20 @@ spec:
         ports:
         - containerPort: 1883
         volumeMounts:
-        - name: config-volume
+        - name: config
           mountPath: /mosquitto/config
         - name: data-volume
           mountPath: /mosquitto/data
       volumes:
-      - name: config-volume
+      - name: config-source
         projected:
           sources:
           - configMap:
               name: mosquitto-config
           - secret:
               name: mosquitto-auth
+      - name: config
+        emptyDir: {}
       - name: data-volume
         persistentVolumeClaim:
           claimName: mosquitto-storage

@@ -4,7 +4,6 @@ namespace: mosquitto
 resources:
   - namespace.yaml
   - mosquitto-auth-secret-sealed.yaml
-#  - helmrelease.yaml
   - configmap.yaml
   - pvc.yaml
   - deployment.yaml
