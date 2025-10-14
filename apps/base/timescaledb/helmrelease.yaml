@@ -1,0 +1,92 @@
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: timescaledb
+  namespace: timescaledb
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: timescaledb-single
+      version: 0.32.x
+      sourceRef:
+        kind: HelmRepository
+        name: timescaledb
+        namespace: timescaledb
+      interval: 12h
+  values:
+    replicaCount: 1
+
+    image:
+      repository: timescale/timescaledb-ha
+      tag: pg16-latest
+      pullPolicy: IfNotPresent
+
+    secretNames:
+      credentials: timescaledb-credentials
+#    secrets:
+#      credentials:
+#        PATRONI_SUPERUSER_PASSWORD: "changeme_superuser"
+#        PATRONI_REPLICATION_PASSWORD: "changeme_replication"
+#        PATRONI_admin_PASSWORD: "changeme_admin"
+
+    # Persistence with Longhorn
+    persistentVolumes:
+      data:
+        enabled: true
+        storageClass: longhorn
+        size: 20Gi
+        accessModes:
+          - ReadWriteOnce
+      wal:
+        enabled: true
+        storageClass: longhorn
+        size: 2Gi
+        accessModes:
+          - ReadWriteOnce
+
+    # Resource requests/limits for homelab
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+    # PostgreSQL configuration
+    patroni:
+      postgresql:
+        parameters:
+          max_connections: 100
+          shared_buffers: 512MB
+          effective_cache_size: 1536MB
+          maintenance_work_mem: 128MB
+          checkpoint_completion_target: 0.9
+          wal_buffers: 16MB
+          default_statistics_target: 100
+          random_page_cost: 1.1
+          effective_io_concurrency: 200
+          work_mem: 5242kB
+          min_wal_size: 1GB
+          max_wal_size: 4GB
+
+    # Service configuration
+    service:
+      primary:
+        type: ClusterIP
+        port: 5432
+
+    # Affinity to spread across nodes if needed
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - timescaledb
+              topologyKey: kubernetes.io/hostname

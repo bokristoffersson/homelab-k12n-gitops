@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: timescaledb-init
+  namespace: timescaledb
+data:
+  init.sql: |
+    -- Create the database if it doesn't exist
+    SELECT 'CREATE DATABASE mqtt_data'
+        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'mqtt_data')\gexec
+    
+    -- Connect to the database
+        \c mqtt_data
+    
+    -- Enable TimescaleDB extension
+    CREATE EXTENSION IF NOT EXISTS timescaledb;
+    
+    -- Create the hypertable for MQTT readings
+    CREATE TABLE IF NOT EXISTS mqtt_readings (
+                                                 time TIMESTAMPTZ NOT NULL,
+                                                 topic TEXT NOT NULL,
+                                                 payload JSONB,
+                                                 value DOUBLE PRECISION,
+                                                 device_id TEXT
+    );
+    
+    -- Convert to hypertable (only if not already)
+    SELECT create_hypertable('mqtt_readings', 'time', if_not_exists => TRUE);
+    
+    -- Create indexes for common queries
+    CREATE INDEX IF NOT EXISTS idx_mqtt_topic ON mqtt_readings (topic, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_mqtt_device ON mqtt_readings (device_id, time DESC);
+    CREATE INDEX IF NOT EXISTS idx_mqtt_payload ON mqtt_readings USING GIN (payload);
+    
+    -- Add retention policy: keep data for 90 days
+    SELECT add_retention_policy('mqtt_readings', INTERVAL '90 days', if_not_exists => TRUE);
+    
+    -- Optional: Add compression policy for data older than 7 days
+    ALTER TABLE mqtt_readings SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = 'topic,device_id'
+        );
+    
+    SELECT add_compression_policy('mqtt_readings', INTERVAL '7 days', if_not_exists => TRUE);
+    
+    -- Create a continuous aggregate for hourly averages (optional, great for dashboards)
+    CREATE MATERIALIZED VIEW IF NOT EXISTS mqtt_readings_hourly
+    WITH (timescaledb.continuous) AS
+    SELECT
+        time_bucket('1 hour', time) AS bucket,
+        topic,
+        device_id,
+        AVG(value) as avg_value,
+        MAX(value) as max_value,
+        MIN(value) as min_value,
+        COUNT(*) as reading_count
+    FROM mqtt_readings
+    GROUP BY bucket, topic, device_id;
+    
+    -- Add retention policy for the continuous aggregate (keep for 1 year)
+    SELECT add_retention_policy('mqtt_readings_hourly', INTERVAL '365 days', if_not_exists => TRUE);
+    
+    -- Add refresh policy for continuous aggregate
+    SELECT add_continuous_aggregate_policy('mqtt_readings_hourly',
+                                           start_offset => INTERVAL '3 hours',
+                                           end_offset => INTERVAL '1 hour',
+                                           schedule_interval => INTERVAL '1 hour',
+                                           if_not_exists => TRUE
+           );
