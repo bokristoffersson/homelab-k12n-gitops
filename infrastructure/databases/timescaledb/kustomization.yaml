@@ -3,6 +3,5 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - timescaledb-credentials-sealed.yaml
-  - helmrelease.yaml
-  #- init-script.yaml
+  - postgres-cluster.yaml
   #- backup-cronjob.yaml

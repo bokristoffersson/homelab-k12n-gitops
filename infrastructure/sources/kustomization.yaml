@@ -7,4 +7,4 @@ resources:
   - prometheus-community.yaml
   - longhorn.yaml
   - mosquitto.yaml
-  - timescaledb.yaml
+  - postgres-operator.yaml
