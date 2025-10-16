@@ -90,9 +90,6 @@ spec:
   enableLogicalBackup: true
   logicalBackupSchedule: "0 2 * * *"  # Daily at 2 AM
 
-  # Pod anti-affinity to spread across nodes
-  podAntiAffinity: "preferred"
-
   # Maintenance windows
   maintenanceWindows:
     - Mon:02:00-04:00
