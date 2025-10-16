@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt-to-timescale-config
+data:
+  config.yaml: |
+    mqtt:
+      host: "mosquitto.mosquitto.svc.cluster.local"
+      port: 1883
+      client_id: "mqtt-to-timescale"
+      keep_alive_secs: 30
+      username: "$(MQTT_USER)"
+      password: "$(MQTT_PASSWORD)"
+      clean_session: true
+      protocol: "v5"
+    database:      
+      url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):(DATABASE_PORT)/appdb"
+      write:
+        batch_size: 500
+        linger_ms: 500
+    pipelines:
+      - name: "heatpump"
+        topic: "home/heatpump/telemetry"
+        qos: 1
+        table: "telemetry"
+        timestamp:
+          path: "$.timestamp"
+          format: "rfc3339"
+          use_now: true
+        tags:
+          device_id: "$.device_id"
+          room: "$.room"
+        fields:
+          flow_temp_c: { path: "$.flow_temp", type: "float" }
+          return_temp_c: { path: "$.return_temp", type: "float" }
+          power_w: { path: "$.power", type: "int" }
+
+      - name: "sensors"
+        topic: "home/sensors/+/state"
+        qos: 1
+        table: "telemetry"
+        timestamp: { use_now: true }
+        tags:
+          sensor: "$.name"
+          location: "$.location"
+        fields:
+          temperature_c: { path: "$.temperature", type: "float" }
+          humidity_pct: { path: "$.humidity", type: "float" }

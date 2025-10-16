@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-to-timescale
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mqtt-to-timescale
+  template:
+    metadata:
+      labels:
+        app: mqtt-to-timescale
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/bokristoffersson/mqtt-to-timescale:0.1.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_CONFIG
+              value: /config/config.yaml
+            - name: RUST_LOG
+              value: info
+            - name: DATABASE_HOST
+              value: "timescaledb-cluster.timescaledb.svc.cluster.local"
+            - name: DATABASE_PORT
+              value: "5432"
+            - name: DATABASE_NAME
+              value: "appdb"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-user.timescaledb-cluster.credentials.postgresql.acid.zalan.do
+                  key: username
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-user.timescaledb-cluster.credentials.postgresql.acid.zalan.do
+                  key: password
+            - name: MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mosquitto-credentials
+                  key: mqtt_user
+            - name: MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mosquitto-credentials
+                  key: mqtt_password
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: mqtt-to-timescale-config
+            items:
+              - key: config.yaml
+                path: config.yaml
