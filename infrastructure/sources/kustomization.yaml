@@ -6,5 +6,4 @@ resources:
   - grafana.yaml
   - prometheus-community.yaml
   - longhorn.yaml
-  - mosquitto.yaml
   - postgres-operator.yaml
