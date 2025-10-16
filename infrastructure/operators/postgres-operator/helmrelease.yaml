@@ -12,7 +12,7 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: postgres-operator
-        namespace: postgres-operator
+        namespace: flux-system
       interval: 12h
   values:
     # Configure the operator
