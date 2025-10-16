@@ -3,5 +3,6 @@ kind: Kustomization
 namespace: default
 resources:
   - mosquitto-credentials-sealed.yaml
+  - ghcr-secret-sealed.yaml
   - configmap.yaml
   - deployment.yaml

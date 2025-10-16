@@ -13,6 +13,8 @@ spec:
       labels:
         app: mqtt-to-timescale
     spec:
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
         - name: app
           image: ghcr.io/bokristoffersson/mqtt-to-timescale:0.1.0
