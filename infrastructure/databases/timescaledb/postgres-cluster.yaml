@@ -74,17 +74,7 @@ spec:
     synchronous_mode_strict: false
 
   # Connection pooler (optional but recommended)
-  enableConnectionPooler: true
-  connectionPooler:
-    numberOfInstances: 2
-    mode: "transaction"
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 256Mi
+  enableConnectionPooler: false
 
   # Backup configuration - operator's built-in logical backup
   enableLogicalBackup: true
