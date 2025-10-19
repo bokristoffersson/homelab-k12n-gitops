@@ -14,8 +14,8 @@ data:
       password: "$(MQTT_PASSWORD)"
       clean_session: true
       protocol: "v5"
-    database:      
-      url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_HOST):$(DATABASE_PORT)/timescaledb"
+    database:
+      url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@timescaledb-cluster.heatpump-mqtt.svc.cluster.local:5432/timescaledb"
       write:
         batch_size: 500
         linger_ms: 500
