@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mqtt-to-timescale-config
-  namespace: default
+  namespace: heatpump-mqtt
 data:
   config.yaml: |
     mqtt:
