@@ -1,0 +1,36 @@
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: timescaledb-cluster
+  namespace: heatpump-mqtt
+spec:
+  teamId: "heatpump"
+  volume:
+    size: 10Gi
+    storageClass: longhorn
+  numberOfInstances: 2
+  users:
+    timescale: []
+  databases:
+    timescaledb: timescale
+  postgresql:
+    version: "16"
+    parameters:
+      shared_preload_libraries: "timescaledb"
+      max_connections: "100"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  patroni:
+    initdb:
+      encoding: "UTF8"
+      locale: "sv_SE.UTF-8"
+      data-checksums: "true"
+    pg_hba:
+      - local all all trust
+      - host all all 0.0.0.0/0 md5
+      - host all all ::0/0 md5

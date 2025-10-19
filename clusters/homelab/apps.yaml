@@ -90,14 +90,14 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: mqtt-to-timescale
+  name: heatpump-mqtt
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./apps/homelab/mqtt-to-timescale
+  path: ./apps/homelab/heatpump-mqtt
   prune: true
   wait: true
 

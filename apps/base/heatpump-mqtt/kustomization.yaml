@@ -2,7 +2,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: default
 resources:
-  - mosquitto-credentials-sealed.yaml
+  - namespace.yaml
+  - postgres-cluster.yaml
   - ghcr-secret-sealed.yaml
+  - mosquitto-credentials-sealed.yaml
   - configmap.yaml
   - deployment.yaml
