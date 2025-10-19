@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,20 +26,20 @@ spec:
             - name: RUST_LOG
               value: info
             - name: DATABASE_HOST
-              value: "timescaledb-cluster.timescaledb.svc.cluster.local"
+              value: "timescaledb-cluster.heatpump-mqtt.svc.cluster.local"
             - name: DATABASE_PORT
               value: "5432"
             - name: DATABASE_NAME
-              value: "appdb"
+              value: "timescaledb"
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
-                  name: app-user.timescaledb-cluster.credentials.postgresql.acid.zalan.do
+                  name: timescale.timescaledb-cluster.credentials.postgresql.acid.zalan.do
                   key: username
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-user.timescaledb-cluster.credentials.postgresql.acid.zalan.do
+                  name: timescale.timescaledb-cluster.credentials.postgresql.acid.zalan.do
                   key: password
             - name: MQTT_USER
               valueFrom:
