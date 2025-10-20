@@ -26,7 +26,7 @@ spec:
             - name: RUST_LOG
               value: info
             - name: DATABASE_HOST
-              value: "timescaledb-0.timescaledb.heatpump-mqtt.svc.cluster.local"
+              value: "timescaledb"
             - name: DATABASE_PORT
               value: "5432"
             - name: DATABASE_NAME
