@@ -18,7 +18,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: app
-          image: ghcr.io/bokristoffersson/mqtt-to-timescale:latest
+          image: ghcr.io/bokristoffersson/mqtt-to-timescale:main-9db8c35
           imagePullPolicy: Always
           env:
             - name: APP_CONFIG
