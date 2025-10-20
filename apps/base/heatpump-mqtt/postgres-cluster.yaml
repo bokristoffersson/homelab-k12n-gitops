@@ -28,7 +28,7 @@ spec:
   patroni:
     initdb:
       encoding: "UTF8"
-      locale: "sv_SE.UTF-8"
+      locale: "C.UTF-8"
       data-checksums: "true"
     pg_hba:
       - local all all trust
