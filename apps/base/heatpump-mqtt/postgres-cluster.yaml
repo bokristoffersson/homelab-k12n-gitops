@@ -1,41 +1,57 @@
-apiVersion: "acid.zalan.do/v1"
-kind: postgresql
+apiVersion: v1
+kind: Service
 metadata:
-  name: timescaledb-cluster
+  name: timescaledb
   namespace: heatpump-mqtt
 spec:
-  teamId: "heatpump"
-  volume:
-    size: 10Gi
-    storageClass: longhorn
-  numberOfInstances: 2
-  users:
-    timescale: []
-  databases:
-    timescaledb: timescale
-  preparedDatabases:
-    timescaledb:
-      extensions:
-        timescaledb: public
-  postgresql:
-    version: "16"
-    parameters:
-      shared_preload_libraries: "timescaledb,pg_cron"
-      max_connections: "100"
-      cron.database_name: "postgres"
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
-  patroni:
-    initdb:
-      encoding: "UTF8"
-      locale: "C.UTF-8"
-      data-checksums: "true"
-    pg_hba:
-      - local all all trust
-      - host all all 0.0.0.0/0 md5
-      - host all all ::0/0 md5
+  ports:
+    - port: 5432
+      name: postgres
+  clusterIP: None
+  selector:
+    app: timescaledb
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: timescaledb
+  namespace: heatpump-mqtt
+spec:
+  serviceName: timescaledb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: timescaledb
+  template:
+    metadata:
+      labels:
+        app: timescaledb
+    spec:
+      containers:
+        - name: timescaledb
+          image: timescale/timescaledb:latest-pg16
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: timescaledb-secret
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 10Gi

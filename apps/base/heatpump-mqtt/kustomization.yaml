@@ -3,8 +3,9 @@ kind: Kustomization
 namespace: heatpump-mqtt
 resources:
   - namespace.yaml
+  - timescaledb-secret-sealed.yaml
   - postgres-cluster.yaml
   - ghcr-secret-sealed.yaml
   - mosquitto-credentials-sealed.yaml
   - configmap.yaml
-  - deployment.yaml
+#  - deployment.yaml

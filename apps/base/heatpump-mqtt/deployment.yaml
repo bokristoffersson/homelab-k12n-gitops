@@ -18,15 +18,15 @@ spec:
         - name: ghcr-secret
       containers:
         - name: app
-          image: ghcr.io/bokristoffersson/mqtt-to-timescale:main-9100fc7
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/bokristoffersson/mqtt-to-timescale:latest
+          imagePullPolicy: Always
           env:
             - name: APP_CONFIG
               value: /config/config.yaml
             - name: RUST_LOG
               value: info
             - name: DATABASE_HOST
-              value: "timescaledb-cluster.heatpump-mqtt.svc.cluster.local"
+              value: "timescaledb-0.timescaledb.heatpump-mqtt.svc.cluster.local"
             - name: DATABASE_PORT
               value: "5432"
             - name: DATABASE_NAME
@@ -34,13 +34,13 @@ spec:
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
-                  name: timescale.timescaledb-cluster.credentials.postgresql.acid.zalan.do
-                  key: username
+                  name: timescaledb-secret
+                  key: POSTGRES_USER
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: timescale.timescaledb-cluster.credentials.postgresql.acid.zalan.do
-                  key: password
+                  name: timescaledb-secret
+                  key: POSTGRES_PASSWORD
             - name: MQTT_USER
               valueFrom:
                 secretKeyRef:
