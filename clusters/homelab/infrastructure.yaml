@@ -56,19 +56,3 @@ spec:
   wait: true
   timeout: 10m
 ---
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure-operators
-  namespace: flux-system
-spec:
-  interval: 10m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: "./infrastructure/operators"   # <-- Denna pekar på controllers/
-  prune: true
-  dependsOn:
-    - name: infrastructure-controllers
-  wait: true
-  timeout: 10m
