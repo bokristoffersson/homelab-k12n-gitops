@@ -8,4 +8,4 @@ resources:
   - ghcr-secret-sealed.yaml
   - mosquitto-credentials-sealed.yaml
   - configmap.yaml
-#  - deployment.yaml
+  - deployment.yaml
