@@ -1,9 +1,3 @@
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: heatpump-mqtt
----
 apiVersion: "acid.zalan.do/v1"
 kind: postgresql
 metadata:
@@ -19,14 +13,16 @@ spec:
     timescale: []
   databases:
     timescaledb: timescale
+  preparedDatabases:
+    timescaledb:
+      extensions:
+        timescaledb: public
   postgresql:
     version: "16"
     parameters:
-      shared_preload_libraries: "timescaledb"
+      shared_preload_libraries: "timescaledb,pg_cron"
       max_connections: "100"
-  env:
-    - name: ENABLE_PG_CRON
-      value: "false"
+      cron.database_name: "postgres"
   resources:
     requests:
       cpu: 100m
