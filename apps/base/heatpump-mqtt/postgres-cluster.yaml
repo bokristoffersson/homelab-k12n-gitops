@@ -16,7 +16,7 @@ spec:
   postgresql:
     version: "16"
     parameters:
-      shared_preload_libraries: "timescaledb"
+      shared_preload_libraries: "timescaledb, pg_cron"
       max_connections: "100"
   resources:
     requests:
