@@ -23,7 +23,7 @@ data:
       - name: "heatpump"
         topic: "home/heatpump/telemetry"
         qos: 1
-        table: "telemetry"
+        table: "timescaledb"
         timestamp:
           path: "$.timestamp"
           format: "rfc3339"
