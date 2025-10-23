@@ -18,7 +18,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: app
-          image: ghcr.io/bokristoffersson/mqtt-to-timescale:main-4d138c9
+          image: ghcr.io/bokristoffersson/mqtt-to-timescale:main-6cc9fcf
           imagePullPolicy: Always
           env:
             - name: APP_CONFIG
@@ -30,7 +30,7 @@ spec:
             - name: DATABASE_PORT
               value: "5432"
             - name: DATABASE_NAME
-              value: "timescaledb"
+              value: "heatpump"
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
