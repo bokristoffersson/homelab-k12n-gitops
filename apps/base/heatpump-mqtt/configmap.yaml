@@ -21,7 +21,7 @@ data:
         linger_ms: 500
     pipelines:
       - name: "heatpump"
-        topic: "hermiq_heatpump/data"
+        topic: "thermiq_heatpump/data"
         qos: 1
         table: "heatpump"
         timestamp:
