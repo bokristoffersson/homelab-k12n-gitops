@@ -62,11 +62,11 @@ data:
           }
           flowlinepump_speed: {
             path: "$.d30",
-            type: "smallint"
+            type: "int"
           }
           brinepump_speed: {
             path: "$.d31",
-            type: "smallint"
+            type: "int"
           }          
         bit_flags:
           - source_path: "$.d16"
