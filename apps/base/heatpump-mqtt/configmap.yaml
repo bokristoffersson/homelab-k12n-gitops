@@ -92,7 +92,10 @@ data:
               2: "flowlinepump_on"
               3: "hotwater_production"
               4: "circulation_pump"
-
+          - source_path: "$.d13"
+            flags:
+              0: "aux_heater_3kw_on"
+              1: "aux_heater_6kw_on"
       - name: "sensors"
         topic: "home/sensors/+/state"
         qos: 1
