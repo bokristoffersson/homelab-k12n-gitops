@@ -64,9 +64,6 @@ data:
               2: "flowlinepump_on"
               3: "hotwater_production"
               4: "circulation_pump"
-              5: "alarm_active"
-              6: "smart_grid_signal"
-              7: "summer_mode"
 
       - name: "sensors"
         topic: "home/sensors/+/state"
