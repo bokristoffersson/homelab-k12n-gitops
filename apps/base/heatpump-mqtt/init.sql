@@ -1,13 +1,3 @@
--- TimescaleDB Init Script för Heatpump MQTT Data
--- Detta skript skapar databasen och tabellerna baserat på config.yaml
-
--- Skapa databasen (om den inte redan finns)
--- OBS: Detta körs som superuser, så vi skapar databasen direkt
-CREATE DATABASE timescaledb;
-
--- Använd databasen
-\c timescaledb;
-
 -- Aktivera TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
@@ -20,7 +10,7 @@ CREATE TABLE IF NOT EXISTS heatpump (
     hotwater_temp SMALLINT,
     brine_out_temp SMALLINT,
     brine_in_temp SMALLINT,
-    integral DOUBLE PRECISION,
+    integral SMALLINT,
     flowlinepump_speed SMALLINT,
     brinepump_speed SMALLINT,
     runtime_compressor INTEGER,
