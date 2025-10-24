@@ -46,19 +46,19 @@ data:
           }
           hotwater_temp: {
             path: "$.d7",
-            type: "float"
+            type: "int"
           }
           brine_out_temp: {
             path: "$.d8",
-            type: "float"
+            type: "int"
           }
           brine_in_temp: {
             path: "$.d9",
-            type: "float"
+            type: "int"
           }
           integral: {
             path: "$.d25",
-            type: "float"
+            type: "int"
           }
           flowlinepump_speed: {
             path: "$.d30",
@@ -67,7 +67,23 @@ data:
           brinepump_speed: {
             path: "$.d31",
             type: "int"
-          }          
+          }    
+          runtime_compressor: {
+            path: "$.d104",
+            type: "int"
+          } 
+          runtime_hotwater: {
+            path: "$.d108",
+            type: "int"
+          } 
+          runtime_3kw: {
+            path: "$.d106",
+            type: "int"
+          }    
+          runtime_6kw: {
+            path: "$.d114",
+            type: "int"
+          }    
         bit_flags:
           - source_path: "$.d16"
             flags:
