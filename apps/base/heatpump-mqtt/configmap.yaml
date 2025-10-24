@@ -65,7 +65,7 @@ data:
             type: "smallint"
           }
           brinepump_speed: {
-            path: "$.d30",
+            path: "$.d31",
             type: "smallint"
           }          
         bit_flags:
