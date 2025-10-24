@@ -56,6 +56,18 @@ data:
             path: "$.d9",
             type: "float"
           }
+          integral: {
+            path: "$.d25",
+            type: "float"
+          }
+          flowlinepump_speed: {
+            path: "$.d30",
+            type: "smallint"
+          }
+          brinepump_speed: {
+            path: "$.d30",
+            type: "smallint"
+          }          
         bit_flags:
           - source_path: "$.d16"
             flags:
