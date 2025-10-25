@@ -100,13 +100,18 @@ data:
         topic: "home/sensors/+/state"
         qos: 1
         table: "telemetry"
-        timestamp: { use_now: true }
+        timestamp:
+          use_now: true
         tags:
           sensor: "$.name"
           location: "$.location"
         fields:
-          temperature_c: { path: "$.temperature", type: "float" }
-          humidity_pct: { path: "$.humidity", type: "float" }
+          temperature_c:
+            path: "$.temperature"
+            type: "float"
+          humidity_pct:
+            path: "$.humidity"
+            type: "float"
       - name: "energy"  
         topic: "saveeye/telemetry"
         qos: 1
@@ -119,7 +124,9 @@ data:
           sensor: "$.name"
           location: "$.location"
         fields:
-          power_w: { path: "$.power", type: "int" }
+          power_w:
+            path: "$.power"
+            type: "int"
           activeActualConsumption:
             path: "$.activeActualConsumption"
             type: "nested"
