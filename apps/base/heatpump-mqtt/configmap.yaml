@@ -135,10 +135,8 @@ data:
               L1: "consumption_l1_w"
               L2: "consumption_l2_w"
               L3: "consumption_l3_w"
-          activeTotalConsumption::
+          activeTotalConsumption:
             path: "$.activeTotalConsumption"
             type: "nested" 
             attributes:
               total: "consumption_total_w"
-
-§
