@@ -125,5 +125,4 @@ data:
             path: "$.activeTotalConsumption"
             type: "nested" 
             attributes:
-              total: "consumption_total_w"
-          store_interval: "MINUTE" 
+              total: "consumption_total_w" 
