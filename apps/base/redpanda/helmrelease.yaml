@@ -1,0 +1,24 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: redpanda
+  namespace: redpanda
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: redpanda
+      version: "23.*"
+      sourceRef:
+        kind: HelmRepository
+        name: redpanda
+        namespace: flux-system
+  values:
+    # Keep it minimal with default settings
+    statefulset:
+      replicas: 1
+    
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: longhorn
