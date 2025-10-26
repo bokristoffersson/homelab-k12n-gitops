@@ -116,6 +116,7 @@ data:
         topic: "saveeye/telemetry"
         qos: 1
         table: "energy"
+        store_interval: "MINUTE"
         timestamp:
           path: "$.timestamp"
           format: "iso8601"
