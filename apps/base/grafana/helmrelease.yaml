@@ -43,6 +43,15 @@ spec:
                   name: "TraceID"
                   url: "$${__value.raw}"
 
+          - name: TimescaleDB
+            type: postgres
+            url: timescaledb.heatpump-mqtt.svc.cluster.local:5432
+            access: proxy
+            database: heatpump
+            jsonData:
+              sslmode: disable
+              timescaledb: true
+
     admin:
       existingSecret: grafana-admin
       userKey: admin-user
@@ -59,4 +68,29 @@ spec:
     service:
       type: ClusterIP
       port: 80
+
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            allowUiUpdates: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+
+    dashboards:
+      default:
+        energy-dashboard:
+          file: energy-dashboard.json
+
+    extraConfigmapMounts:
+      - name: energy-dashboard
+        mountPath: /var/lib/grafana/dashboards/default
+        configMap: energy-dashboard
+        readOnly: false
 
