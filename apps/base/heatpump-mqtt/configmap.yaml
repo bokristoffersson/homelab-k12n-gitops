@@ -120,23 +120,10 @@ data:
           path: "$.timestamp"
           format: "iso8601"
           use_now: true
-        tags:
-          sensor: "$.name"
-          location: "$.location"
         fields:
-          power_w:
-            path: "$.power"
-            type: "int"
-          activeActualConsumption:
-            path: "$.activeActualConsumption"
-            type: "nested"
-            attributes:
-              total: "consumption_actual_w"
-              L1: "consumption_l1_w"
-              L2: "consumption_l2_w"
-              L3: "consumption_l3_w"
           activeTotalConsumption:
             path: "$.activeTotalConsumption"
             type: "nested" 
             attributes:
               total: "consumption_total_w"
+          store_interval: "MINUTE" 
