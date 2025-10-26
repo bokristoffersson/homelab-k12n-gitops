@@ -10,9 +10,7 @@ resources:
   - configmap.yaml
   - deployment.yaml
   # Database backup configuration
-  # Note: backup-aws-secret.yaml must be sealed before applying
-  # See BACKUP_SETUP.md for instructions
-  - backup-aws-secret.yaml
+  - backup-aws-secret-sealed.yaml
   - backup-cronjob.yaml
   # Restore job is NOT included by default - use it manually when needed
   # See BACKUP_SETUP.md for restore instructions

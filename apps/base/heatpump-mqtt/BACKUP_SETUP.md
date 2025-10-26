@@ -7,12 +7,30 @@ This guide explains how to set up automated backups for the TimescaleDB database
 1. **Create AWS S3 bucket and IAM user** (see AWS Setup below)
 2. **Edit and seal the AWS secret:**
    ```bash
-   # Edit apps/base/heatpump-mqtt/backup-aws-secret.yaml with your credentials
+   # Create the secret file with your credentials
+   cat > backup-aws-secret.yaml << EOF
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: timescaledb-backup-aws
+     namespace: heatpump-mqtt
+   type: Opaque
+   stringData:
+     AWS_ACCESS_KEY_ID: your-access-key-id
+     AWS_SECRET_ACCESS_KEY: your-secret-access-key
+     AWS_REGION: eu-north-1
+     S3_BUCKET: k12n-homelab-db-backups
+     S3_PREFIX: heatpump-mqtt-backups/
+   EOF
+   
+   # Seal the secret
    kubectl create secret generic timescaledb-backup-aws \
      --from-file=backup-aws-secret.yaml \
      --dry-run=client \
-     -o yaml | kubeseal -o yaml > backup-aws-secret-sealed.yaml
-   mv backup-aws-secret-sealed.yaml apps/base/heatpump-mqtt/
+     -o yaml | kubeseal -o yaml > apps/base/heatpump-mqtt/backup-aws-secret-sealed.yaml
+   
+   # Clean up the plaintext file
+   rm backup-aws-secret.yaml
    ```
 3. **Apply the resources:**
    ```bash
