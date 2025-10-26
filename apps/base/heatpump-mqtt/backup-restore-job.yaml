@@ -1,0 +1,130 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: timescaledb-restore
+  namespace: heatpump-mqtt
+spec:
+  template:
+    metadata:
+      labels:
+        app: timescaledb-restore
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: restore
+          image: alpine:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache postgresql-client aws-cli
+              
+              # Environment variables
+              PGHOST=timescaledb.heatpump-mqtt.svc.cluster.local
+              PGPORT=5432
+              PGDATABASE=timescaledb
+              
+              echo "Restore Job - Usage Instructions:"
+              echo "1. Set BACKUP_FILE env var to the backup file in S3"
+              echo "2. This job will:"
+              echo "   - Download backup from S3"
+              echo "   - Drop and recreate the database"
+              echo "   - Restore the backup"
+              echo ""
+              echo "Example BACKUP_FILE: heatpump-backup-20241215-020000.sql.gz"
+              
+              if [ -z "$BACKUP_FILE" ]; then
+                echo "ERROR: BACKUP_FILE environment variable is not set"
+                echo "Please set it to the backup filename (without path)"
+                exit 1
+              fi
+              
+              S3_KEY="${S3_PREFIX}${BACKUP_FILE}"
+              
+              echo "Starting restore at $(date)"
+              echo "Backup file: ${BACKUP_FILE}"
+              echo "S3 location: s3://${S3_BUCKET}/${S3_KEY}"
+              
+              # Download backup from S3
+              echo "Downloading backup from S3..."
+              aws s3 cp "s3://${S3_BUCKET}/${S3_KEY}" /tmp/backup.sql.gz \
+                --region $AWS_REGION
+              
+              echo "Backup downloaded: $(ls -lh /tmp/backup.sql.gz)"
+              
+              # Close all connections to the database
+              echo "Closing all database connections..."
+              psql -h $PGHOST -p $PGPORT -U postgres -c "
+                SELECT pg_terminate_backend(pid)
+                FROM pg_stat_activity
+                WHERE datname = '$PGDATABASE' AND pid <> pg_backend_pid();
+              " || true
+              
+              # Drop and recreate database
+              echo "Dropping database if exists..."
+              psql -h $PGHOST -p $PGPORT -U postgres -c "
+                DROP DATABASE IF EXISTS ${PGDATABASE};
+              " || true
+              
+              echo "Creating database..."
+              psql -h $PGHOST -p $PGPORT -U postgres -c "
+                CREATE DATABASE ${PGDATABASE};
+              "
+              
+              # Restore the backup
+              echo "Restoring backup..."
+              gunzip -c /tmp/backup.sql.gz | psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE
+              
+              echo "Restore completed at $(date)"
+              echo "Please verify the restore was successful"
+              
+              # Cleanup
+              rm -f /tmp/backup.sql.gz
+          env:
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_PASSWORD
+            # BACKUP_FILE should be set when creating the job
+            - name: BACKUP_FILE
+              value: "" # Set this when running the job
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: AWS_REGION
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: S3_BUCKET
+            - name: S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: S3_PREFIX
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+
