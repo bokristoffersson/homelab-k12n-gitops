@@ -42,15 +42,12 @@ spec:
                   matcherRegex: "trace_id=(\\w+)"
                   name: "TraceID"
                   url: "$${__value.raw}"
+      configmaps:
+        - grafana-timescaledb-datasource
 
-          - name: TimescaleDB
-            type: postgres
-            url: timescaledb.heatpump-mqtt.svc.cluster.local:5432
-            access: proxy
-            database: heatpump
-            jsonData:
-              sslmode: disable
-              timescaledb: true
+    envFrom:
+      - secretRef:
+          name: grafana-timescaledb-secret
 
     admin:
       existingSecret: grafana-admin

@@ -4,6 +4,9 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - grafana-secret-sealed.yaml
+  - dashboard-energy-configmap.yaml
+  - grafana-timescaledb-secret-sealed.yaml
+  - grafana-timescaledb-datasource.yaml
   - helmrelease.yaml
 
 commonLabels:
