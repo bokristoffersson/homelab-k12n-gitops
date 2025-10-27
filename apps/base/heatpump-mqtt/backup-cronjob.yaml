@@ -20,13 +20,15 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: backup
-              image: alpine:latest
+              image: postgres:16
               command:
-                - /bin/sh
+                - /bin/bash
                 - -c
                 - |
                   set -e
-                  apk add --no-cache postgresql-client aws-cli
+                  
+                  # Install AWS CLI
+                  apt-get update && apt-get install -y awscli && apt-get clean
                   
                   # Environment variables
                   PGHOST=timescaledb.heatpump-mqtt.svc.cluster.local
