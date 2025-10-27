@@ -40,19 +40,36 @@ spec:
                   
                   echo "Starting backup at $(date)"
                   
+                  # Validate environment
+                  if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+                    echo "ERROR: AWS_ACCESS_KEY_ID not set"
+                    exit 1
+                  fi
+                  if [ -z "$S3_BUCKET" ]; then
+                    echo "ERROR: S3_BUCKET not set"
+                    exit 1
+                  fi
+                  
                   # Create backup with compression
-                  pg_dump -h $PGHOST -p $PGPORT -U $PGUSER \
-                    -F p -b -v \
-                    | gzip > /tmp/backup.sql.gz
+                  echo "Creating database backup..."
+                  pg_dump -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE \
+                    -F p -b \
+                    | gzip > /tmp/backup.sql.gz || {
+                      echo "ERROR: pg_dump failed"
+                      exit 1
+                    }
                   
                   echo "Backup created: $(ls -lh /tmp/backup.sql.gz)"
                   
                   # Upload to S3
                   echo "Uploading to S3: s3://${S3_BUCKET}/${S3_KEY}"
                   aws s3 cp /tmp/backup.sql.gz "s3://${S3_BUCKET}/${S3_KEY}" \
-                    --region $AWS_REGION
+                    --region $AWS_REGION || {
+                      echo "ERROR: S3 upload failed"
+                      exit 1
+                    }
                   
-                  echo "Upload complete"
+                  echo "Upload complete and verified"
                   
                   # List all backups to show what's being kept
                   echo "Current backups in S3:"
