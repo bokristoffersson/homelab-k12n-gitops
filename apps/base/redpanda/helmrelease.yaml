@@ -23,3 +23,30 @@ spec:
         enabled: true
         size: 50Gi
         storageClass: longhorn
+
+    tls:
+      enabled: false
+
+    external:
+      enabled: false
+      service:
+        enabled: false
+
+    listeners:
+      admin:
+        tls:
+          enabled: false
+        external:
+          default:
+            enabled: false
+      kafka:
+        port: 9092
+        tls:
+          enabled: false
+        external:
+          default:
+            enabled: false
+      http:
+        enabled: false
+      schemaRegistry:
+        enabled: false

@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redpanda-topics-setup
+  namespace: redpanda
+  annotations:
+    "fluxcd.io/ignore": "false"
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        # Wait for Redpanda to be ready
+        - name: wait-for-redpanda
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Redpanda to be ready..."
+              until nc -z redpanda.redpanda.svc.cluster.local 9092; do
+                echo "Waiting for Redpanda on port 9092..."
+                sleep 2
+              done
+              echo "Redpanda is ready!"
+        # Create topics
+        - name: create-topics
+          image: docker.redpanda.com/redpandadata/redpanda:latest
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              
+              # Check and create heatpump-realtime topic (1 hour retention)
+              if ! rpk topic describe heatpump-realtime --brokers redpanda.redpanda.svc.cluster.local:9092 2>/dev/null; then
+                echo "Creating heatpump-realtime topic..."
+                rpk topic create heatpump-realtime \
+                  --brokers redpanda.redpanda.svc.cluster.local:9092 \
+                  --partitions 1 \
+                  --replicas 1 \
+                  --retention-ms 3600000 \
+                  --segment-ms 300000
+              else
+                echo "heatpump-realtime topic already exists"
+              fi
+              
+              # Check and create energy-realtime topic (24 hours retention)
+              if ! rpk topic describe energy-realtime --brokers redpanda.redpanda.svc.cluster.local:9092 2>/dev/null; then
+                echo "Creating energy-realtime topic..."
+                rpk topic create energy-realtime \
+                  --brokers redpanda.redpanda.svc.cluster.local:9092 \
+                  --partitions 1 \
+                  --replicas 1 \
+                  --retention-ms 86400000 \
+                  --segment-ms 900000
+              else
+                echo "energy-realtime topic already exists"
+              fi
+              
+              # List all topics to verify
+              echo "Verifying topics..."
+              rpk topic list --brokers redpanda.redpanda.svc.cluster.local:9092
+              
+              echo "Topic setup complete!"
+      containers:
+        - name: complete
+          image: busybox:latest
+          command: ["sh", "-c", "echo Topics setup job completed successfully"]
+      backoffLimit: 3
+  # Don't keep completed jobs (optional, uncomment if you want cleanup)
+  # ttlSecondsAfterFinished: 300
+
