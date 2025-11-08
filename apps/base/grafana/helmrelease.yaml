@@ -57,8 +57,6 @@ spec:
                   matcherRegex: "trace_id=(\\w+)"
                   name: "TraceID"
                   url: "$${__value.raw}"
-      configmaps:
-        - grafana-timescaledb-datasource
 
     admin:
       existingSecret: grafana-admin
