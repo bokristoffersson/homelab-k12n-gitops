@@ -5,6 +5,10 @@ metadata:
   namespace: grafana
 spec:
   interval: 5m
+  install:
+    timeout: 15m
+  upgrade:
+    timeout: 15m
   chart:
     spec:
       chart: grafana
