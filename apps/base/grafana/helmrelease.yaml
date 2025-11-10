@@ -39,24 +39,24 @@ spec:
       datasources.yaml:
         apiVersion: 1
         datasources:
-          - name: Prometheus
-            type: prometheus
-            url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-            access: proxy
-            isDefault: false
+        - name: Prometheus
+          type: prometheus
+          url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
+          access: proxy
+          isDefault: false
 
-          - name: Loki
-            type: loki
-            access: proxy
-            url: http://loki-gateway.monitoring.svc.cluster.local
-            isDefault: false
-            jsonData:
-              maxLines: 1000
-              derivedFields:
-                - datasourceUid: prometheus
-                  matcherRegex: "trace_id=(\\w+)"
-                  name: "TraceID"
-                  url: "$${__value.raw}"
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki-gateway.monitoring.svc.cluster.local
+          isDefault: false
+          jsonData:
+            maxLines: 1000
+            derivedFields:
+              - datasourceUid: prometheus
+                matcherRegex: "trace_id=(\\w+)"
+                name: "TraceID"
+                url: "$${__value.raw}"
 
     admin:
       existingSecret: grafana-admin
