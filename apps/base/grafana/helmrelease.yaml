@@ -92,15 +92,6 @@ spec:
             allowUiUpdates: true
             options:
               path: /var/lib/grafana/dashboards/default
-
-    dashboards:
-      default:
-        energy-dashboard:
-          file: energy-dashboard.json
-
-    extraConfigmapMounts:
-      - name: energy-dashboard
-        mountPath: /var/lib/grafana/dashboards/default
-        configMap: energy-dashboard
-        readOnly: false
+    dashboardsConfigMaps:
+      default: energy-dashboard
 
