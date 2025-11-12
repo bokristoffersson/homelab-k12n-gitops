@@ -16,9 +16,9 @@ data:
         url: timescaledb.heatpump-mqtt.svc.cluster.local:5432
         access: proxy
         database: timescaledb
-        user: "#{PG_USER}"
+        user: "${PG_USER}"
         secureJsonData:
-          password: "#{PG_PASSWORD}"
+          password: "${PG_PASSWORD}"
         jsonData:
           sslmode: disable
           timescaledb: true
