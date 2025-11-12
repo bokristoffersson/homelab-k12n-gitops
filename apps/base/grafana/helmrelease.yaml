@@ -46,6 +46,7 @@ spec:
                 matcherRegex: "trace_id=(\\w+)"
                 name: "TraceID"
                 url: "$${__value.raw}"
+
         - name: PostgresSQL
           type: postgres
           uid: timescaledb
@@ -75,6 +76,5 @@ spec:
       type: ClusterIP
       port: 80
 
-  envFromSecret: 
-    - name: grafana-timescaledb-secret
+    envFromSecret: grafana-timescaledb-secret
 
