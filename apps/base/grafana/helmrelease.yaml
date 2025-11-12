@@ -24,21 +24,6 @@ spec:
       enabled: true
       storageClassName: longhorn
 
-    sidecar:
-      datasources:
-        enabled: true
-        label: grafana_datasource
-        searchNamespace: grafana
-        envValueFrom:
-          PG_USER:
-            secretKeyRef:
-              name: grafana-timescaledb-secret
-              key: POSTGRES_USER
-          PG_PASSWORD:
-            secretKeyRef:
-              name: grafana-timescaledb-secret
-              key: POSTGRES_PASSWORD
-
     datasources:
       datasources.yaml:
         apiVersion: 1
@@ -61,6 +46,17 @@ spec:
                 matcherRegex: "trace_id=(\\w+)"
                 name: "TraceID"
                 url: "$${__value.raw}"
+        - name: PostgresSQL
+          type: postgres
+          uid: timescaledb
+          url: timescaledb.heatpump-mqtt.svc.cluster.local:5432
+          access: proxy
+          database: "#{POSTGRES_DB}"
+          jsonData:
+            sslmode: disable
+            timescaledb: true
+          user: "#{POSTGRES_USER}"
+          password: "#{POSTGRES_PASSWORD}"
 
     admin:
       existingSecret: grafana-admin
@@ -79,19 +75,6 @@ spec:
       type: ClusterIP
       port: 80
 
-    dashboardProviders:
-      dashboardproviders.yaml:
-        apiVersion: 1
-        providers:
-          - name: 'default'
-            orgId: 1
-            folder: ''
-            type: file
-            disableDeletion: false
-            editable: true
-            allowUiUpdates: true
-            options:
-              path: /var/lib/grafana/dashboards/default
-    dashboardsConfigMaps:
-      default: energy-dashboard
+  envFromSecret: 
+    - name: grafana-timescaledb-secret
 
