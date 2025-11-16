@@ -1,0 +1,69 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backup-debug-output
+  namespace: heatpump-mqtt
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: backup
+          image: postgres:16
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -ex
+              echo "Step 1: Install AWS CLI"
+              apt-get update && apt-get install -y awscli && apt-get clean
+              
+              echo "Step 2: Check environment"
+              echo "PGHOST: $PGHOST"
+              echo "PGDATABASE: $PGDATABASE"
+              echo "S3_BUCKET: $S3_BUCKET"
+              echo "AWS_REGION: $AWS_REGION"
+              
+              echo "Step 3: Create test backup"
+              echo "Creating small test file..."
+              echo "test backup data" | gzip > /tmp/test-backup.sql.gz
+              
+              echo "Step 4: Upload to S3"
+              aws s3 cp /tmp/test-backup.sql.gz "s3://$S3_BUCKET/$S3_PREFIX/test-backup-$(date +%s).sql.gz" --region $AWS_REGION
+              
+              echo "Step 5: List S3 contents"
+              aws s3 ls "s3://$S3_BUCKET/$S3_PREFIX" --region $AWS_REGION
+              
+              echo "SUCCESS: All steps completed"
+          env:
+            - name: PGHOST
+              value: "timescaledb.heatpump-mqtt.svc.cluster.local"
+            - name: PGDATABASE
+              value: "timescaledb"
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: S3_BUCKET
+            - name: S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: S3_PREFIX
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-backup-aws
+                  key: AWS_REGION
+
