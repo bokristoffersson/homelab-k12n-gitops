@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-materialized-views
+  namespace: heatpump-mqtt
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: psql
+        image: timescale/timescaledb:latest-pg16
+        command:
+        - /bin/bash
+        - -c
+        - |
+          # Get credentials from secret
+          export PGHOST=timescaledb.heatpump-mqtt.svc.cluster.local
+          export PGPORT=5432
+          export PGUSER=$(kubectl get secret timescaledb-secret -n heatpump-mqtt -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
+          export PGPASSWORD=$(kubectl get secret timescaledb-secret -n heatpump-mqtt -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
+          export PGDATABASE=$(kubectl get secret timescaledb-secret -n heatpump-mqtt -o jsonpath='{.data.POSTGRES_DB}' | base64 -d)
+          
+          if [ -z "$PGUSER" ] || [ -z "$PGPASSWORD" ]; then
+            echo "Error: Could not read credentials from secret"
+            exit 1
+          fi
+          
+          echo "Creating materialized views..."
+          
+          # Create heatpump_daily_summary
+          psql <<EOF
+          CREATE EXTENSION IF NOT EXISTS timescaledb;
+          
+          CREATE MATERIALIZED VIEW IF NOT EXISTS heatpump_daily_summary
+          WITH (timescaledb.continuous) AS
+          SELECT 
+              time_bucket('1 day', ts) AS day,
+              (LAST(runtime_compressor, ts) - FIRST(runtime_compressor, ts)) AS daily_runtime_compressor_increase,
+              (LAST(runtime_hotwater, ts) - FIRST(runtime_hotwater, ts)) AS daily_runtime_hotwater_increase,
+              (LAST(runtime_3kw, ts) - FIRST(runtime_3kw, ts)) AS daily_runtime_3kw_increase,
+              (LAST(runtime_6kw, ts) - FIRST(runtime_6kw, ts)) AS daily_runtime_6kw_increase,
+              AVG(outdoor_temp) AS avg_outdoor_temp,
+              AVG(supplyline_temp) AS avg_supplyline_temp,
+              AVG(returnline_temp) AS avg_returnline_temp,
+              AVG(hotwater_temp) AS avg_hotwater_temp,
+              AVG(brine_out_temp) AS avg_brine_out_temp,
+              AVG(brine_in_temp) AS avg_brine_in_temp
+          FROM heatpump
+          GROUP BY day;
+          
+          SELECT * FROM timescaledb_information.continuous_aggregates WHERE view_name = 'heatpump_daily_summary';
+          EOF
+          
+          echo "Materialized views created successfully!"
+        env:
+        - name: KUBERNETES_SERVICE_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+      serviceAccountName: default
+

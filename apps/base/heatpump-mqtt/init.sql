@@ -42,7 +42,7 @@ SELECT
     (LAST(runtime_3kw, ts) - FIRST(runtime_3kw, ts)) AS daily_runtime_3kw_increase,
     (LAST(runtime_6kw, ts) - FIRST(runtime_6kw, ts)) AS daily_runtime_6kw_increase,
     -- Temperaturer: genomsnitt under dagen
-    AVG(outdoor_temp) AS avg_outdoor_temp,
+    AVG(outdoor_temp) AS avg_outdoor_temp
 FROM heatpump
 GROUP BY day;
 
