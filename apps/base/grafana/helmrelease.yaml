@@ -24,40 +24,34 @@ spec:
       enabled: true
       storageClassName: longhorn
 
-    datasources:
-      datasources.yaml:
-        apiVersion: 1
-        datasources:
-        - name: Prometheus
-          type: prometheus
-          url: http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090
-          access: proxy
-          isDefault: false
+    # Environment variables available to all containers (including sidecar)
+    extraEnv:
+      - name: PG_USER
+        valueFrom:
+          secretKeyRef:
+            name: grafana-timescaledb-secret
+            key: POSTGRES_USER
+      - name: PG_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: grafana-timescaledb-secret
+            key: POSTGRES_PASSWORD
 
-        - name: Loki
-          type: loki
-          access: proxy
-          url: http://loki-gateway.monitoring.svc.cluster.local
-          isDefault: false
-          jsonData:
-            maxLines: 1000
-            derivedFields:
-              - datasourceUid: prometheus
-                matcherRegex: "trace_id=(\\w+)"
-                name: "TraceID"
-                url: "$${__value.raw}"
-
-        - name: PostgresSQL
-          type: postgres
-          uid: timescaledb
-          url: timescaledb.heatpump-mqtt.svc.cluster.local:5432
-          access: proxy
-          database: "#{POSTGRES_DB}"
-          jsonData:
-            sslmode: disable
-            timescaledb: true
-          user: "#{POSTGRES_USER}"
-          password: "#{POSTGRES_PASSWORD}"
+    sidecar:
+      datasources:
+        enabled: true
+        label: grafana_datasource
+        searchNamespace: grafana
+        # Also set in sidecar for explicit configuration
+        envValueFrom:
+          PG_USER:
+            secretKeyRef:
+              name: grafana-timescaledb-secret
+              key: POSTGRES_USER
+          PG_PASSWORD:
+            secretKeyRef:
+              name: grafana-timescaledb-secret
+              key: POSTGRES_PASSWORD
 
     admin:
       existingSecret: grafana-admin
@@ -76,5 +70,6 @@ spec:
       type: ClusterIP
       port: 80
 
-    envFromSecret: grafana-timescaledb-secret
+    downloadDashboards:
+      enabled: false
 

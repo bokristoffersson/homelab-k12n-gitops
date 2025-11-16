@@ -1,0 +1,63 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grafana-datasource-configmap-generator
+  namespace: grafana
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: datasource-configmap-generator
+      restartPolicy: OnFailure
+      containers:
+      - name: generator
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Get values from secret
+          PG_USER=$(kubectl get secret grafana-timescaledb-secret -n grafana -o jsonpath='{.data.POSTGRES_USER}' | base64 -d)
+          PG_PASSWORD=$(kubectl get secret grafana-timescaledb-secret -n grafana -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
+          PG_DB=$(kubectl get secret grafana-timescaledb-secret -n grafana -o jsonpath='{.data.POSTGRES_DB}' | base64 -d)
+          
+          if [ -z "$PG_USER" ] || [ -z "$PG_PASSWORD" ]; then
+            echo "Error: Could not read credentials from secret"
+            exit 1
+          fi
+          
+          # Create ConfigMap with substituted values
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: grafana-timescaledb-datasource
+            namespace: grafana
+            labels:
+              app: grafana
+              grafana_datasource: "1"
+          data:
+            timescaledb.yaml: |
+              apiVersion: 1
+              datasources:
+                - name: TimescaleDB
+                  type: postgres
+                  uid: timescaledb
+                  url: timescaledb.heatpump-mqtt.svc.cluster.local:5432
+                  access: proxy
+                  database: ${PG_DB:-timescaledb}
+                  user: ${PG_USER}
+                  secureJsonData:
+                    password: ${PG_PASSWORD}
+                  jsonData:
+                    sslmode: disable
+                    timescaledb: true
+                    postgresVersion: 1200
+                    maxOpenConns: 100
+                    maxIdleConns: 100
+                    connMaxLifetime: 14400
+          EOF
+          
+          echo "ConfigMap updated with substituted values"
+          kubectl get configmap grafana-timescaledb-datasource -n grafana
+

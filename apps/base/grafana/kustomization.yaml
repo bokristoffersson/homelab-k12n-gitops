@@ -6,8 +6,8 @@ resources:
   - grafana-secret-sealed.yaml
   - dashboard-energy-configmap.yaml
   - grafana-timescaledb-secret-sealed.yaml
+  - grafana-prometheus-datasource.yaml
+  - grafana-loki-datasource.yaml
+  - datasource-generator-rbac.yaml
+  - datasource-configmap-generator-job.yaml
   - helmrelease.yaml
-
-commonLabels:
-  app: grafana
-  version: base

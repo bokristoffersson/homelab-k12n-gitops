@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: datasource-configmap-generator
+  namespace: grafana
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: datasource-configmap-generator
+  namespace: grafana
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["grafana-timescaledb-secret"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["grafana-timescaledb-datasource"]
+  verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: datasource-configmap-generator
+  namespace: grafana
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: datasource-configmap-generator
+subjects:
+- kind: ServiceAccount
+  name: datasource-configmap-generator
+  namespace: grafana
+
