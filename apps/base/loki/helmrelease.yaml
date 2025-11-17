@@ -34,7 +34,7 @@ spec:
       service:
         enabled: true
         type: ClusterIP
-        port: 80
+        port: 3100
         targetPort: 3100
 
     loki:
