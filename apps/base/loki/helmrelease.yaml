@@ -36,6 +36,7 @@ spec:
         type: ClusterIP
         port: 3100
         targetPort: 3100
+        name: http-metrics
 
     loki:
       storage:
