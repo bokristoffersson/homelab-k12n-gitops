@@ -5,6 +5,9 @@ metadata:
   namespace: monitoring
 spec:
   interval: 15m
+  timeout: 20m
+  install:
+    timeout: 15m
   chart:
     spec:
       chart: alloy
