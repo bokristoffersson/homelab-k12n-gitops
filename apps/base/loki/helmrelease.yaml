@@ -6,7 +6,15 @@ metadata:
   namespace: monitoring
 spec:
   interval: 15m
-  timeout: 10m
+  timeout: 20m
+  install:
+    remediation:
+      retries: 1
+      retryTimeout: 5m
+  upgrade:
+    remediation:
+      retries: 1
+      retryTimeout: 5m
   chart:
     spec:
       chart: loki
@@ -37,6 +45,13 @@ spec:
         port: 3100
         targetPort: 3100
         name: http-metrics
+      extraArgs:
+        - -log.level=info
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
 
     loki:
       storage:
