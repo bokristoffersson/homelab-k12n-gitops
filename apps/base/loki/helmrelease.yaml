@@ -10,11 +10,9 @@ spec:
   install:
     remediation:
       retries: 1
-      retryTimeout: 5m
   upgrade:
     remediation:
       retries: 1
-      retryTimeout: 5m
   chart:
     spec:
       chart: loki

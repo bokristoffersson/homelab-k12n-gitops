@@ -13,9 +13,10 @@ Flux was hanging during Loki installation/upgrade due to:
 - **Reason**: Helm upgrades were taking longer than 10 minutes and timing out
 
 ### 2. Added Remediation Strategy
-- Added `install.remediation` with 1 retry and 5m timeout
-- Added `upgrade.remediation` with 1 retry and 5m timeout
+- Added `install.remediation` with 1 retry
+- Added `upgrade.remediation` with 1 retry
 - **Reason**: Allows automatic retry on transient failures
+- **Note**: `retryTimeout` is not a valid field in the HelmRelease schema; only `retries` is supported
 
 ### 3. Temporarily Suspended and Resumed
 - Suspended HelmRelease to stop Flux from hanging
