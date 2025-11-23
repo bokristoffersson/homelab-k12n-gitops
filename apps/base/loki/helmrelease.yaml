@@ -47,6 +47,13 @@ spec:
         name: http-metrics
       extraArgs:
         - -log.level=info
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 2000m
+          memory: 4Gi
       containerSecurityContext:
         allowPrivilegeEscalation: false
         capabilities:

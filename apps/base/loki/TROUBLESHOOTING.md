@@ -43,25 +43,33 @@ The Loki pod is running but not passing its readiness probe. The `/ready` endpoi
 
 **Next Steps to Diagnose:**
 
-1. **Check Loki logs** (when accessible):
+### Note: Proxy Issues
+If you encounter "502 Bad Gateway" or proxy errors when trying to access logs or exec into pods:
+- This is a kubelet/proxy connectivity issue between kubectl and the node
+- Use alternative methods below to diagnose
+
+1. **Check pod events** (works despite proxy issues):
    ```bash
-   kubectl logs loki-0 -n monitoring -c loki
+   kubectl get events -n monitoring --field-selector involvedObject.name=loki-0 --sort-by='.lastTimestamp'
+   kubectl describe pod loki-0 -n monitoring
    ```
 
 2. **Check MinIO connectivity**:
    ```bash
    kubectl get endpoints loki-minio -n monitoring
    kubectl get pods -n monitoring | grep minio
+   kubectl get svc loki-minio -n monitoring
    ```
 
 3. **Check storage volumes**:
    ```bash
    kubectl get pvc -n monitoring | grep loki
+   kubectl describe pvc -n monitoring | grep loki
    ```
 
-4. **Test Loki readiness endpoint**:
+4. **Check Loki configuration**:
    ```bash
-   kubectl exec loki-0 -n monitoring -c loki -- wget -qO- http://localhost:3100/ready
+   kubectl get configmap loki -n monitoring -o yaml | grep -A 30 "storage:"
    ```
 
 5. **Check resource usage**:
@@ -69,12 +77,31 @@ The Loki pod is running but not passing its readiness probe. The `/ready` endpoi
    kubectl top pod loki-0 -n monitoring
    ```
 
+6. **Alternative: Access logs via node** (if you have SSH access to the node):
+   ```bash
+   # SSH to the node running loki-0, then:
+   sudo crictl logs <container-id>
+   # Or via containerd:
+   sudo ctr -n k8s.io containers ls | grep loki
+   ```
+
+7. **Check readiness probe status**:
+   ```bash
+   kubectl get pod loki-0 -n monitoring -o jsonpath='{.status.containerStatuses[?(@.name=="loki")].ready}'
+   kubectl get pod loki-0 -n monitoring -o jsonpath='{.status.containerStatuses[?(@.name=="loki")].lastState}'
+   ```
+
 ## Configuration Changes Made
 
 See `apps/base/loki/helmrelease.yaml`:
 - Timeout increased to 20m
 - Remediation strategy added
+- Resource limits added (requests: 100m CPU, 512Mi memory; limits: 2000m CPU, 4Gi memory)
 - HelmRelease unsuspended
+
+### 5. Added Resource Limits
+- **Added**: CPU and memory requests/limits to prevent OOM issues
+- **Reason**: Unbounded resource usage can cause pods to be killed or hang
 
 ## Monitoring Progress
 
