@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+  timescaledb:
+    image: timescale/timescaledb:2.14.2-pg16
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  app:
+    build: .
+    depends_on:
+      mosquitto: { condition: service_started }
+      timescaledb: { condition: service_healthy }
+    environment:
+      APP_CONFIG: /config/config.yaml
+      RUST_LOG: info
+    volumes:
+      - ./config/config.example.yaml:/config/config.yaml:ro
