@@ -2,6 +2,8 @@
 // These tests use a test database with generated data
 // Set DATABASE_URL environment variable to run tests
 // Example: DATABASE_URL=postgresql://user:pass@localhost/db cargo test --test integration_test
+//
+// Note: Tests run sequentially to avoid interference
 
 use heatpump_api::{
     repositories::HeatpumpRepository, services::HeatpumpService,
@@ -34,11 +36,11 @@ async fn test_service_list_with_default_params() {
     let params = HeatpumpQueryParams::default();
     let result = service.list(params).await;
 
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Service list failed: {:?}", result.err());
     let response = result.unwrap();
-    assert!(!response.data.is_empty());
-    assert_eq!(response.data.len(), 5);
-    assert_eq!(response.total, 5);
+    assert!(!response.data.is_empty(), "Response data is empty");
+    assert_eq!(response.data.len(), 5, "Expected 5 readings, got {}. Data: {:?}", response.data.len(), response.data.iter().map(|r| (r.ts, r.device_id.clone())).collect::<Vec<_>>());
+    assert_eq!(response.total, 5, "Expected total 5, got {}", response.total);
 }
 
 #[tokio::test]
@@ -71,14 +73,14 @@ async fn test_service_list_with_filters() {
     };
 
     let result = service.list(params).await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Service list failed: {:?}", result.err());
     let response = result.unwrap();
-    assert_eq!(response.data.len(), 3);
-    assert_eq!(response.total, 3);
+    assert_eq!(response.data.len(), 3, "Expected 3 readings, got {}. Data: {:?}", response.data.len(), response.data.iter().map(|r| (r.ts, r.device_id.clone())).collect::<Vec<_>>());
+    assert_eq!(response.total, 3, "Expected total 3, got {}", response.total);
     
     // Verify all readings have the correct device_id
     for reading in &response.data {
-        assert_eq!(reading.device_id, Some(test_device_id.to_string()));
+        assert_eq!(reading.device_id, Some(test_device_id.to_string()), "Found reading with wrong device_id: {:?}", reading.device_id);
     }
 }
 
@@ -110,10 +112,10 @@ async fn test_service_list_with_room_filter() {
     };
 
     let result = service.list(params).await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Service list failed: {:?}", result.err());
     let response = result.unwrap();
-    assert_eq!(response.data.len(), 4);
-    assert_eq!(response.total, 4);
+    assert_eq!(response.data.len(), 4, "Expected 4 readings, got {}. Data: {:?}", response.data.len(), response.data.iter().map(|r| (r.ts, r.room.clone())).collect::<Vec<_>>());
+    assert_eq!(response.total, 4, "Expected total 4, got {}", response.total);
 }
 
 #[tokio::test]
@@ -154,10 +156,10 @@ async fn test_service_list_with_time_range() {
     };
 
     let result = service.list(params).await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Service list failed: {:?}", result.err());
     let response = result.unwrap();
-    assert_eq!(response.data.len(), 3);
-    assert_eq!(response.total, 3);
+    assert_eq!(response.data.len(), 3, "Expected 3 readings, got {}. Data: {:?}", response.data.len(), response.data.iter().map(|r| (r.ts, r.device_id.clone())).collect::<Vec<_>>());
+    assert_eq!(response.total, 3, "Expected total 3, got {}", response.total);
 }
 
 #[tokio::test]
@@ -181,10 +183,10 @@ async fn test_service_list_with_pagination() {
     };
 
     let result = service.list(params).await;
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "Service list failed: {:?}", result.err());
     let response = result.unwrap();
-    assert_eq!(response.data.len(), 5);
-    assert_eq!(response.total, 10);
+    assert_eq!(response.data.len(), 5, "Expected 5 readings on first page, got {}", response.data.len());
+    assert_eq!(response.total, 10, "Expected total 10, got {}", response.total);
     assert_eq!(response.limit, 5);
     assert_eq!(response.offset, 0);
 

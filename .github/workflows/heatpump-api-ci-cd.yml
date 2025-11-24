@@ -127,7 +127,7 @@ jobs:
         working-directory: applications/heatpump-api
         env:
           DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-        run: cargo test --release --all-features --verbose --test integration_test
+        run: cargo test --release --all-features --verbose --test integration_test -- --test-threads=1
 
   build-and-push:
     needs: test
