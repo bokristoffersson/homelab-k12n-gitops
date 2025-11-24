@@ -1,15 +1,21 @@
-name: CI/CD Pipeline
+name: mqtt-to-timescale CI/CD
 
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'applications/mqtt-to-timescale/**'
+      - '.github/workflows/mqtt-to-timescale-ci-cd.yml'
   push:
     branches: [main]
+    paths:
+      - 'applications/mqtt-to-timescale/**'
+      - '.github/workflows/mqtt-to-timescale-ci-cd.yml'
 
 env:
   CARGO_TERM_COLOR: always
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository }}/mqtt-to-timescale
 
 jobs:
   test:
@@ -26,12 +32,14 @@ jobs:
         with:
           command: build
           args: --release --all-features
+          use-cross: false
+          working-directory: applications/mqtt-to-timescale
 
       - name: Cache cargo registry
         uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('applications/mqtt-to-timescale/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
@@ -39,34 +47,25 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('applications/mqtt-to-timescale/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-git-
 
       - name: Cache cargo build
         uses: actions/cache@v4
         with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          path: applications/mqtt-to-timescale/target
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('applications/mqtt-to-timescale/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-build-
 
-#      - name: Check formatting
-#        run: cargo fmt -- --check
-
-#      - name: Run clippy
-#        run: cargo clippy -- -D warnings
-
       - name: Build
+        working-directory: applications/mqtt-to-timescale
         run: cargo build --verbose
 
       - name: Run tests
+        working-directory: applications/mqtt-to-timescale
         run: cargo test --verbose
-
-#      - name: Security audit
-#        run: |
-#          cargo install cargo-audit
-#          cargo audit
 
   build-and-push:
     needs: test
@@ -107,10 +106,12 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: applications/mqtt-to-timescale
+          file: applications/mqtt-to-timescale/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
