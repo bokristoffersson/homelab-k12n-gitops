@@ -21,8 +21,24 @@ pub struct ServerConfig {
 
 impl Config {
     pub fn from_env() -> Result<Self, config::ConfigError> {
-        let database_url = env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set");
+        // Build DATABASE_URL from components if not set directly
+        let database_url = if let Ok(url) = env::var("DATABASE_URL") {
+            url
+        } else {
+            // Build from components
+            let host = env::var("DATABASE_HOST")
+                .unwrap_or_else(|_| "localhost".to_string());
+            let port = env::var("DATABASE_PORT")
+                .unwrap_or_else(|_| "5432".to_string());
+            let name = env::var("DATABASE_NAME")
+                .unwrap_or_else(|_| "postgres".to_string());
+            let user = env::var("DATABASE_USER")
+                .expect("DATABASE_USER must be set if DATABASE_URL is not set");
+            let password = env::var("DATABASE_PASSWORD")
+                .expect("DATABASE_PASSWORD must be set if DATABASE_URL is not set");
+            
+            format!("postgresql://{}:{}@{}:{}/{}", user, password, host, port, name)
+        };
         
         let max_connections = env::var("DATABASE_MAX_CONNECTIONS")
             .ok()

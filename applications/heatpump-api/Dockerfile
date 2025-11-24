@@ -56,4 +56,3 @@ COPY --from=builder /app/heatpump-api /usr/local/bin/heatpump-api
 
 ENV RUST_LOG=info
 ENTRYPOINT ["/usr/local/bin/heatpump-api"]
-
