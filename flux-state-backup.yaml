@@ -1,0 +1,1239 @@
+apiVersion: v1
+items:
+- apiVersion: source.toolkit.fluxcd.io/v1
+  kind: GitRepository
+  metadata:
+    annotations:
+      kustomize.toolkit.fluxcd.io/prune: Disabled
+      kustomize.toolkit.fluxcd.io/ssa: Ignore
+    creationTimestamp: "2025-10-08T14:50:27Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      app.kubernetes.io/instance: flux-system
+      app.kubernetes.io/managed-by: flux-operator
+      app.kubernetes.io/part-of: flux
+      app.kubernetes.io/version: v2.7.1
+      fluxcd.controlplane.io/name: flux
+      fluxcd.controlplane.io/namespace: flux-system
+    name: flux-system
+    namespace: flux-system
+    resourceVersion: "14533536"
+    uid: 1daa4b81-bdf2-47e5-b5fc-f8dcbe304dab
+  spec:
+    interval: 1m0s
+    provider: github
+    ref:
+      name: refs/heads/main
+    secretRef:
+      name: flux-system
+    timeout: 60s
+    url: https://github.com/bokristoffersson/homelab-k12n-gitops.git
+  status:
+    artifact:
+      digest: sha256:a73c957437766f0bd30d9f95cfb8ec1858b4605eaee855f105f7e5c8a32ae27e
+      lastUpdateTime: "2025-11-24T16:19:36Z"
+      path: gitrepository/flux-system/flux-system/97b8e595b8a9cc35b74b583b7554f535c1d7bdfe.tar.gz
+      revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      size: 123034
+      url: http://source-controller.flux-system.svc.cluster.local./gitrepository/flux-system/flux-system/97b8e595b8a9cc35b74b583b7554f535c1d7bdfe.tar.gz
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:19:36Z"
+      message: stored artifact for revision 'refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: Succeeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:19:36Z"
+      message: stored artifact for revision 'refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: Succeeded
+      status: "True"
+      type: ArtifactInStorage
+    lastHandledReconcileAt: "2025-11-23T19:56:21.404226053+01:00"
+    observedGeneration: 1
+kind: List
+metadata:
+  resourceVersion: ""
+apiVersion: v1
+items:
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    creationTimestamp: "2025-11-23T18:55:16Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: alloy
+    namespace: flux-system
+    resourceVersion: "14532110"
+    uid: 29f07417-6f21-4ebc-bb21-ab1a03e02c42
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/alloy
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:19:38Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:19:38Z"
+      message: Health check passed in 311.27713ms
+      observedGeneration: 1
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:fbbcfe7e684bc37026ec33157ac92c4d501051e9c64ab0c965cebbd9df1ad28e
+      firstReconciled: "2025-11-23T18:55:38Z"
+      lastReconciled: "2025-11-24T16:19:38Z"
+      lastReconciledDuration: 426.682891ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 133
+    inventory:
+      entries:
+      - id: monitoring_alloy_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    annotations:
+      kustomize.toolkit.fluxcd.io/prune: Disabled
+      kustomize.toolkit.fluxcd.io/ssa: Ignore
+    creationTimestamp: "2025-10-08T14:50:27Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      app.kubernetes.io/instance: flux-system
+      app.kubernetes.io/managed-by: flux-operator
+      app.kubernetes.io/part-of: flux
+      app.kubernetes.io/version: v2.7.1
+      fluxcd.controlplane.io/name: flux
+      fluxcd.controlplane.io/namespace: flux-system
+    name: flux-system
+    namespace: flux-system
+    resourceVersion: "14532068"
+    uid: 64a5a772-fc66-457a-b6b6-c5014fab9dd6
+  spec:
+    force: false
+    interval: 10m0s
+    path: clusters/homelab
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:19:38Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    history:
+    - digest: sha256:c9e656ba0ea48313e687fadaeda5b89d2035fedd3beb4397621c3caf0819f015
+      firstReconciled: "2025-10-26T15:39:38Z"
+      lastReconciled: "2025-11-24T16:19:38Z"
+      lastReconciledDuration: 620.381948ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 2348
+    - digest: sha256:6c38ae1ebc19f1a360bfb73d8aa2eeea8ff58093f4642795aba5dfe681d60350
+      firstReconciled: "2025-10-20T14:00:11Z"
+      lastReconciled: "2025-11-23T18:55:16Z"
+      lastReconciledDuration: 765.063078ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:66fb0cf2a23fa36782c91a78e1bd85eef6fd4a40
+      totalReconciliations: 2770
+    - digest: sha256:b9086934a7cc584172742c6aa3a7181a3433f6f618519a9dafaffa8caf342cc8
+      firstReconciled: "2025-11-23T18:18:08Z"
+      lastReconciled: "2025-11-23T18:53:16Z"
+      lastReconciledDuration: 1.680682734s
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:7eb000aa4ff22ffc227d13315032ca61239cad40
+      totalReconciliations: 2
+    - digest: sha256:0e3b6127ab002cb56ee7098da17cf59d468b5765616eccabd3a6523da16b7206
+      firstReconciled: "2025-11-23T18:06:05Z"
+      lastReconciled: "2025-11-23T18:10:51Z"
+      lastReconciledDuration: 138.346591ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:9a1163f7773016add28a0a4e2dea5c5f6ef05893
+      totalReconciliations: 2
+    - digest: sha256:745c72df79f940f34e93d936a7488541814a0f5f32275cb7c15dc05026b41972
+      firstReconciled: "2025-11-10T19:00:43Z"
+      lastReconciled: "2025-11-10T19:00:43Z"
+      lastReconciledDuration: 349.891331ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:8755d070d8d4191c26da60add17bbc3e1616e9bb
+      totalReconciliations: 1
+    inventory:
+      entries:
+      - id: flux-system_alloy_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_grafana_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_heatpump-mqtt_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_infrastructure-controllers_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_infrastructure-crds_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_infrastructure-sources_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_infrastructure-storage_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_loki_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_mosquitto_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_prometheus_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_redpanda_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_whoami_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    creationTimestamp: "2025-11-10T19:15:29Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 3
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: grafana
+    namespace: flux-system
+    resourceVersion: "14532207"
+    uid: a0aacfb4-9b69-46f3-a8df-3e36d406f3ff
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/grafana
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:19:56Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 3
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:19:56Z"
+      message: Health check passed in 59.871026ms
+      observedGeneration: 3
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:2eef3e013d62a7aca639ab4abb5b15a81332cebfc90e9ce59702490b8a72026a
+      firstReconciled: "2025-11-24T16:19:48Z"
+      lastReconciled: "2025-11-24T16:19:56Z"
+      lastReconciledDuration: 282.268225ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 2
+    - digest: sha256:9fe32df64e5fabddb2ebef77d4940a611b13e5002eeef912f57ba794c192c82b
+      firstReconciled: "2025-11-16T20:36:24Z"
+      lastReconciled: "2025-11-24T16:10:24Z"
+      lastReconciledDuration: 10.240275538s
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:65c844d4dab29f59df894a9303ac4853e85531f3
+      totalReconciliations: 993
+    - digest: sha256:8836bee3fb90d94036858dcbd1387d4bd02b809f2af0cfee384065b707d6ce8b
+      firstReconciled: "2025-11-16T20:40:22Z"
+      lastReconciled: "2025-11-17T18:50:43Z"
+      lastReconciledDuration: 10.318186521s
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:39a7574d6c5c46d1acb35bf634d6a31bd5568575
+      totalReconciliations: 132
+    - digest: sha256:4cdef252a3a0d746b9ae63cd6b1425307b2b53135eb4c7cca35aab9adbf7409c
+      firstReconciled: "2025-11-16T20:27:30Z"
+      lastReconciled: "2025-11-16T20:27:30Z"
+      lastReconciledDuration: 10.384491481s
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:682f1e5720e5911fd7597fae12b86829d2a9d4f6
+      totalReconciliations: 1
+    - digest: sha256:0779313bcd73c8a10a5105398f7b7c21032cffb4cb4ec601efc29f2143a1176b
+      firstReconciled: "2025-11-12T18:26:31Z"
+      lastReconciled: "2025-11-13T06:56:48Z"
+      lastReconciledDuration: 156.147026ms
+      lastReconciledStatus: HealthCheckFailed
+      metadata:
+        revision: refs/heads/main@sha1:3640c3d163d78d5b16d86c8ec24e676ea26ba975
+      totalReconciliations: 77
+    inventory:
+      entries:
+      - id: _grafana__Namespace
+        v: v1
+      - id: grafana_datasource-configmap-generator__ServiceAccount
+        v: v1
+      - id: grafana_datasource-configmap-generator_rbac.authorization.k8s.io_Role
+        v: v1
+      - id: grafana_datasource-configmap-generator_rbac.authorization.k8s.io_RoleBinding
+        v: v1
+      - id: grafana_grafana-loki-datasource__ConfigMap
+        v: v1
+      - id: grafana_grafana-prometheus-datasource__ConfigMap
+        v: v1
+      - id: grafana_grafana-datasource-configmap-generator_batch_Job
+        v: v1
+      - id: grafana_grafana-admin_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: grafana_grafana-timescaledb-secret_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: grafana_grafana_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 3
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    annotations:
+      reconcile.fluxcd.io/requestedAt: "2025-10-26T16:28:38.628846666+01:00"
+    creationTimestamp: "2025-10-20T14:12:12Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 3
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: heatpump-mqtt
+    namespace: flux-system
+    resourceVersion: "14532098"
+    uid: 9f8ad357-cf58-42ad-b855-3f83e1547005
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/heatpump-mqtt
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:19:38Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 3
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:19:38Z"
+      message: Health check passed in 266.67699ms
+      observedGeneration: 3
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:f9b6bc5f469750e2c7dd627508d6efc0ee8425afeb3c141a5844bde29e5b524a
+      firstReconciled: "2025-10-27T14:50:20Z"
+      lastReconciled: "2025-11-24T16:19:38Z"
+      lastReconciledDuration: 720.059954ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 4075
+    - digest: sha256:23f7165d3417563009dbb52d85ecc880c9a7db15708736b5f5605dfd3f34970d
+      firstReconciled: "2025-10-27T13:06:59Z"
+      lastReconciled: "2025-10-27T14:43:20Z"
+      lastReconciledDuration: 280.990041ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:2dcbe2600a36e891451917f537b948f3dc7fb1e2
+      totalReconciliations: 13
+    - digest: sha256:aa460b8fd047a4e6cf577fd3d07d6a1a8c7b8f2060fdef4c169376d5be3ea2c4
+      firstReconciled: "2025-10-26T15:28:37Z"
+      lastReconciled: "2025-10-27T10:41:38Z"
+      lastReconciledDuration: 257.841341ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:a604f89e50a492d09c2dd34457838e61c6499cee
+      totalReconciliations: 123
+    - digest: sha256:f98d809234055f32461f5a0a55ca069909e7a536c6c0f64dba605f69e5967ef9
+      firstReconciled: "2025-10-26T14:34:05Z"
+      lastReconciled: "2025-10-26T15:06:36Z"
+      lastReconciledDuration: 243.787529ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:dba4bd11e713d4021cd34e1a02c8a65a99832e41
+      totalReconciliations: 5
+    - digest: sha256:21aba25aa45afda85c99cd5f1087d67832bee0111f264ece1e946cf2d27c76ea
+      firstReconciled: "2025-10-26T14:11:01Z"
+      lastReconciled: "2025-10-26T14:26:14Z"
+      lastReconciledDuration: 229.521015ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:6a42e209adf7773248d1c88cadf85049d0e8734b
+      totalReconciliations: 3
+    inventory:
+      entries:
+      - id: _heatpump-mqtt__Namespace
+        v: v1
+      - id: heatpump-mqtt_heatpump-mqtt-config__ConfigMap
+        v: v1
+      - id: heatpump-mqtt_timescaledb__Service
+        v: v1
+      - id: heatpump-mqtt_heatpump-mqtt_apps_Deployment
+        v: v1
+      - id: heatpump-mqtt_timescaledb_apps_StatefulSet
+        v: v1
+      - id: heatpump-mqtt_timescaledb-backup_batch_CronJob
+        v: v1
+      - id: heatpump-mqtt_ghcr-secret_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: heatpump-mqtt_mosquitto-credentials_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: heatpump-mqtt_timescaledb-backup-aws_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: heatpump-mqtt_timescaledb-secret_bitnami.com_SealedSecret
+        v: v1alpha1
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastHandledReconcileAt: "2025-10-26T16:28:38.628846666+01:00"
+    observedGeneration: 3
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    annotations:
+      reconcile.fluxcd.io/requestedAt: "2025-10-16T07:45:06.769194126+02:00"
+    creationTimestamp: "2025-10-08T15:52:07Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 3
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: infrastructure-controllers
+    namespace: flux-system
+    resourceVersion: "14532257"
+    uid: 2c34c2c4-57e1-4d0a-ba69-944ce7b62188
+  spec:
+    dependsOn:
+    - name: infrastructure-sources
+    - name: infrastructure-crds
+    - name: infrastructure-storage
+    force: false
+    interval: 10m
+    path: ./infrastructure/controllers
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    timeout: 10m
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:20:07Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 3
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:20:07Z"
+      message: Health check passed in 75.129429ms
+      observedGeneration: 3
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:8c3db86a412f87236c0eb167f613e4272406406c99570bda7bbd73474a0f292c
+      firstReconciled: "2025-10-08T17:41:57Z"
+      lastReconciled: "2025-11-24T16:20:07Z"
+      lastReconciledDuration: 270.982666ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 6366
+    - digest: sha256:834d13cd4892a9b856311b90709111b31a87ee1b62ba10d5e608983458c25dbf
+      firstReconciled: "2025-10-08T17:27:06Z"
+      lastReconciled: "2025-10-08T17:36:46Z"
+      lastReconciledDuration: 121.637358ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:8732e22c4c4647c2b709f538cdfe7d77dd6e4ef8
+      totalReconciliations: 2
+    inventory:
+      entries:
+      - id: _cert-manager__Namespace
+        v: v1
+      - id: _cloudflare-tunnel__Namespace
+        v: v1
+      - id: cloudflare-tunnel_cloudflared-config__ConfigMap
+        v: v1
+      - id: cloudflare-tunnel_cloudflared_apps_Deployment
+        v: v1
+      - id: cert-manager_cloudflare-api-token_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: cloudflare-tunnel_cloudflare-tunnel-secret_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: cloudflare-tunnel_cloudflared-cert-secret_bitnami.com_SealedSecret
+        v: v1alpha1
+      - id: _letsencrypt-prod_cert-manager.io_ClusterIssuer
+        v: v1
+      - id: _letsencrypt-staging_cert-manager.io_ClusterIssuer
+        v: v1
+      - id: cert-manager_cert-manager_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+      - id: flux-system_sealed-secrets_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastHandledReconcileAt: "2025-10-16T07:45:06.769194126+02:00"
+    observedGeneration: 3
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    creationTimestamp: "2025-10-08T14:50:45Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: infrastructure-crds
+    namespace: flux-system
+    resourceVersion: "14533142"
+    uid: 0e94107a-eba5-4027-80f9-99b1aad9d9f3
+  spec:
+    force: false
+    interval: 10m
+    path: ./infrastructure/crds
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:23:56Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    history:
+    - digest: sha256:dee08fc0daaf0d4d2be97a21aa6a77417ecab49107bd4b180de5b9f459decd5b
+      firstReconciled: "2025-10-08T14:50:49Z"
+      lastReconciled: "2025-11-24T16:23:56Z"
+      lastReconciledDuration: 763.698555ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 6921
+    inventory:
+      entries:
+      - id: _certificaterequests.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _certificates.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _challenges.acme.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _clusterissuers.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _issuers.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _orders.acme.cert-manager.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    annotations:
+      reconcile.fluxcd.io/requestedAt: "2025-10-09T19:10:58.273180126+02:00"
+    creationTimestamp: "2025-10-08T14:50:45Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: infrastructure-sources
+    namespace: flux-system
+    resourceVersion: "14533112"
+    uid: 1be8123c-4b62-4d3d-8459-67a43b317fac
+  spec:
+    force: false
+    interval: 10m
+    path: ./infrastructure/sources
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:23:50Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    history:
+    - digest: sha256:2ef68655fcbe1b864f1b95983ff0161dc01ab8d8241dafd7ca7c718aaf22ffdc
+      firstReconciled: "2025-10-26T15:39:38Z"
+      lastReconciled: "2025-11-24T16:23:50Z"
+      lastReconciledDuration: 112.214257ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 4224
+    - digest: sha256:605883b611d01c3f640781da45058443880d946432c094494a9614a1c870c139
+      firstReconciled: "2025-10-16T05:25:26Z"
+      lastReconciled: "2025-10-26T15:37:23Z"
+      lastReconciledDuration: 114.968773ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:4eb03396a7059ccccb4604734da32b31d47345d8
+      totalReconciliations: 1562
+    - digest: sha256:a607f0dee9eb3f6547cac2d1b72e02d8217502f51b562d2e1cdce20e61b18177
+      firstReconciled: "2025-10-16T05:21:26Z"
+      lastReconciled: "2025-10-16T05:21:26Z"
+      lastReconciledDuration: 670.619183ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:7c07f740d2962b32477d1a3e57d5575253ced184
+      totalReconciliations: 1
+    - digest: sha256:b2fcb601701fe4feccb62ad8f93d9eb613f9b91ea3ee2b0270504693e51f022b
+      firstReconciled: "2025-10-15T19:06:10Z"
+      lastReconciled: "2025-10-16T05:19:45Z"
+      lastReconciledDuration: 165.230031ms
+      lastReconciledStatus: ReconciliationFailed
+      metadata:
+        revision: refs/heads/main@sha1:a11705fe941ba1227541c127c87bf0adf256952e
+      totalReconciliations: 63
+    - digest: sha256:764c3fb8a54b20fe824ee20ce3b9b79305b110cb29655c1e9b97161629da40a7
+      firstReconciled: "2025-10-14T19:15:39Z"
+      lastReconciled: "2025-10-15T18:59:58Z"
+      lastReconciledDuration: 118.635696ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:b0dd007dbe8a34e9eb3f215bd3c92d758a5225c2
+      totalReconciliations: 147
+    inventory:
+      entries:
+      - id: flux-system_grafana_source.toolkit.fluxcd.io_HelmRepository
+        v: v1
+      - id: flux-system_jetstack_source.toolkit.fluxcd.io_HelmRepository
+        v: v1
+      - id: flux-system_longhorn_source.toolkit.fluxcd.io_HelmRepository
+        v: v1
+      - id: flux-system_postgres-operator_source.toolkit.fluxcd.io_HelmRepository
+        v: v1
+      - id: flux-system_prometheus-community_source.toolkit.fluxcd.io_HelmRepository
+        v: v1
+      - id: flux-system_redpanda_source.toolkit.fluxcd.io_HelmRepository
+        v: v1
+      - id: flux-system_sealed-secrets_source.toolkit.fluxcd.io_HelmRepository
+        v: v1
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastHandledReconcileAt: "2025-10-09T19:10:58.273180126+02:00"
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    annotations:
+      reconcile.fluxcd.io/requestedAt: "2025-10-09T17:16:25.825870981+02:00"
+    creationTimestamp: "2025-10-08T14:50:45Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: infrastructure-storage
+    namespace: flux-system
+    resourceVersion: "14532953"
+    uid: 526e2a0b-7a05-4bcb-8302-004989dfec58
+  spec:
+    force: false
+    interval: 10m
+    path: ./infrastructure/storage
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:23:08Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    history:
+    - digest: sha256:1b69908c3d54e475fedcbd32d6134c753a0306fe149d6b4752951641b1d499ac
+      firstReconciled: "2025-10-16T05:35:26Z"
+      lastReconciled: "2025-11-24T16:23:08Z"
+      lastReconciledDuration: 129.437085ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 5778
+    - digest: sha256:1b69908c3d54e475fedcbd32d6134c753a0306fe149d6b4752951641b1d499ac
+      firstReconciled: "2025-10-21T21:17:09Z"
+      lastReconciled: "2025-10-21T21:17:09Z"
+      lastReconciledDuration: 11.194251287s
+      lastReconciledStatus: ReconciliationFailed
+      metadata:
+        revision: refs/heads/main@sha1:1443da69a6ac75b3e53d36e80dec0e7326fc2842
+      totalReconciliations: 1
+    - digest: sha256:2ac080459b17ac0943294d63b966bd0e2cb7c06c89254f81abb14aeda358d42e
+      firstReconciled: "2025-10-09T15:16:25Z"
+      lastReconciled: "2025-10-16T05:31:41Z"
+      lastReconciledDuration: 163.002196ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:4e2eaab93bd73913b867875e044dc566a917c4f7
+      totalReconciliations: 976
+    - digest: sha256:2ac080459b17ac0943294d63b966bd0e2cb7c06c89254f81abb14aeda358d42e
+      firstReconciled: "2025-10-09T15:07:10Z"
+      lastReconciled: "2025-10-09T15:11:46Z"
+      lastReconciledDuration: 121.311493ms
+      lastReconciledStatus: ReconciliationFailed
+      metadata:
+        revision: refs/heads/main@sha1:2b76293a0420ee19c052e8d11a104d890ca9c158
+      totalReconciliations: 4
+    - digest: sha256:888e522586c97ad5844d2cfe7071507785858e8bdbdb41dffe2a3cabe3c99809
+      firstReconciled: "2025-10-09T15:09:17Z"
+      lastReconciled: "2025-10-09T15:11:16Z"
+      lastReconciledDuration: 107.931788ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:a94f7e0efdf806b0ec3f9fc5191e9e2841227e6a
+      totalReconciliations: 4
+    inventory:
+      entries:
+      - id: _longhorn-system__Namespace
+        v: v1
+      - id: longhorn-system_longhorn_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+      - id: longhorn-system_p1_longhorn.io_Node
+        v: v1beta2
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastHandledReconcileAt: "2025-10-09T17:16:25.825870981+02:00"
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    creationTimestamp: "2025-11-23T18:18:08Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: loki
+    namespace: flux-system
+    resourceVersion: "14532371"
+    uid: 63c141f1-20d1-4efb-891c-46a0cdcf946b
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/loki
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:20:36Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:20:36Z"
+      message: Health check passed in 21.654468ms
+      observedGeneration: 1
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:48ef5d2c4aa0dab536b9dc7de3d5322c7c6409adcaf7f62557c200238ff51b85
+      firstReconciled: "2025-11-24T16:19:44Z"
+      lastReconciled: "2025-11-24T16:20:36Z"
+      lastReconciledDuration: 130.629978ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 2
+    - digest: sha256:4be437410bdede09d8a5cdac9be019a2e267b26bbdafe3f5271406c54616ce0d
+      firstReconciled: "2025-11-23T18:20:06Z"
+      lastReconciled: "2025-11-24T16:10:52Z"
+      lastReconciledDuration: 162.871103ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:65c844d4dab29f59df894a9303ac4853e85531f3
+      totalReconciliations: 139
+    inventory:
+      entries:
+      - id: monitoring_loki_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    creationTimestamp: "2025-10-13T06:19:08Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: mosquitto
+    namespace: flux-system
+    resourceVersion: "14532477"
+    uid: d2c54edf-ebfe-4143-bf6b-1f50945af93e
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/mosquitto
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:21:01Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:21:01Z"
+      message: Health check passed in 47.534135ms
+      observedGeneration: 1
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:2860cfd69d2b946fcfae18b34869d960aafa3c423173fc654ff2206a4a6df125
+      firstReconciled: "2025-10-13T06:19:29Z"
+      lastReconciled: "2025-11-24T16:21:01Z"
+      lastReconciledDuration: 190.526166ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 6219
+    inventory:
+      entries:
+      - id: _mosquitto__Namespace
+        v: v1
+      - id: mosquitto_mosquitto-config__ConfigMap
+        v: v1
+      - id: mosquitto_mosquitto__Service
+        v: v1
+      - id: mosquitto_mosquitto_apps_Deployment
+        v: v1
+      - id: mosquitto_mosquitto-storage__PersistentVolumeClaim
+        v: v1
+      - id: mosquitto_mosquitto-auth_bitnami.com_SealedSecret
+        v: v1alpha1
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    creationTimestamp: "2025-10-09T15:57:55Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: prometheus
+    namespace: flux-system
+    resourceVersion: "14532709"
+    uid: e83f16cc-03bc-4460-a93b-3b08b144320b
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/monitoring
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:22:02Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:22:02Z"
+      message: Health check passed in 31.630398ms
+      observedGeneration: 1
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:424a25118bd5875a0756aceeafab872cfc7a145e53363fd7bb97c265f3450e27
+      firstReconciled: "2025-10-09T15:58:36Z"
+      lastReconciled: "2025-11-24T16:22:02Z"
+      lastReconciledDuration: 150.83ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 6748
+    inventory:
+      entries:
+      - id: _monitoring__Namespace
+        v: v1
+      - id: monitoring_kube-prometheus-stack_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    annotations:
+      reconcile.fluxcd.io/requestedAt: "2025-11-23T20:05:40.0094886+01:00"
+    creationTimestamp: "2025-11-23T18:57:19Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 1
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: redpanda
+    namespace: flux-system
+    resourceVersion: "14533467"
+    uid: a5a1ecd3-f889-42d4-abd6-5ba12030bc2b
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/redpanda
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:25:21Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:25:21Z"
+      message: Health check passed in 36.906536ms
+      observedGeneration: 1
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:e49065ca9d4917d2085b515354af8ecc3971317739a79a525b2a95226b7d2ca4
+      firstReconciled: "2025-11-23T19:09:20Z"
+      lastReconciled: "2025-11-24T16:25:21Z"
+      lastReconciledDuration: 180.031374ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 130
+    - digest: sha256:1a7fd9dbf4aa5d026eec58fe17308c72e411f61cd1a7e17415095aab4c7cfce9
+      firstReconciled: "2025-11-23T19:06:51Z"
+      lastReconciled: "2025-11-23T19:06:51Z"
+      lastReconciledDuration: 99.038438ms
+      lastReconciledStatus: ReconciliationFailed
+      metadata:
+        revision: refs/heads/main@sha1:3218c0234846fbd22c42b0a687d7baa00f4a6240
+      totalReconciliations: 1
+    inventory:
+      entries:
+      - id: _redpanda__Namespace
+        v: v1
+      - id: redpanda_redpanda-topics-setup_batch_Job
+        v: v1
+      - id: redpanda_redpanda_helm.toolkit.fluxcd.io_HelmRelease
+        v: v2
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastHandledReconcileAt: "2025-11-23T20:05:40.0094886+01:00"
+    observedGeneration: 1
+- apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    creationTimestamp: "2025-10-09T15:37:16Z"
+    finalizers:
+    - finalizers.fluxcd.io
+    generation: 2
+    labels:
+      kustomize.toolkit.fluxcd.io/name: flux-system
+      kustomize.toolkit.fluxcd.io/namespace: flux-system
+    name: whoami
+    namespace: flux-system
+    resourceVersion: "14532081"
+    uid: 0aee2f5b-30d5-43ed-b7cc-a39d26b922b3
+  spec:
+    force: false
+    interval: 10m0s
+    path: ./apps/homelab/whoami
+    prune: true
+    sourceRef:
+      kind: GitRepository
+      name: flux-system
+    wait: true
+  status:
+    conditions:
+    - lastTransitionTime: "2025-11-24T16:19:38Z"
+      message: 'Applied revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe'
+      observedGeneration: 2
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    - lastTransitionTime: "2025-11-24T16:19:38Z"
+      message: Health check passed in 39.015297ms
+      observedGeneration: 2
+      reason: Succeeded
+      status: "True"
+      type: Healthy
+    history:
+    - digest: sha256:68ee6a3e91f1af4a87fc1c04666c3f16388cb70a42b6257b44c910f1c1de6454
+      firstReconciled: "2025-10-09T15:38:33Z"
+      lastReconciled: "2025-11-24T16:19:38Z"
+      lastReconciledDuration: 254.563378ms
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        revision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+      totalReconciliations: 6755
+    inventory:
+      entries:
+      - id: default_homelab-whoami__Service
+        v: v1
+      - id: default_homelab-whoami_apps_Deployment
+        v: v1
+    lastAppliedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    lastAttemptedRevision: refs/heads/main@sha1:97b8e595b8a9cc35b74b583b7554f535c1d7bdfe
+    observedGeneration: 2
+kind: List
+metadata:
+  resourceVersion: ""
+apiVersion: v1
+items:
+- apiVersion: fluxcd.controlplane.io/v1
+  kind: FluxInstance
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"fluxcd.controlplane.io/v1","kind":"FluxInstance","metadata":{"annotations":{},"name":"flux","namespace":"flux-system"},"spec":{"cluster":{"domain":"cluster.local","multitenant":false,"networkPolicy":true,"type":"kubernetes"},"components":["source-controller","kustomize-controller","helm-controller","notification-controller","image-reflector-controller","image-automation-controller"],"distribution":{"registry":"ghcr.io/fluxcd","version":"2.x"},"sync":{"kind":"GitRepository","path":"clusters/homelab","provider":"github","pullSecret":"flux-system","ref":"refs/heads/main","url":"https://github.com/bokristoffersson/homelab-k12n-gitops.git"}}}
+    creationTimestamp: "2025-10-08T14:50:22Z"
+    finalizers:
+    - fluxcd.controlplane.io/finalizer
+    generation: 1
+    name: flux
+    namespace: flux-system
+    resourceVersion: "14522896"
+    uid: 25411a5e-2044-441e-acf3-93fc7efe8c68
+  spec:
+    cluster:
+      domain: cluster.local
+      multitenant: false
+      multitenantWorkloadIdentity: false
+      networkPolicy: true
+      type: kubernetes
+    components:
+    - source-controller
+    - kustomize-controller
+    - helm-controller
+    - notification-controller
+    - image-reflector-controller
+    - image-automation-controller
+    distribution:
+      registry: ghcr.io/fluxcd
+      version: 2.x
+    migrateResources: true
+    sync:
+      interval: 1m
+      kind: GitRepository
+      path: clusters/homelab
+      provider: github
+      pullSecret: flux-system
+      ref: refs/heads/main
+      url: https://github.com/bokristoffersson/homelab-k12n-gitops.git
+    wait: true
+  status:
+    components:
+    - digest: sha256:85a1d3844c22def063b9d4924a4539ef2d5d850a97be7e8b6cd3f62c5f80708a
+      name: source-controller
+      repository: ghcr.io/fluxcd/source-controller
+      tag: v1.7.1
+    - digest: sha256:0bd84aad45def5b8c5e1459835573d0d00b622cc611e301aaf910386de5fd82f
+      name: kustomize-controller
+      repository: ghcr.io/fluxcd/kustomize-controller
+      tag: v1.7.0
+    - digest: sha256:f52777118d3c21e745520ce9e8e8dbab086dd019311f7822f3ee36083af29b5a
+      name: helm-controller
+      repository: ghcr.io/fluxcd/helm-controller
+      tag: v1.4.1
+    - digest: sha256:3a5e67e69ee79a71206d076951046ec41f7c6d0f0ab6a9e65b7c0b387f0e4d98
+      name: notification-controller
+      repository: ghcr.io/fluxcd/notification-controller
+      tag: v1.7.2
+    - digest: sha256:5c72668cc9248883391218f3b329f08cfece2bcd570e1ac47fac62bfac153ec8
+      name: image-reflector-controller
+      repository: ghcr.io/fluxcd/image-reflector-controller
+      tag: v1.0.1
+    - digest: sha256:efbc480151bb1a853b35091131484c62c99fea40654c4e1e3cd7f2eab6c0d69c
+      name: image-automation-controller
+      repository: ghcr.io/fluxcd/image-automation-controller
+      tag: v1.0.1
+    conditions:
+    - lastTransitionTime: "2025-11-24T15:40:23Z"
+      message: Reconciliation finished in 2s
+      observedGeneration: 1
+      reason: ReconciliationSucceeded
+      status: "True"
+      type: Ready
+    history:
+    - digest: sha256:2361d01a4104d2770b010e763e531e68c2dc812835f02c1b8520c445ecd6097b
+      firstReconciled: "2025-10-08T14:50:53Z"
+      lastReconciled: "2025-11-24T15:40:23Z"
+      lastReconciledDuration: 1.793687506s
+      lastReconciledStatus: ReconciliationSucceeded
+      metadata:
+        flux: v2.7.1
+      totalReconciliations: 1134
+    - digest: sha256:2361d01a4104d2770b010e763e531e68c2dc812835f02c1b8520c445ecd6097b
+      firstReconciled: "2025-10-21T20:10:51Z"
+      lastReconciled: "2025-11-18T21:52:04Z"
+      lastReconciledDuration: 5m1.55616587s
+      lastReconciledStatus: ReconciliationFailed
+      metadata:
+        flux: v2.7.1
+      totalReconciliations: 14
+    inventory:
+      entries:
+      - id: _alerts.notification.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _buckets.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _externalartifacts.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _gitrepositories.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _helmcharts.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _helmreleases.helm.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _helmrepositories.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _imagepolicies.image.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _imagerepositories.image.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _imageupdateautomations.image.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _kustomizations.kustomize.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _ocirepositories.source.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _providers.notification.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _receivers.notification.toolkit.fluxcd.io_apiextensions.k8s.io_CustomResourceDefinition
+        v: v1
+      - id: _flux-system__Namespace
+        v: v1
+      - id: _crd-controller-flux-system_rbac.authorization.k8s.io_ClusterRole
+        v: v1
+      - id: _flux-edit-flux-system_rbac.authorization.k8s.io_ClusterRole
+        v: v1
+      - id: _flux-view-flux-system_rbac.authorization.k8s.io_ClusterRole
+        v: v1
+      - id: _cluster-reconciler-flux-system_rbac.authorization.k8s.io_ClusterRoleBinding
+        v: v1
+      - id: _crd-controller-flux-system_rbac.authorization.k8s.io_ClusterRoleBinding
+        v: v1
+      - id: flux-system_critical-pods-flux-system__ResourceQuota
+        v: v1
+      - id: flux-system_helm-controller__ServiceAccount
+        v: v1
+      - id: flux-system_image-automation-controller__ServiceAccount
+        v: v1
+      - id: flux-system_image-reflector-controller__ServiceAccount
+        v: v1
+      - id: flux-system_kustomize-controller__ServiceAccount
+        v: v1
+      - id: flux-system_notification-controller__ServiceAccount
+        v: v1
+      - id: flux-system_source-controller__ServiceAccount
+        v: v1
+      - id: flux-system_notification-controller__Service
+        v: v1
+      - id: flux-system_source-controller__Service
+        v: v1
+      - id: flux-system_webhook-receiver__Service
+        v: v1
+      - id: flux-system_helm-controller_apps_Deployment
+        v: v1
+      - id: flux-system_image-automation-controller_apps_Deployment
+        v: v1
+      - id: flux-system_image-reflector-controller_apps_Deployment
+        v: v1
+      - id: flux-system_kustomize-controller_apps_Deployment
+        v: v1
+      - id: flux-system_notification-controller_apps_Deployment
+        v: v1
+      - id: flux-system_source-controller_apps_Deployment
+        v: v1
+      - id: flux-system_flux-system_kustomize.toolkit.fluxcd.io_Kustomization
+        v: v1
+      - id: flux-system_allow-egress_networking.k8s.io_NetworkPolicy
+        v: v1
+      - id: flux-system_allow-scraping_networking.k8s.io_NetworkPolicy
+        v: v1
+      - id: flux-system_allow-webhooks_networking.k8s.io_NetworkPolicy
+        v: v1
+      - id: flux-system_flux-system_source.toolkit.fluxcd.io_GitRepository
+        v: v1
+    lastAppliedRevision: v2.7.1@sha256:2361d01a4104d2770b010e763e531e68c2dc812835f02c1b8520c445ecd6097b
+    lastAttemptedRevision: v2.7.1@sha256:2361d01a4104d2770b010e763e531e68c2dc812835f02c1b8520c445ecd6097b
+kind: List
+metadata:
+  resourceVersion: ""
