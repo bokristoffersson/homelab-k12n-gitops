@@ -8,7 +8,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: "./infrastructure/crds"      # <-- Denna pekar på crds/
+  path: "./gitops/infrastructure/crds"      # <-- Denna pekar på crds/
   prune: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -21,7 +21,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: "./infrastructure/sources"      # <-- Denna pekar på sources/
+  path: "./gitops/infrastructure/sources"      # <-- Denna pekar på sources/
   prune: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -34,7 +34,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: "./infrastructure/storage"      # <-- Denna pekar på storage/
+  path: "./gitops/infrastructure/storage"      # <-- Denna pekar på storage/
   prune: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -47,7 +47,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: "./infrastructure/controllers"   # <-- Denna pekar på controllers/
+  path: "./gitops/infrastructure/controllers"   # <-- Denna pekar på controllers/
   prune: true
   dependsOn:
     - name: infrastructure-sources
