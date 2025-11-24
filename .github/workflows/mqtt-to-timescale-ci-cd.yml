@@ -25,15 +25,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - uses: actions-rs/toolchain@v1
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --all-features
-          use-cross: false
-          working-directory: applications/mqtt-to-timescale
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -61,11 +56,11 @@ jobs:
 
       - name: Build
         working-directory: applications/mqtt-to-timescale
-        run: cargo build --verbose
+        run: cargo build --release --all-features --verbose
 
       - name: Run tests
         working-directory: applications/mqtt-to-timescale
-        run: cargo test --verbose
+        run: cargo test --release --all-features --verbose
 
   build-and-push:
     needs: test
