@@ -32,7 +32,7 @@ spec:
             format = "logfmt"
           }
           
-          // Discover all pods in the cluster
+          // Discover all pods in the cluster (all namespaces by default)
           discovery.kubernetes "pods" {
             role = "pod"
           }
@@ -104,6 +104,14 @@ spec:
 
     rbac:
       create: true
+      # Ensure Alloy has permissions to list and get pods in all namespaces
+      rules:
+        - apiGroups: [""]
+          resources: ["pods", "nodes", "nodes/proxy"]
+          verbs: ["get", "list", "watch"]
+        - apiGroups: [""]
+          resources: ["namespaces"]
+          verbs: ["get", "list", "watch"]
 
     serviceAccount:
       create: true
