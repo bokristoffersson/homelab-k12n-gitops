@@ -18,7 +18,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: app
-          image: ghcr.io/bokristoffersson/heatpump-api:main-690e9ee
+          image: ghcr.io/bokristoffersson/homelab-k12n-gitops/heatpump-api:main-690e9ee
           imagePullPolicy: Always
           env:
             - name: DATABASE_HOST
