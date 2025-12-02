@@ -10,12 +10,13 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: setup-script
-          image: curlimages/curl:latest
+          image: python:3.11-alpine
           command:
             - /bin/sh
             - -c
             - |
               set -e
+              apk add --no-cache curl > /dev/null 2>&1
               
               echo "=== Cloudflare Access Setup Script ==="
               echo "Setting up Access Application and Service Tokens for api.k12n.com"
@@ -56,13 +57,11 @@ spec:
               
               APP_ID=$(echo "$EXISTING_APPS" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
               
-              # Check if app with this domain exists
-              DOMAIN_MATCH=$(echo "$EXISTING_APPS" | grep -o "\"${APP_DOMAIN}\"" || true)
+              # Check if app with this domain exists using Python for reliable JSON parsing
+              APP_ID=$(echo "$EXISTING_APPS" | python3 -c "import sys, json; data = json.load(sys.stdin); apps = [a for a in data.get('result', []) if data.get('success') and a.get('domain') == '${APP_DOMAIN}']; print(apps[0]['id'] if apps else '')" 2>/dev/null || echo "")
               
-              if [ -n "$DOMAIN_MATCH" ]; then
+              if [ -n "$APP_ID" ]; then
                 echo "Found existing Access Application for ${APP_DOMAIN}"
-                # Extract app ID from the response
-                APP_ID=$(echo "$EXISTING_APPS" | grep -B 5 "\"${APP_DOMAIN}\"" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
                 echo "Using existing Application ID: ${APP_ID}"
               else
                 # Create Access Application
@@ -121,21 +120,24 @@ spec:
                     \"duration\": \"8760h\"
                   }")
                 
-                # Check if request was successful
-                SUCCESS=$(echo "$TOKEN_RESPONSE" | grep -o '"success":true' || true)
-                if [ -z "$SUCCESS" ]; then
+                # Check if request was successful using Python
+                SUCCESS=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print('true' if data.get('success') else 'false')" 2>/dev/null || echo "false")
+                if [ "$SUCCESS" != "true" ]; then
                   echo "ERROR: Failed to create Service Token"
                   echo "Response: $TOKEN_RESPONSE"
                   exit 1
                 fi
                 
-                # Extract token details (Cloudflare API returns client_secret in the response)
-                TOKEN_ID=$(echo "$TOKEN_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
-                TOKEN_VALUE=$(echo "$TOKEN_RESPONSE" | grep -o '"client_secret":"[^"]*' | head -1 | cut -d'"' -f4)
+                # Extract token details using Python for reliable JSON parsing
+                TOKEN_DATA=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); r = data.get('result', {}) if data.get('success') else {}; print(f\"{r.get('id', '')}|{r.get('client_secret', '')}\")" 2>/dev/null || echo "|")
                 
-                # Alternative extraction method if client_secret format is different
-                if [ -z "$TOKEN_VALUE" ]; then
-                  TOKEN_VALUE=$(echo "$TOKEN_RESPONSE" | grep -o '"secret":"[^"]*' | head -1 | cut -d'"' -f4)
+                TOKEN_ID=$(echo "$TOKEN_DATA" | cut -d'|' -f1)
+                TOKEN_VALUE=$(echo "$TOKEN_DATA" | cut -d'|' -f2)
+                
+                # Fallback to grep if Python failed
+                if [ -z "$TOKEN_ID" ] || [ -z "$TOKEN_VALUE" ]; then
+                  TOKEN_ID=$(echo "$TOKEN_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                  TOKEN_VALUE=$(echo "$TOKEN_RESPONSE" | grep -o '"client_secret":"[^"]*' | head -1 | cut -d'"' -f4)
                 fi
                 
                 if [ -z "$TOKEN_ID" ] || [ -z "$TOKEN_VALUE" ]; then
@@ -143,6 +145,7 @@ spec:
                   echo "Response: $TOKEN_RESPONSE"
                   echo "Please check Cloudflare Zero Trust Dashboard for the token value"
                   echo "Access → Applications → ${APP_NAME} → Service Tokens"
+                  exit 1
                 else
                   echo "Created Service Token with ID: ${TOKEN_ID}"
                   echo ""
