@@ -1,0 +1,234 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-cloudflare-access-heatpump-api
+  namespace: cloudflare-tunnel
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: setup-script
+          image: curlimages/curl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              
+              echo "=== Cloudflare Access Setup Script ==="
+              echo "Setting up Access Application and Service Tokens for api.k12n.com"
+              
+              # Get credentials from environment
+              API_TOKEN="${CLOUDFLARE_API_TOKEN}"
+              ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID}"
+              ZONE_NAME="${CLOUDFLARE_ZONE_NAME:-k12n.com}"
+              APP_DOMAIN="${ACCESS_APP_DOMAIN:-api.k12n.com}"
+              APP_NAME="${ACCESS_APP_NAME:-heatpump-api}"
+              
+              if [ -z "$API_TOKEN" ] || [ -z "$ACCOUNT_ID" ]; then
+                echo "ERROR: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be set"
+                exit 1
+              fi
+              
+              # Get Zone ID
+              echo "Getting Zone ID for ${ZONE_NAME}..."
+              ZONE_RESPONSE=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${ZONE_NAME}" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json")
+              
+              ZONE_ID=$(echo "$ZONE_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+              
+              if [ -z "$ZONE_ID" ]; then
+                echo "ERROR: Could not find zone ${ZONE_NAME}"
+                echo "Response: $ZONE_RESPONSE"
+                exit 1
+              fi
+              
+              echo "Zone ID: ${ZONE_ID}"
+              
+              # Check if Access Application already exists
+              echo "Checking for existing Access Application..."
+              EXISTING_APPS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json")
+              
+              APP_ID=$(echo "$EXISTING_APPS" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+              
+              # Check if app with this domain exists
+              DOMAIN_MATCH=$(echo "$EXISTING_APPS" | grep -o "\"${APP_DOMAIN}\"" || true)
+              
+              if [ -n "$DOMAIN_MATCH" ]; then
+                echo "Found existing Access Application for ${APP_DOMAIN}"
+                # Extract app ID from the response
+                APP_ID=$(echo "$EXISTING_APPS" | grep -B 5 "\"${APP_DOMAIN}\"" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                echo "Using existing Application ID: ${APP_ID}"
+              else
+                # Create Access Application
+                echo "Creating new Access Application..."
+                APP_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps" \
+                  -H "Authorization: Bearer ${API_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"name\": \"${APP_NAME}\",
+                    \"domain\": \"${APP_DOMAIN}\",
+                    \"type\": \"self_hosted\",
+                    \"session_duration\": \"24h\",
+                    \"allowed_idps\": [],
+                    \"auto_redirect_to_identity\": false,
+                    \"enable_binding_cookie\": false,
+                    \"http_only_cookie_attribute\": true,
+                    \"same_site_cookie_attribute\": \"strict\",
+                    \"logo_url\": \"\",
+                    \"app_launcher_visible\": true,
+                    \"service_auth_401_redirect\": false
+                  }")
+                
+                APP_ID=$(echo "$APP_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                
+                if [ -z "$APP_ID" ]; then
+                  echo "ERROR: Failed to create Access Application"
+                  echo "Response: $APP_RESPONSE"
+                  exit 1
+                fi
+                
+                echo "Created Access Application with ID: ${APP_ID}"
+              fi
+              
+              # Check for existing Service Token
+              echo "Checking for existing Service Tokens..."
+              SERVICE_TOKENS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json")
+              
+              # Look for service token with name matching our app
+              TOKEN_NAME="${APP_NAME}-service-token"
+              EXISTING_TOKEN=$(echo "$SERVICE_TOKENS" | grep -o "\"name\":\"${TOKEN_NAME}\"" || true)
+              
+              if [ -n "$EXISTING_TOKEN" ]; then
+                echo "Service Token '${TOKEN_NAME}' already exists"
+                echo "To get the token value, check Cloudflare Zero Trust Dashboard"
+                echo "Access → Applications → ${APP_NAME} → Service Tokens"
+              else
+                # Create Service Token
+                echo "Creating Service Token..."
+                TOKEN_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens" \
+                  -H "Authorization: Bearer ${API_TOKEN}" \
+                  -H "Content-Type: application/json" \
+                  -d "{
+                    \"name\": \"${TOKEN_NAME}\",
+                    \"duration\": \"8760h\"
+                  }")
+                
+                # Check if request was successful
+                SUCCESS=$(echo "$TOKEN_RESPONSE" | grep -o '"success":true' || true)
+                if [ -z "$SUCCESS" ]; then
+                  echo "ERROR: Failed to create Service Token"
+                  echo "Response: $TOKEN_RESPONSE"
+                  exit 1
+                fi
+                
+                # Extract token details (Cloudflare API returns client_secret in the response)
+                TOKEN_ID=$(echo "$TOKEN_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                TOKEN_VALUE=$(echo "$TOKEN_RESPONSE" | grep -o '"client_secret":"[^"]*' | head -1 | cut -d'"' -f4)
+                
+                # Alternative extraction method if client_secret format is different
+                if [ -z "$TOKEN_VALUE" ]; then
+                  TOKEN_VALUE=$(echo "$TOKEN_RESPONSE" | grep -o '"secret":"[^"]*' | head -1 | cut -d'"' -f4)
+                fi
+                
+                if [ -z "$TOKEN_ID" ] || [ -z "$TOKEN_VALUE" ]; then
+                  echo "WARNING: Created Service Token but could not extract full details"
+                  echo "Response: $TOKEN_RESPONSE"
+                  echo "Please check Cloudflare Zero Trust Dashboard for the token value"
+                  echo "Access → Applications → ${APP_NAME} → Service Tokens"
+                else
+                  echo "Created Service Token with ID: ${TOKEN_ID}"
+                  echo ""
+                  echo "=== IMPORTANT: Save this Service Token ==="
+                  echo "Token Value: ${TOKEN_VALUE}"
+                  echo "Use this in your API requests: curl -H \"CF-Access-Token: ${TOKEN_VALUE}\" https://${APP_DOMAIN}/health"
+                  echo "=========================================="
+                fi
+              fi
+              
+              # Check for existing policy
+              echo "Checking for existing Access Policies..."
+              POLICIES=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps/${APP_ID}/policies" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json")
+              
+              POLICY_EXISTS=$(echo "$POLICIES" | grep -o "\"name\":\"${APP_NAME}-service-token-policy\"" || true)
+              
+              if [ -z "$POLICY_EXISTS" ]; then
+                # Get the service token ID for the policy
+                SERVICE_TOKENS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens" \
+                  -H "Authorization: Bearer ${API_TOKEN}" \
+                  -H "Content-Type: application/json")
+                
+                TOKEN_ID=$(echo "$SERVICE_TOKENS" | grep -B 2 "\"name\":\"${TOKEN_NAME}\"" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                
+                if [ -n "$TOKEN_ID" ]; then
+                  echo "Creating Access Policy for Service Token..."
+                  POLICY_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps/${APP_ID}/policies" \
+                    -H "Authorization: Bearer ${API_TOKEN}" \
+                    -H "Content-Type: application/json" \
+                    -d "{
+                      \"name\": \"${APP_NAME}-service-token-policy\",
+                      \"decision\": \"allow\",
+                      \"include\": [
+                        {
+                          \"service_token\": {
+                            \"token_id\": \"${TOKEN_ID}\"
+                          }
+                        }
+                      ],
+                      \"exclude\": [],
+                      \"require\": []
+                    }")
+                  
+                  POLICY_ID=$(echo "$POLICY_RESPONSE" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                  
+                  if [ -z "$POLICY_ID" ]; then
+                    echo "WARNING: Failed to create Access Policy"
+                    echo "Response: $POLICY_RESPONSE"
+                    echo "You may need to create the policy manually in the dashboard"
+                  else
+                    echo "Created Access Policy with ID: ${POLICY_ID}"
+                  fi
+                else
+                  echo "WARNING: Could not find Service Token ID for policy creation"
+                fi
+              else
+                echo "Access Policy already exists"
+              fi
+              
+              echo ""
+              echo "=== Setup Complete ==="
+              echo "Application: ${APP_NAME}"
+              echo "Domain: ${APP_DOMAIN}"
+              echo "Application ID: ${APP_ID}"
+              echo ""
+              echo "Next steps:"
+              echo "1. Verify the application in Cloudflare Zero Trust Dashboard"
+              echo "2. Save the Service Token value (shown above if created)"
+              echo "3. Test with: curl -H \"CF-Access-Token: <token>\" https://${APP_DOMAIN}/health"
+          env:
+            - name: CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-api-token
+                  key: api-token
+            - name: CLOUDFLARE_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-api-token
+                  key: account-id
+            - name: CLOUDFLARE_ZONE_NAME
+              value: "k12n.com"
+            - name: ACCESS_APP_DOMAIN
+              value: "api.k12n.com"
+            - name: ACCESS_APP_NAME
+              value: "heatpump-api"
+

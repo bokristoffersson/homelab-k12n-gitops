@@ -7,4 +7,8 @@ resources:
   - ghcr-secret-sealed.yaml
   - deployment.yaml
   - service.yaml
+  # Cloudflare Access setup (optional - run manually or via GitOps)
+  # Note: The cloudflare-api-token secret is in cloudflare-tunnel namespace (infrastructure)
+  # The job runs in cloudflare-tunnel namespace but sets up Access for this application
+  # - setup-cloudflare-access-job.yaml
 
