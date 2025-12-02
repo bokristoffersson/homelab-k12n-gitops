@@ -1,0 +1,202 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cleanup-cloudflare-access-heatpump-api
+  namespace: cloudflare-tunnel
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: cleanup-script
+          image: python:3.11-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache curl > /dev/null 2>&1
+              
+              echo "=== Cloudflare Access Cleanup and Fix Script ==="
+              echo "This will clean up duplicate tokens and create a fresh setup"
+              
+              # Get credentials from environment
+              API_TOKEN="${CLOUDFLARE_API_TOKEN}"
+              ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID}"
+              APP_DOMAIN="${ACCESS_APP_DOMAIN:-api.k12n.com}"
+              APP_NAME="${ACCESS_APP_NAME:-heatpump-api}"
+              TOKEN_NAME="${APP_NAME}-service-token"
+              
+              if [ -z "$API_TOKEN" ] || [ -z "$ACCOUNT_ID" ]; then
+                echo "ERROR: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID must be set"
+                exit 1
+              fi
+              
+              # Get Application ID
+              echo "Getting Access Application ID..."
+              EXISTING_APPS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json")
+              
+              APP_ID=$(echo "$EXISTING_APPS" | python3 -c "import sys, json; data = json.load(sys.stdin); apps = [a for a in data.get('result', []) if data.get('success') and a.get('domain') == '${APP_DOMAIN}']; print(apps[0]['id'] if apps else '')" 2>/dev/null || echo "")
+              
+              if [ -z "$APP_ID" ]; then
+                echo "ERROR: Could not find Access Application for ${APP_DOMAIN}"
+                exit 1
+              fi
+              
+              echo "Found Application ID: ${APP_ID}"
+              
+              # Get all service tokens
+              echo "Getting all Service Tokens..."
+              SERVICE_TOKENS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json")
+              
+              # Find all tokens with the matching name
+              echo "Finding duplicate tokens named '${TOKEN_NAME}'..."
+              TOKEN_IDS=$(echo "$SERVICE_TOKENS" | python3 -c "import sys, json; data = json.load(sys.stdin); tokens = [t for t in data.get('result', []) if data.get('success') and t.get('name') == '${TOKEN_NAME}']; [print(t['id']) for t in tokens]" 2>/dev/null || echo "")
+              
+              if [ -z "$TOKEN_IDS" ]; then
+                echo "No tokens found with name '${TOKEN_NAME}'"
+              else
+                TOKEN_COUNT=$(echo "$TOKEN_IDS" | wc -l)
+                echo "Found ${TOKEN_COUNT} token(s) with name '${TOKEN_NAME}'"
+                echo ""
+                echo "Deleting duplicate tokens..."
+                for TOKEN_ID in $TOKEN_IDS; do
+                  echo "  Deleting token ID: ${TOKEN_ID}"
+                  DELETE_RESPONSE=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens/${TOKEN_ID}" \
+                    -H "Authorization: Bearer ${API_TOKEN}" \
+                    -H "Content-Type: application/json")
+                  SUCCESS=$(echo "$DELETE_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print('true' if data.get('success') else 'false')" 2>/dev/null || echo "false")
+                  if [ "$SUCCESS" = "true" ]; then
+                    echo "    ✓ Deleted successfully"
+                  else
+                    echo "    ✗ Failed to delete: $DELETE_RESPONSE"
+                  fi
+                done
+              fi
+              
+              # Delete existing policies for this app
+              echo ""
+              echo "Getting existing policies..."
+              POLICIES=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps/${APP_ID}/policies" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json")
+              
+              POLICY_IDS=$(echo "$POLICIES" | python3 -c "import sys, json; data = json.load(sys.stdin); policies = [p for p in data.get('result', []) if data.get('success') and 'service_token' in str(p.get('include', []))]; [print(p['id']) for p in policies]" 2>/dev/null || echo "")
+              
+              if [ -n "$POLICY_IDS" ]; then
+                echo "Found service token policies, deleting..."
+                for POLICY_ID in $POLICY_IDS; do
+                  echo "  Deleting policy ID: ${POLICY_ID}"
+                  DELETE_RESPONSE=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps/${APP_ID}/policies/${POLICY_ID}" \
+                    -H "Authorization: Bearer ${API_TOKEN}" \
+                    -H "Content-Type: application/json")
+                  SUCCESS=$(echo "$DELETE_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print('true' if data.get('success') else 'false')" 2>/dev/null || echo "false")
+                  if [ "$SUCCESS" = "true" ]; then
+                    echo "    ✓ Deleted successfully"
+                  else
+                    echo "    ✗ Failed to delete: $DELETE_RESPONSE"
+                  fi
+                done
+              fi
+              
+              # Create a fresh service token
+              echo ""
+              echo "Creating fresh Service Token..."
+              TOKEN_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"${TOKEN_NAME}\",
+                  \"duration\": \"8760h\"
+                }")
+              
+              SUCCESS=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print('true' if data.get('success') else 'false')" 2>/dev/null || echo "false")
+              if [ "$SUCCESS" != "true" ]; then
+                echo "ERROR: Failed to create Service Token"
+                echo "Response: $TOKEN_RESPONSE"
+                exit 1
+              fi
+              
+              TOKEN_DATA=$(echo "$TOKEN_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); r = data.get('result', {}) if data.get('success') else {}; print(f\"{r.get('id', '')}|{r.get('client_secret', '')}\")" 2>/dev/null || echo "|")
+              TOKEN_ID=$(echo "$TOKEN_DATA" | cut -d'|' -f1)
+              TOKEN_VALUE=$(echo "$TOKEN_DATA" | cut -d'|' -f2)
+              
+              if [ -z "$TOKEN_ID" ] || [ -z "$TOKEN_VALUE" ]; then
+                echo "ERROR: Failed to extract token details"
+                echo "Response: $TOKEN_RESPONSE"
+                exit 1
+              fi
+              
+              echo "Created Service Token with ID: ${TOKEN_ID}"
+              echo ""
+              echo "=== IMPORTANT: Save this Service Token ==="
+              echo "Token Value: ${TOKEN_VALUE}"
+              echo "=========================================="
+              
+              # Create a fresh policy with only this token
+              echo ""
+              echo "Creating Access Policy for the new Service Token..."
+              POLICY_RESPONSE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps/${APP_ID}/policies" \
+                -H "Authorization: Bearer ${API_TOKEN}" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"${APP_NAME}-service-token-policy\",
+                  \"decision\": \"allow\",
+                  \"include\": [
+                    {
+                      \"service_token\": {
+                        \"token_id\": \"${TOKEN_ID}\"
+                      }
+                    }
+                  ],
+                  \"exclude\": [],
+                  \"require\": []
+                }")
+              
+              POLICY_SUCCESS=$(echo "$POLICY_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print('true' if data.get('success') else 'false')" 2>/dev/null || echo "false")
+              if [ "$POLICY_SUCCESS" != "true" ]; then
+                echo "ERROR: Failed to create Access Policy"
+                echo "Response: $POLICY_RESPONSE"
+                exit 1
+              fi
+              
+              POLICY_ID=$(echo "$POLICY_RESPONSE" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('result', {}).get('id', '') if data.get('success') else '')" 2>/dev/null || echo "")
+              
+              if [ -z "$POLICY_ID" ]; then
+                echo "WARNING: Policy created but could not extract ID"
+                echo "Response: $POLICY_RESPONSE"
+              else
+                echo "Created Access Policy with ID: ${POLICY_ID}"
+              fi
+              
+              echo ""
+              echo "=== Setup Complete ==="
+              echo "Application: ${APP_NAME}"
+              echo "Domain: ${APP_DOMAIN}"
+              echo "Application ID: ${APP_ID}"
+              echo ""
+              echo "=== Test Command ==="
+              echo "curl -H \"CF-Access-Token: ${TOKEN_VALUE}\" https://${APP_DOMAIN}/health"
+              echo ""
+              echo "Expected response: {\"status\":\"ok\"}"
+          env:
+            - name: CLOUDFLARE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-api-token
+                  key: api-token
+            - name: CLOUDFLARE_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-api-token
+                  key: account-id
+            - name: ACCESS_APP_DOMAIN
+              value: "api.k12n.com"
+            - name: ACCESS_APP_NAME
+              value: "heatpump-api"
+

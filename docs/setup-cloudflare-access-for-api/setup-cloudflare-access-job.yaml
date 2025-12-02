@@ -109,6 +109,12 @@ spec:
                 echo "Service Token '${TOKEN_NAME}' already exists"
                 echo "To get the token value, check Cloudflare Zero Trust Dashboard"
                 echo "Access → Applications → ${APP_NAME} → Service Tokens"
+                # Still need to get TOKEN_ID for policy creation
+                TOKEN_ID=$(echo "$SERVICE_TOKENS" | python3 -c "import sys, json; data = json.load(sys.stdin); tokens = [t for t in data.get('result', []) if data.get('success') and t.get('name') == '${TOKEN_NAME}']; print(tokens[0]['id'] if tokens else '')" 2>/dev/null || echo "")
+                if [ -z "$TOKEN_ID" ]; then
+                  # Fallback to grep
+                  TOKEN_ID=$(echo "$SERVICE_TOKENS" | grep -B 2 "\"name\":\"${TOKEN_NAME}\"" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                fi
               else
                 # Create Service Token
                 echo "Creating Service Token..."
@@ -156,7 +162,7 @@ spec:
                 fi
               fi
               
-              # Check for existing policy
+              # Check for existing policy (always check, even if token already existed)
               echo "Checking for existing Access Policies..."
               POLICIES=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/apps/${APP_ID}/policies" \
                 -H "Authorization: Bearer ${API_TOKEN}" \
@@ -165,12 +171,18 @@ spec:
               POLICY_EXISTS=$(echo "$POLICIES" | grep -o "\"name\":\"${APP_NAME}-service-token-policy\"" || true)
               
               if [ -z "$POLICY_EXISTS" ]; then
-                # Get the service token ID for the policy
-                SERVICE_TOKENS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens" \
-                  -H "Authorization: Bearer ${API_TOKEN}" \
-                  -H "Content-Type: application/json")
-                
-                TOKEN_ID=$(echo "$SERVICE_TOKENS" | grep -B 2 "\"name\":\"${TOKEN_NAME}\"" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                # Get the service token ID for the policy (if not already set)
+                if [ -z "$TOKEN_ID" ]; then
+                  SERVICE_TOKENS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/access/service_tokens" \
+                    -H "Authorization: Bearer ${API_TOKEN}" \
+                    -H "Content-Type: application/json")
+                  
+                  TOKEN_ID=$(echo "$SERVICE_TOKENS" | python3 -c "import sys, json; data = json.load(sys.stdin); tokens = [t for t in data.get('result', []) if data.get('success') and t.get('name') == '${TOKEN_NAME}']; print(tokens[0]['id'] if tokens else '')" 2>/dev/null || echo "")
+                  if [ -z "$TOKEN_ID" ]; then
+                    # Fallback to grep
+                    TOKEN_ID=$(echo "$SERVICE_TOKENS" | grep -B 2 "\"name\":\"${TOKEN_NAME}\"" | grep -o '"id":"[^"]*' | head -1 | cut -d'"' -f4)
+                  fi
+                fi
                 
                 if [ -n "$TOKEN_ID" ]; then
                   echo "Creating Access Policy for Service Token..."

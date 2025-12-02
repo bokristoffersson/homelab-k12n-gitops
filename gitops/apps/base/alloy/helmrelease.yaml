@@ -104,14 +104,6 @@ spec:
 
     rbac:
       create: true
-      # Ensure Alloy has permissions to list and get pods in all namespaces
-      rules:
-        - apiGroups: [""]
-          resources: ["pods", "nodes", "nodes/proxy"]
-          verbs: ["get", "list", "watch"]
-        - apiGroups: [""]
-          resources: ["namespaces"]
-          verbs: ["get", "list", "watch"]
 
     serviceAccount:
       create: true
