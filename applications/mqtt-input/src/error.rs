@@ -2,8 +2,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum AppError {
-    #[error("Config error: {0}")]
-    Config(String),
     #[error("MQTT error: {0}")]
     Mqtt(String),
     #[error("Kafka/Redpanda error: {0}")]

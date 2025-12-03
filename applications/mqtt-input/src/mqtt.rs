@@ -10,7 +10,6 @@ use rumqttc::Transport;
 pub type MqttOptions = mqtt5::MqttOptions;
 pub type AsyncClient = mqtt5::AsyncClient;
 pub type EventLoop = mqtt5::EventLoop;
-pub type Incoming = mqtt5::Incoming;
 pub type V5Publish = mqtt5::mqttbytes::v5::Publish;
 
 pub fn build_options(

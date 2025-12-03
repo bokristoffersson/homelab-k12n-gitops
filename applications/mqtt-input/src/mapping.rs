@@ -134,19 +134,19 @@ fn extract_ts(tc: &TimestampConfig, json: &Value) -> Result<DateTime<Utc>, AppEr
                     let ms = v
                         .as_i64()
                         .ok_or_else(|| AppError::Time("unix_ms not i64".into()))?;
-                    return Ok(Utc
+                    return Utc
                         .timestamp_millis_opt(ms)
                         .single()
-                        .ok_or_else(|| AppError::Time("unix_ms out of range".into()))?);
+                        .ok_or_else(|| AppError::Time("unix_ms out of range".into()));
                 }
                 "unix_s" => {
                     let s = v
                         .as_i64()
                         .ok_or_else(|| AppError::Time("unix_s not i64".into()))?;
-                    return Ok(Utc
+                    return Utc
                         .timestamp_opt(s, 0)
                         .single()
-                        .ok_or_else(|| AppError::Time("unix_s out of range".into()))?);
+                        .ok_or_else(|| AppError::Time("unix_s out of range".into()));
                 }
                 "iso8601" => {
                     let s = stringify_json(&v);
@@ -347,22 +347,22 @@ mod tests {
 
         // Check bit flags
         match row.fields.get("compressor_on").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
             _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("heating_mode").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, false),
+            FieldValue::Bool(v) => assert!(!*v),
             _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("hot_water_mode").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
             _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("circulation_pump").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
             _ => panic!("Expected Bool"),
         }
     }
@@ -562,23 +562,23 @@ mod tests {
 
         // Check status flags
         match row.fields.get("compressor_on").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
             _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("heating_mode").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, false),
+            FieldValue::Bool(v) => assert!(!*v),
             _ => panic!("Expected Bool"),
         }
 
         // Check alarm flags
         match row.fields.get("high_pressure_alarm").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, false),
+            FieldValue::Bool(v) => assert!(!*v),
             _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("low_pressure_alarm").unwrap() {
-            FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
             _ => panic!("Expected Bool"),
         }
     }

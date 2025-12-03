@@ -193,7 +193,7 @@ async fn test_message_transformation() {
     }
 
     match row.fields.get("active").unwrap() {
-        FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
         _ => panic!("Expected Bool"),
     }
 }
@@ -309,22 +309,22 @@ async fn test_bit_flag_extraction() {
 
     // Check bit flags
     match row.fields.get("compressor_on").unwrap() {
-        FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
         _ => panic!("Expected Bool"),
     }
 
     match row.fields.get("heating_mode").unwrap() {
-        FieldValue::Bool(v) => assert_eq!(*v, false),
+            FieldValue::Bool(v) => assert!(!*v),
         _ => panic!("Expected Bool"),
     }
 
     match row.fields.get("hot_water_mode").unwrap() {
-        FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
         _ => panic!("Expected Bool"),
     }
 
     match row.fields.get("circulation_pump").unwrap() {
-        FieldValue::Bool(v) => assert_eq!(*v, true),
+            FieldValue::Bool(v) => assert!(*v),
         _ => panic!("Expected Bool"),
     }
 }
