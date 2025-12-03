@@ -46,8 +46,7 @@ impl Ingestor {
 
                 // Transform Row to JSON for publishing
                 let json_payload = row_to_json(&row)?;
-                let payload_bytes =
-                    serde_json::to_vec(&json_payload).map_err(AppError::Json)?;
+                let payload_bytes = serde_json::to_vec(&json_payload).map_err(AppError::Json)?;
 
                 // Use pipeline name as key for partitioning (optional, can be None)
                 let key = Some(p.name.as_str());
