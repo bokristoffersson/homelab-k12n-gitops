@@ -1,0 +1,55 @@
+mqtt:
+  host: "p0.local"
+  port: 1883
+  client_id: "mqtt-input"
+  username: "thermiq"
+  password: "thermiq"
+  keep_alive_secs: 30
+  clean_session: true
+  protocol: "v5"
+  tls:
+    ca_file: ""
+
+redpanda:
+  brokers: "redpanda.redpanda.svc.cluster.local:9092"
+
+pipelines:
+  - name: "heatpump"
+    topic: "home/heatpump/telemetry"
+    qos: 1
+    redpanda_topic: "heatpump-telemetry"
+    timestamp:
+      path: "$.timestamp"
+      format: "rfc3339"
+      use_now: true
+    tags:
+      device_id: "$.device_id"
+      room: "$.room"
+    fields:
+      flow_temp_c:
+        path: "$.flow_temp"
+        type: "float"
+      return_temp_c:
+        path: "$.return_temp"
+        type: "float"
+      power_w:
+        path: "$.power"
+        type: "int"
+    store_interval: "MINUTE"  # Only store one message per minute
+  - name: "sensors"
+    topic: "home/sensors/+/state"
+    qos: 1
+    redpanda_topic: "sensor-state"
+    timestamp:
+      use_now: true
+    tags:
+      sensor: "$.name"
+      location: "$.location"
+    fields:
+      temperature_c:
+        path: "$.temperature"
+        type: "float"
+      humidity_pct:
+        path: "$.humidity"
+        type: "float"
+    # No store_interval specified - all messages will be stored
