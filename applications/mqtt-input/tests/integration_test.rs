@@ -39,18 +39,18 @@ pipelines:
 
     let temp_file = std::env::temp_dir().join(format!("test-config-{}.yaml", std::process::id()));
     std::fs::write(&temp_file, config_str).unwrap();
-    
+
     // Ensure REDPANDA_BROKERS is not set for this test
     let original = std::env::var("REDPANDA_BROKERS").ok();
     std::env::remove_var("REDPANDA_BROKERS");
-    
+
     let config = Config::load(&temp_file).unwrap();
 
     assert_eq!(config.mqtt.host, "localhost");
     assert_eq!(config.mqtt.port, 1883);
     // Brokers from config file
     assert_eq!(config.redpanda.brokers, "localhost:9092");
-    
+
     // Restore original if it existed
     if let Some(val) = original {
         std::env::set_var("REDPANDA_BROKERS", val);
@@ -84,24 +84,28 @@ pipelines:
       use_now: true
 "#;
 
-    let temp_file = std::env::temp_dir().join(format!("test-config-env-{}.yaml", std::process::id()));
+    let temp_file =
+        std::env::temp_dir().join(format!("test-config-env-{}.yaml", std::process::id()));
     std::fs::write(&temp_file, config_str).unwrap();
-    
+
     // Save original value if it exists
     let original = std::env::var("REDPANDA_BROKERS").ok();
-    
+
     // Set the environment variable
     std::env::set_var("REDPANDA_BROKERS", "override:9092");
-    
+
     // Verify it's set before loading config
     assert_eq!(std::env::var("REDPANDA_BROKERS").unwrap(), "override:9092");
-    
+
     let config = Config::load(&temp_file).unwrap();
-    assert_eq!(config.redpanda.brokers, "override:9092", 
-               "Environment variable override failed. Config has: {}, Env var is: {:?}", 
-               config.redpanda.brokers, 
-               std::env::var("REDPANDA_BROKERS").ok());
-    
+    assert_eq!(
+        config.redpanda.brokers,
+        "override:9092",
+        "Environment variable override failed. Config has: {}, Env var is: {:?}",
+        config.redpanda.brokers,
+        std::env::var("REDPANDA_BROKERS").ok()
+    );
+
     // Restore original value or remove
     if let Some(val) = original {
         std::env::set_var("REDPANDA_BROKERS", val);
@@ -115,8 +119,8 @@ pipelines:
 /// Test message transformation to JSON format
 #[tokio::test]
 async fn test_message_transformation() {
-    use mqtt_input::mapping::{extract_row, FieldValue};
     use mqtt_input::config::{FieldConfig, Pipeline};
+    use mqtt_input::mapping::{extract_row, FieldValue};
     use serde_json::json;
 
     let mut tags = BTreeMap::new();
@@ -124,21 +128,30 @@ async fn test_message_transformation() {
     tags.insert("room".to_string(), "$.room".to_string());
 
     let mut fields = BTreeMap::new();
-    fields.insert("temperature_c".to_string(), FieldConfig {
-        path: "$.temperature".to_string(),
-        r#type: "float".to_string(),
-        attributes: None,
-    });
-    fields.insert("power_w".to_string(), FieldConfig {
-        path: "$.power".to_string(),
-        r#type: "int".to_string(),
-        attributes: None,
-    });
-    fields.insert("active".to_string(), FieldConfig {
-        path: "$.active".to_string(),
-        r#type: "bool".to_string(),
-        attributes: None,
-    });
+    fields.insert(
+        "temperature_c".to_string(),
+        FieldConfig {
+            path: "$.temperature".to_string(),
+            r#type: "float".to_string(),
+            attributes: None,
+        },
+    );
+    fields.insert(
+        "power_w".to_string(),
+        FieldConfig {
+            path: "$.power".to_string(),
+            r#type: "int".to_string(),
+            attributes: None,
+        },
+    );
+    fields.insert(
+        "active".to_string(),
+        FieldConfig {
+            path: "$.active".to_string(),
+            r#type: "bool".to_string(),
+            attributes: None,
+        },
+    );
 
     let pipeline = Pipeline {
         name: "test".to_string(),
@@ -164,21 +177,21 @@ async fn test_message_transformation() {
     });
 
     let row = extract_row(&pipeline, "test/topic", payload.to_string().as_bytes()).unwrap();
-    
+
     // Verify extracted data
     assert_eq!(row.tags.get("device_id").unwrap(), "hp-01");
     assert_eq!(row.tags.get("room").unwrap(), "utility");
-    
+
     match row.fields.get("temperature_c").unwrap() {
         FieldValue::F64(v) => assert_eq!(*v, 21.5),
         _ => panic!("Expected F64"),
     }
-    
+
     match row.fields.get("power_w").unwrap() {
         FieldValue::I64(v) => assert_eq!(*v, 950),
         _ => panic!("Expected I64"),
     }
-    
+
     match row.fields.get("active").unwrap() {
         FieldValue::Bool(v) => assert_eq!(*v, true),
         _ => panic!("Expected Bool"),
@@ -191,50 +204,65 @@ async fn test_pipeline_matching() {
     use mqtt_input::mapping::topic_matches;
 
     // Test exact match
-    assert!(topic_matches("home/heatpump/telemetry", "home/heatpump/telemetry"));
-    
+    assert!(topic_matches(
+        "home/heatpump/telemetry",
+        "home/heatpump/telemetry"
+    ));
+
     // Test single-level wildcard
     assert!(topic_matches("home/+/telemetry", "home/heatpump/telemetry"));
     assert!(topic_matches("home/+/telemetry", "home/sensor/telemetry"));
-    assert!(!topic_matches("home/+/telemetry", "home/heatpump/sensor/telemetry"));
-    
+    assert!(!topic_matches(
+        "home/+/telemetry",
+        "home/heatpump/sensor/telemetry"
+    ));
+
     // Test multi-level wildcard
     assert!(topic_matches("home/#", "home/heatpump/telemetry"));
     assert!(topic_matches("home/#", "home/sensors/kitchen/state"));
     assert!(!topic_matches("home/#", "other/heatpump/telemetry"));
-    
+
     // Test no match
-    assert!(!topic_matches("home/heatpump/telemetry", "home/sensor/telemetry"));
+    assert!(!topic_matches(
+        "home/heatpump/telemetry",
+        "home/sensor/telemetry"
+    ));
 }
 
 /// Test interval throttling logic
 #[tokio::test]
 async fn test_interval_throttling() {
-    use mqtt_input::redpanda::create_producer;
     use chrono::Utc;
-    
+    use mqtt_input::redpanda::create_producer;
+
     // Create a producer for the ingestor
     // Note: This test requires a running Redpanda instance or we skip it
     // In a real scenario, you'd use testcontainers or mocks
     let brokers = "localhost:9092";
-    
+
     if let Ok(producer) = create_producer(brokers).await {
         let ingestor = Ingestor::new(producer);
-        
+
         let now = Utc::now();
         let pipeline_name = "test-pipeline";
-        
+
         // First call should allow storage
-        let should_store1 = ingestor.should_store(pipeline_name, &now, "MINUTE").unwrap();
+        let should_store1 = ingestor
+            .should_store(pipeline_name, &now, "MINUTE")
+            .unwrap();
         assert!(should_store1);
-        
+
         // Immediate second call should be throttled
-        let should_store2 = ingestor.should_store(pipeline_name, &now, "MINUTE").unwrap();
+        let should_store2 = ingestor
+            .should_store(pipeline_name, &now, "MINUTE")
+            .unwrap();
         assert!(!should_store2);
-        
+
         // After a minute, should allow again
         let later = now + chrono::Duration::minutes(1);
-        let should_store3 = ingestor.should_store(pipeline_name, &later, "MINUTE").unwrap();
+        let should_store3 = ingestor
+            .should_store(pipeline_name, &later, "MINUTE")
+            .unwrap();
         assert!(should_store3);
     } else {
         // Skip test if Redpanda is not available - this is expected in CI without testcontainers
@@ -393,8 +421,16 @@ async fn test_timestamp_extraction() {
         "timestamp": "2025-10-13T11:00:00Z"
     });
 
-    let row = extract_row(&pipeline_rfc3339, "test/topic", payload.to_string().as_bytes()).unwrap();
-    assert_eq!(row.ts.format("%Y-%m-%dT%H:%M:%S").to_string(), "2025-10-13T11:00:00");
+    let row = extract_row(
+        &pipeline_rfc3339,
+        "test/topic",
+        payload.to_string().as_bytes(),
+    )
+    .unwrap();
+    assert_eq!(
+        row.ts.format("%Y-%m-%dT%H:%M:%S").to_string(),
+        "2025-10-13T11:00:00"
+    );
 
     // Test unix_ms format
     let pipeline_unix_ms = Pipeline {
@@ -418,13 +454,23 @@ async fn test_timestamp_extraction() {
         "timestamp": 1705314600000i64
     });
 
-    let row_unix = extract_row(&pipeline_unix_ms, "test/topic", payload_unix.to_string().as_bytes()).unwrap();
+    let row_unix = extract_row(
+        &pipeline_unix_ms,
+        "test/topic",
+        payload_unix.to_string().as_bytes(),
+    )
+    .unwrap();
     // Verify the timestamp is correct (UTC)
     let expected_ts = chrono::DateTime::parse_from_rfc3339("2024-01-15T10:30:00Z")
         .unwrap()
         .with_timezone(&chrono::Utc);
     // Allow small difference for rounding
     let diff = (row_unix.ts - expected_ts).num_seconds().abs();
-    assert!(diff <= 1, "Timestamp difference too large: {} seconds. Expected: {:?}, Got: {:?}", diff, expected_ts, row_unix.ts);
+    assert!(
+        diff <= 1,
+        "Timestamp difference too large: {} seconds. Expected: {:?}, Got: {:?}",
+        diff,
+        expected_ts,
+        row_unix.ts
+    );
 }
-

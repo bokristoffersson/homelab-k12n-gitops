@@ -27,12 +27,15 @@ pub async fn publish_message(
     payload: &[u8],
 ) -> Result<(), AppError> {
     let mut record = FutureRecord::to(topic).payload(payload);
-    
+
     if let Some(k) = key {
         record = record.key(k);
     }
 
-    match producer.send(record, Timeout::After(Duration::from_secs(5))).await {
+    match producer
+        .send(record, Timeout::After(Duration::from_secs(5)))
+        .await
+    {
         Ok((_partition, _offset)) => {
             debug!(topic = topic, "message published successfully");
             Ok(())
@@ -43,4 +46,3 @@ pub async fn publish_message(
         }
     }
 }
-

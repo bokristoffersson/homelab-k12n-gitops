@@ -18,8 +18,8 @@ async fn main() -> Result<(), anyhow::Error> {
         .compact()
         .init();
 
-    let cfg_path = std::env::var("APP_CONFIG")
-        .unwrap_or_else(|_| "config/config.example.yaml".into());
+    let cfg_path =
+        std::env::var("APP_CONFIG").unwrap_or_else(|_| "config/config.example.yaml".into());
     let cfg = Config::load(&cfg_path)?;
     info!("loaded config; pipelines: {}", cfg.pipelines.len());
 
@@ -43,9 +43,7 @@ async fn main() -> Result<(), anyhow::Error> {
     )?;
     let (client, mut eventloop) = mqtt::new(opts);
     for p in &cfg.pipelines {
-        client
-            .subscribe(p.topic.clone(), mqtt::qos(p.qos))
-            .await?;
+        client.subscribe(p.topic.clone(), mqtt::qos(p.qos)).await?;
     }
     info!("subscribed to {} pipeline topic(s)", cfg.pipelines.len());
 

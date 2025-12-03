@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
 use std::collections::BTreeMap;
+use std::{fs, path::Path};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -24,7 +24,9 @@ pub struct MqttConfig {
     pub tls: Option<TlsConfig>,
 }
 
-fn default_protocol() -> String { "v5".into() }
+fn default_protocol() -> String {
+    "v5".into()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TlsConfig {
@@ -61,7 +63,6 @@ pub struct Pipeline {
     pub store_interval: Option<String>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimestampConfig {
     /// JSONPath to the timestamp; if absent and use_now=true, now() is used.
@@ -72,10 +73,20 @@ pub struct TimestampConfig {
     #[serde(default = "default_use_now")]
     pub use_now: bool,
 }
-fn default_ts_format() -> String { "rfc3339".into() }
-fn default_use_now() -> bool { true }
+fn default_ts_format() -> String {
+    "rfc3339".into()
+}
+fn default_use_now() -> bool {
+    true
+}
 impl Default for TimestampConfig {
-    fn default() -> Self { Self { path: None, format: default_ts_format(), use_now: true } }
+    fn default() -> Self {
+        Self {
+            path: None,
+            format: default_ts_format(),
+            use_now: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,7 +120,10 @@ impl Config {
             cfg.redpanda.brokers = brokers;
         }
 
-        anyhow::ensure!(!cfg.pipelines.is_empty(), "config must include at least one pipeline");
+        anyhow::ensure!(
+            !cfg.pipelines.is_empty(),
+            "config must include at least one pipeline"
+        );
         Ok(cfg)
     }
 }

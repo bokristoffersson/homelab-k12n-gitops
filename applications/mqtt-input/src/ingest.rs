@@ -46,20 +46,15 @@ impl Ingestor {
 
                 // Transform Row to JSON for publishing
                 let json_payload = row_to_json(&row)?;
-                let payload_bytes = serde_json::to_vec(&json_payload)
-                    .map_err(|e| AppError::Json(e))?;
+                let payload_bytes =
+                    serde_json::to_vec(&json_payload).map_err(|e| AppError::Json(e))?;
 
                 // Use pipeline name as key for partitioning (optional, can be None)
                 let key = Some(p.name.as_str());
 
                 // Publish to Redpanda
-                if let Err(e) = publish_message(
-                    &self.producer,
-                    &p.redpanda_topic,
-                    key,
-                    &payload_bytes,
-                )
-                .await
+                if let Err(e) =
+                    publish_message(&self.producer, &p.redpanda_topic, key, &payload_bytes).await
                 {
                     error!(
                         pipeline = %p.name,
@@ -109,10 +104,7 @@ fn row_to_json(row: &Row) -> Result<Value, AppError> {
     let mut obj = Map::new();
 
     // Add timestamp
-    obj.insert(
-        "ts".to_string(),
-        Value::String(row.ts.to_rfc3339()),
-    );
+    obj.insert("ts".to_string(), Value::String(row.ts.to_rfc3339()));
 
     // Add tags
     if !row.tags.is_empty() {

@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 pub struct Row {
     pub ts: chrono::DateTime<Utc>,
     pub tags: BTreeMap<String, String>,
-    pub fields: BTreeMap<String, FieldValue>
+    pub fields: BTreeMap<String, FieldValue>,
 }
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ pub enum FieldValue {
     F64(f64),
     I64(i64),
     Bool(bool),
-    Text(String)
+    Text(String),
 }
 
 pub fn topic_matches(filter: &str, topic: &str) -> bool {
@@ -26,8 +26,16 @@ pub fn topic_matches(filter: &str, topic: &str) -> bool {
     for (i, f) in fseg.iter().enumerate() {
         match *f {
             "#" => return true,
-            "+" => { if i >= tseg.len() { return false; } }
-            _ => { if i >= tseg.len() || *f != tseg[i] { return false; } }
+            "+" => {
+                if i >= tseg.len() {
+                    return false;
+                }
+            }
+            _ => {
+                if i >= tseg.len() || *f != tseg[i] {
+                    return false;
+                }
+            }
         }
     }
     fseg.len() == tseg.len()
@@ -123,15 +131,21 @@ fn extract_ts(tc: &TimestampConfig, json: &Value) -> Result<DateTime<Utc>, AppEr
                     return Ok(dt.with_timezone(&Utc));
                 }
                 "unix_ms" => {
-                    let ms = v.as_i64()
+                    let ms = v
+                        .as_i64()
                         .ok_or_else(|| AppError::Time("unix_ms not i64".into()))?;
-                    return Ok(Utc.timestamp_millis_opt(ms).single()
+                    return Ok(Utc
+                        .timestamp_millis_opt(ms)
+                        .single()
                         .ok_or_else(|| AppError::Time("unix_ms out of range".into()))?);
                 }
                 "unix_s" => {
-                    let s = v.as_i64()
+                    let s = v
+                        .as_i64()
                         .ok_or_else(|| AppError::Time("unix_s not i64".into()))?;
-                    return Ok(Utc.timestamp_opt(s, 0).single()
+                    return Ok(Utc
+                        .timestamp_opt(s, 0)
+                        .single()
                         .ok_or_else(|| AppError::Time("unix_s out of range".into()))?);
                 }
                 "iso8601" => {
@@ -144,12 +158,17 @@ fn extract_ts(tc: &TimestampConfig, json: &Value) -> Result<DateTime<Utc>, AppEr
             }
         }
     }
-    if tc.use_now { Ok(Utc::now()) } else { Err(AppError::Time("timestamp missing".into())) }
+    if tc.use_now {
+        Ok(Utc::now())
+    } else {
+        Err(AppError::Time("timestamp missing".into()))
+    }
 }
 
-
 fn first_jsonpath(path: &str, json: &Value) -> Option<Value> {
-    jsonpath::select(json, path).ok().and_then(|v| v.into_iter().next().cloned())
+    jsonpath::select(json, path)
+        .ok()
+        .and_then(|v| v.into_iter().next().cloned())
 }
 
 fn stringify_json(v: &Value) -> String {
@@ -198,7 +217,10 @@ mod tests {
     fn test_topic_matches() {
         assert!(topic_matches("a/+/c", "a/b/c"));
         assert!(topic_matches("a/#", "a/b/c/d"));
-        assert!(topic_matches("home/sensors/+/state", "home/sensors/kitchen/state"));
+        assert!(topic_matches(
+            "home/sensors/+/state",
+            "home/sensors/kitchen/state"
+        ));
         assert!(!topic_matches("a/+/c", "a/b/c/d"));
         assert!(!topic_matches("a/b/c", "a/b"));
     }
@@ -209,16 +231,22 @@ mod tests {
         tags.insert("device_id".into(), "$.device".into());
 
         let mut fields = BTreeMap::new();
-        fields.insert("temperature_c".into(), FieldConfig {
-            path: "$.temperature".into(),
-            r#type: "float".into(),
-            attributes: None
-        });
-        fields.insert("power_w".into(), FieldConfig {
-            path: "$.power".into(),
-            r#type: "int".into(),
-            attributes: None
-        });
+        fields.insert(
+            "temperature_c".into(),
+            FieldConfig {
+                path: "$.temperature".into(),
+                r#type: "float".into(),
+                attributes: None,
+            },
+        );
+        fields.insert(
+            "power_w".into(),
+            FieldConfig {
+                path: "$.power".into(),
+                r#type: "int".into(),
+                attributes: None,
+            },
+        );
 
         let p = Pipeline {
             name: "t".into(),
@@ -228,31 +256,32 @@ mod tests {
             timestamp: TimestampConfig {
                 path: None,
                 format: "rfc3339".into(),
-                use_now: true
+                use_now: true,
             },
             tags,
             fields,
             bit_flags: None,
-            store_interval: None
+            store_interval: None,
         };
 
         let payload = json!({
-        "device": "hp-01",
-        "temperature": 21.5,
-        "power": 950
-    }).to_string();
+            "device": "hp-01",
+            "temperature": 21.5,
+            "power": 950
+        })
+        .to_string();
 
         let row = extract_row(&p, "x", payload.as_bytes()).unwrap();
         assert_eq!(row.tags.get("device_id").unwrap(), "hp-01");
 
         match row.fields.get("temperature_c").unwrap() {
             FieldValue::F64(v) => assert!((*v - 21.5).abs() < 1e-9),
-            _ => panic!("Expected F64")
+            _ => panic!("Expected F64"),
         }
 
         match row.fields.get("power_w").unwrap() {
             FieldValue::I64(v) => assert_eq!(*v, 950),
-            _ => panic!("Expected I64")
+            _ => panic!("Expected I64"),
         }
     }
 
@@ -262,11 +291,14 @@ mod tests {
         tags.insert("device_id".into(), "$.device".into());
 
         let mut fields = BTreeMap::new();
-        fields.insert("temperature_c".into(), FieldConfig {
-            path: "$.temperature".into(),
-            r#type: "float".into(),
-            attributes: None
-        });
+        fields.insert(
+            "temperature_c".into(),
+            FieldConfig {
+                path: "$.temperature".into(),
+                r#type: "float".into(),
+                attributes: None,
+            },
+        );
 
         // Configure bit flags
         let mut status_flags = BTreeMap::new();
@@ -288,20 +320,21 @@ mod tests {
             timestamp: TimestampConfig {
                 path: None,
                 format: "rfc3339".into(),
-                use_now: true
+                use_now: true,
             },
             tags,
             fields,
             bit_flags: Some(vec![bit_flag_config]),
-            store_interval: None
+            store_interval: None,
         };
 
         // Test with status_byte = 21 (0b00010101 - bits 0, 2, 4 set)
         let payload = json!({
-        "device": "hp-01",
-        "temperature": 21.5,
-        "status_byte": 21
-    }).to_string();
+            "device": "hp-01",
+            "temperature": 21.5,
+            "status_byte": 21
+        })
+        .to_string();
 
         let row = extract_row(&p, "x", payload.as_bytes()).unwrap();
 
@@ -309,28 +342,28 @@ mod tests {
         assert_eq!(row.tags.get("device_id").unwrap(), "hp-01");
         match row.fields.get("temperature_c").unwrap() {
             FieldValue::F64(v) => assert!((*v - 21.5).abs() < 1e-9),
-            _ => panic!("Expected F64")
+            _ => panic!("Expected F64"),
         }
 
         // Check bit flags
         match row.fields.get("compressor_on").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, true),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("heating_mode").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, false),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("hot_water_mode").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, true),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("circulation_pump").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, true),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
     }
 
@@ -340,11 +373,14 @@ mod tests {
         tags.insert("device_id".into(), "$.device".into());
 
         let mut fields = BTreeMap::new();
-        fields.insert("power_w".into(), FieldConfig {
-            path: "$.power".into(),
-            r#type: "int".into(),
-            attributes: None
-        });
+        fields.insert(
+            "power_w".into(),
+            FieldConfig {
+                path: "$.power".into(),
+                r#type: "int".into(),
+                attributes: None,
+            },
+        );
 
         let p = Pipeline {
             name: "energy_meter".into(),
@@ -354,29 +390,33 @@ mod tests {
             timestamp: TimestampConfig {
                 path: Some("$.timestamp".into()),
                 format: "iso8601".into(),
-                use_now: false
+                use_now: false,
             },
             tags,
             fields,
             bit_flags: None,
-            store_interval: None
+            store_interval: None,
         };
 
         let payload = json!({
             "device": "em-01",
             "timestamp": "2025-10-25T18:48:26",
             "power": 1500
-        }).to_string();
+        })
+        .to_string();
 
         let row = extract_row(&p, "energy/meter/telemetry", payload.as_bytes()).unwrap();
-        
+
         // Check that timestamp was parsed correctly (should be UTC)
-        assert_eq!(row.ts.format("%Y-%m-%dT%H:%M:%S").to_string(), "2025-10-25T18:48:26");
+        assert_eq!(
+            row.ts.format("%Y-%m-%dT%H:%M:%S").to_string(),
+            "2025-10-25T18:48:26"
+        );
         assert_eq!(row.tags.get("device_id").unwrap(), "em-01");
 
         match row.fields.get("power_w").unwrap() {
             FieldValue::I64(v) => assert_eq!(*v, 1500),
-            _ => panic!("Expected I64")
+            _ => panic!("Expected I64"),
         }
     }
 
@@ -386,11 +426,14 @@ mod tests {
         tags.insert("device_id".into(), "$.device".into());
 
         let mut fields = BTreeMap::new();
-        fields.insert("power_w".into(), FieldConfig {
-            path: "$.power".into(),
-            r#type: "int".into(),
-            attributes: None
-        });
+        fields.insert(
+            "power_w".into(),
+            FieldConfig {
+                path: "$.power".into(),
+                r#type: "int".into(),
+                attributes: None,
+            },
+        );
 
         // Configure nested object extraction for energy consumption
         let mut consumption_attrs = BTreeMap::new();
@@ -399,11 +442,14 @@ mod tests {
         consumption_attrs.insert("L2".into(), "consumption_l2_w".into());
         consumption_attrs.insert("L3".into(), "consumption_l3_w".into());
 
-        fields.insert("activeActualConsumption".into(), FieldConfig {
-            path: "$.activeActualConsumption".into(),
-            r#type: "nested".into(),
-            attributes: Some(consumption_attrs)
-        });
+        fields.insert(
+            "activeActualConsumption".into(),
+            FieldConfig {
+                path: "$.activeActualConsumption".into(),
+                r#type: "nested".into(),
+                attributes: Some(consumption_attrs),
+            },
+        );
 
         let p = Pipeline {
             name: "energy_meter".into(),
@@ -413,12 +459,12 @@ mod tests {
             timestamp: TimestampConfig {
                 path: Some("$.timestamp".into()),
                 format: "iso8601".into(),
-                use_now: false
+                use_now: false,
             },
             tags,
             fields,
             bit_flags: None,
-            store_interval: None
+            store_interval: None,
         };
 
         let payload = json!({
@@ -431,36 +477,37 @@ mod tests {
                 "L2": 194,
                 "L3": 128
             }
-        }).to_string();
+        })
+        .to_string();
 
         let row = extract_row(&p, "energy/meter/telemetry", payload.as_bytes()).unwrap();
-        
+
         // Check regular fields
         assert_eq!(row.tags.get("device_id").unwrap(), "em-01");
         match row.fields.get("power_w").unwrap() {
             FieldValue::I64(v) => assert_eq!(*v, 1500),
-            _ => panic!("Expected I64")
+            _ => panic!("Expected I64"),
         }
 
         // Check nested object fields
         match row.fields.get("consumption_total_w").unwrap() {
             FieldValue::F64(v) => assert_eq!(*v, 622.0),
-            _ => panic!("Expected F64")
+            _ => panic!("Expected F64"),
         }
 
         match row.fields.get("consumption_l1_w").unwrap() {
             FieldValue::F64(v) => assert_eq!(*v, 299.0),
-            _ => panic!("Expected F64")
+            _ => panic!("Expected F64"),
         }
 
         match row.fields.get("consumption_l2_w").unwrap() {
             FieldValue::F64(v) => assert_eq!(*v, 194.0),
-            _ => panic!("Expected F64")
+            _ => panic!("Expected F64"),
         }
 
         match row.fields.get("consumption_l3_w").unwrap() {
             FieldValue::F64(v) => assert_eq!(*v, 128.0),
-            _ => panic!("Expected F64")
+            _ => panic!("Expected F64"),
         }
     }
 
@@ -486,7 +533,7 @@ mod tests {
             timestamp: TimestampConfig {
                 path: None,
                 format: "rfc3339".into(),
-                use_now: true
+                use_now: true,
             },
             tags: BTreeMap::new(),
             fields,
@@ -498,40 +545,41 @@ mod tests {
                 BitFlagConfig {
                     source_path: "$.alarm_byte".into(),
                     flags: alarm_flags,
-                }
+                },
             ]),
-            store_interval: None
+            store_interval: None,
         };
 
         // status_byte = 1 (0b00000001 - bit 0 set)
         // alarm_byte = 2 (0b00000010 - bit 1 set)
         let payload = json!({
-        "status_byte": 1,
-        "alarm_byte": 2
-    }).to_string();
+            "status_byte": 1,
+            "alarm_byte": 2
+        })
+        .to_string();
 
         let row = extract_row(&p, "x", payload.as_bytes()).unwrap();
 
         // Check status flags
         match row.fields.get("compressor_on").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, true),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("heating_mode").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, false),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
 
         // Check alarm flags
         match row.fields.get("high_pressure_alarm").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, false),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
 
         match row.fields.get("low_pressure_alarm").unwrap() {
             FieldValue::Bool(v) => assert_eq!(*v, true),
-            _ => panic!("Expected Bool")
+            _ => panic!("Expected Bool"),
         }
     }
 }
