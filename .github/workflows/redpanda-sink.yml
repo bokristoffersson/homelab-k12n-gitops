@@ -117,28 +117,73 @@ jobs:
           # Stop and remove any existing test containers
           docker stop redpanda-test postgres-test 2>/dev/null || true
           docker rm -f redpanda-test postgres-test 2>/dev/null || true
-          # Wait a moment for ports to be released
-          sleep 2
+          
+          # Find and remove any containers using our ports
+          for port in 9092 5432; do
+            containers=$(docker ps -a --filter "publish=$port" --format "{{.ID}}" 2>/dev/null || true)
+            if [ -n "$containers" ]; then
+              echo "Removing containers using port $port: $containers"
+              echo "$containers" | xargs -r docker rm -f 2>/dev/null || true
+            fi
+          done
+          
+          # Wait for ports to be released
+          sleep 3
+          
+          # Check if ports are still in use and show what's using them
+          if command -v lsof >/dev/null 2>&1; then
+            if lsof -Pi :9092 -sTCP:LISTEN -t >/dev/null 2>&1; then
+              echo "Warning: Port 9092 is still in use:"
+              lsof -Pi :9092 -sTCP:LISTEN || true
+            fi
+            if lsof -Pi :5432 -sTCP:LISTEN -t >/dev/null 2>&1; then
+              echo "Warning: Port 5432 is still in use:"
+              lsof -Pi :5432 -sTCP:LISTEN || true
+            fi
+          fi
 
       - name: Start Redpanda with Docker
         run: |
+          # Verify port 9092 is free
+          if command -v nc >/dev/null 2>&1; then
+            if nc -z localhost 9092 2>/dev/null; then
+              echo "Error: Port 9092 is still in use. Aborting."
+              docker ps -a | grep -E "(redpanda|9092)" || true
+              exit 1
+            fi
+          fi
+          
+          # Start Redpanda container with simplified configuration
+          # Using only external address to avoid binding conflicts
           docker run -d \
+            --rm \
             --name redpanda-test \
             -p 9092:9092 \
             docker.redpanda.com/redpandadata/redpanda:v24.2.19 \
             redpanda start \
-            --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:9092 \
-            --advertise-kafka-addr internal://localhost:9092,external://localhost:9092 \
+            --kafka-addr 0.0.0.0:9092 \
+            --advertise-kafka-addr localhost:9092 \
             --rpc-addr 0.0.0.0:33145 \
             --advertise-rpc-addr localhost:33145 \
             --smp 1 \
             --memory 1G \
             --mode dev-container \
             --default-log-level=info
+          
+          # Give it a moment to start
+          sleep 3
+          
+          # Check if container started successfully
+          if ! docker ps | grep -q redpanda-test; then
+            echo "Redpanda container failed to start. Logs:"
+            docker logs redpanda-test 2>&1 || true
+            exit 1
+          fi
 
       - name: Start PostgreSQL with Docker
         run: |
           docker run -d \
+            --rm \
             --name postgres-test \
             -p 5432:5432 \
             -e POSTGRES_USER=postgres \
