@@ -111,8 +111,13 @@ data:
             type: "nested"
             attributes:
               total: "consumption_total_w"
-              L1: "consumption_l1_w"
-              L2: "consumption_l2_w"
-              L3: "consumption_l3_w"
+          activeActualConsumption:
+            path: "$.activeActualConsumption"
+            type: "nested"
+            attributes:
+              total: "consumption_total_actual_w"
+              L1: "consumption_L1_actual_w"
+              L2: "consumption_L2_actual_w"
+              L3: "consumption_L3_actual_w"
         store_interval: "MINUTE"
 
