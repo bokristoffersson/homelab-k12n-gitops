@@ -223,11 +223,6 @@ jobs:
           done
           echo "PostgreSQL is ready!"
 
-      - name: Run database migrations
-        run: |
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test -f migrations/001_init_timeseries_tables.sql
-          PGPASSWORD=postgres psql -h localhost -U postgres -d test -f migrations/002_init_static_tables.sql
-
       - name: Run end-to-end tests
         run: cargo test --test end_to_end_test -- --ignored
         env:
