@@ -107,7 +107,7 @@ data:
             type: "bool"
           }
       - name: "sensors"
-        topic: "heatpump-telemetry"
+        topic: "sensor-state"
         table: "telemetry_new"
         data_type: "timeseries"
         timestamp:
