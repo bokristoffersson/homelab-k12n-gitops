@@ -128,16 +128,19 @@ data:
         data_type: "timeseries"
         store_interval: "MINUTE"
         timestamp:
-          path: "$.timestamp"
-          format: "iso8601"
-          use_now: true
+          path: "$.ts"
+          format: "rfc3339"
         fields:
-          activeTotalConsumption:
-            path: "$.activeTotalConsumption"
-            type: "nested" 
-            attributes:
-              total: "consumption_total_w"
-              L1: "consumption_l1_w"
-              L2: "consumption_l2_w"
-              L3: "consumption_l3_w"
+          consumption_total_w:
+            path: "$.fields.consumption_total_w"
+            type: "float"
+          consumption_l1_w:
+            path: "$.fields.consumption_l1_w"
+            type: "float"
+          consumption_l2_w:
+            path: "$.fields.consumption_l2_w"
+            type: "float"
+          consumption_l3_w:
+            path: "$.fields.consumption_l3_w"
+            type: "float"
 

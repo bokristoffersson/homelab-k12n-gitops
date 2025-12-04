@@ -97,4 +97,22 @@ data:
           humidity_pct:
             path: "$.humidity"
             type: "float"
+      - name: "energy"
+        topic: "saveeye/telemetry"
+        qos: 1
+        redpanda_topic: "energy-realtime"
+        timestamp:
+          path: "$.timestamp"
+          format: "iso8601"
+          use_now: true
+        fields:
+          activeTotalConsumption:
+            path: "$.activeTotalConsumption"
+            type: "nested"
+            attributes:
+              total: "consumption_total_w"
+              L1: "consumption_l1_w"
+              L2: "consumption_l2_w"
+              L3: "consumption_l3_w"
+        store_interval: "MINUTE"
 
