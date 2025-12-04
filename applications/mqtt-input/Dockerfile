@@ -84,7 +84,7 @@ RUN case "$TARGETPLATFORM" in \
       cp target/release/mqtt-input /app/mqtt-input ;; \
     esac
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y ca-certificates libssl3 zlib1g && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /app/mqtt-input /usr/local/bin/mqtt-input
