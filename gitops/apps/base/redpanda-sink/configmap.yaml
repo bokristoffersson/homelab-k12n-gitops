@@ -19,12 +19,14 @@ data:
     pipelines:
       - name: "heatpump"
         topic: "heatpump-telemetry"
-        table: "heatpump_new"
+        table: "heatpump"
         data_type: "timeseries"
         timestamp:
           path: "$.ts"
           format: "rfc3339"
-        tags: {}
+        tags:
+          device_id: "$.tags.device_id"
+          room: "$.tags.room"
         fields:
           outdoor_temp: { 
             path: "$.fields.outdoor_temp", 
@@ -108,7 +110,7 @@ data:
           }
       - name: "sensors"
         topic: "sensor-state"
-        table: "telemetry_new"
+        table: "telemetry"
         data_type: "timeseries"
         timestamp:
           use_now: true
@@ -124,7 +126,7 @@ data:
             type: "float"
       - name: "energy"  
         topic: "energy-realtime"
-        table: "energy_new"
+        table: "energy"
         data_type: "timeseries"
         store_interval: "MINUTE"
         timestamp:

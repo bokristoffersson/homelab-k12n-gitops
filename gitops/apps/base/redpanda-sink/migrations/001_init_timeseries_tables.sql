@@ -1,13 +1,9 @@
 -- Timeseries tables (hypertables for TimescaleDB)
 -- These tables store time-series data efficiently
 -- Schema matches the pipeline configuration in configmap.yaml
---
--- NOTE: Tables use "_new" suffix for parallel operation during migration from heatpump-mqtt.
--- After migration is complete and old system is removed, these tables will be renamed
--- to remove the "_new" suffix (heatpump_new -> heatpump, etc.)
 
--- Heatpump data table (with _new suffix for parallel operation)
-CREATE TABLE IF NOT EXISTS heatpump_new
+-- Heatpump data table
+CREATE TABLE IF NOT EXISTS heatpump
 (
     ts                  TIMESTAMPTZ       NOT NULL,
     device_id           TEXT,
@@ -35,10 +31,10 @@ CREATE TABLE IF NOT EXISTS heatpump_new
 );
 
 -- Convert to hypertable if TimescaleDB is available
-SELECT create_hypertable('heatpump_new', 'ts', if_not_exists => TRUE);
+SELECT create_hypertable('heatpump', 'ts', if_not_exists => TRUE);
 
--- Telemetry table for sensor data (with _new suffix for parallel operation)
-CREATE TABLE IF NOT EXISTS telemetry_new
+-- Telemetry table for sensor data
+CREATE TABLE IF NOT EXISTS telemetry
 (
     ts          TIMESTAMPTZ       NOT NULL,
     sensor       TEXT,
@@ -48,10 +44,10 @@ CREATE TABLE IF NOT EXISTS telemetry_new
 );
 
 -- Convert to hypertable if TimescaleDB is available
-SELECT create_hypertable('telemetry_new', 'ts', if_not_exists => TRUE);
+SELECT create_hypertable('telemetry', 'ts', if_not_exists => TRUE);
 
--- Energy consumption table (with _new suffix for parallel operation)
-CREATE TABLE IF NOT EXISTS energy_new
+-- Energy consumption table
+CREATE TABLE IF NOT EXISTS energy
 (
     ts                 TIMESTAMPTZ       NOT NULL,
     consumption_total_w DOUBLE PRECISION,
@@ -61,4 +57,4 @@ CREATE TABLE IF NOT EXISTS energy_new
 );
 
 -- Convert to hypertable if TimescaleDB is available
-SELECT create_hypertable('energy_new', 'ts', if_not_exists => TRUE);
+SELECT create_hypertable('energy', 'ts', if_not_exists => TRUE);
