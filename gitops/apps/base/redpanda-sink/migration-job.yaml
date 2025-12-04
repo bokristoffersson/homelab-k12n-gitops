@@ -1,0 +1,118 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redpanda-sink-migration
+  namespace: redpanda-sink
+  annotations:
+    "fluxcd.io/ignore": "false"
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        # Wait for database to be ready
+        - name: wait-for-database
+          image: postgres:15
+          env:
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for database to be ready..."
+              DB_URL="postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@timescaledb.heatpump-mqtt.svc.cluster.local:5432/timescaledb"
+              
+              # Wait for database to accept connections
+              for i in $(seq 1 30); do
+                if psql "$DB_URL" -c "SELECT 1" >/dev/null 2>&1; then
+                  echo "Database is ready!"
+                  exit 0
+                fi
+                if [ $i -eq 30 ]; then
+                  echo "ERROR: Database not ready after 60 seconds"
+                  exit 1
+                fi
+                echo "Waiting for database... ($i/30)"
+                sleep 2
+              done
+        # Run migrations
+        - name: run-migrations
+          image: postgres:15
+          env:
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-secret
+                  key: POSTGRES_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              
+              echo "Starting database migrations..."
+              
+              DB_URL="postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@timescaledb.heatpump-mqtt.svc.cluster.local:5432/timescaledb"
+              
+              # Run all migration scripts in order
+              # Migration scripts are mounted from ConfigMap
+              MIGRATIONS_DIR="/migrations"
+              
+              if [ ! -d "$MIGRATIONS_DIR" ]; then
+                echo "ERROR: Migrations directory not found at $MIGRATIONS_DIR"
+                exit 1
+              fi
+              
+              # Get sorted list of migration files
+              MIGRATION_FILES=$(ls -1 "$MIGRATIONS_DIR"/*.sql 2>/dev/null | sort)
+              
+              if [ -z "$MIGRATION_FILES" ]; then
+                echo "WARNING: No migration files found in $MIGRATIONS_DIR"
+                exit 0
+              fi
+              
+              echo "Found migration files:"
+              echo "$MIGRATION_FILES"
+              
+              # Execute each migration file
+              for migration_file in $MIGRATION_FILES; do
+                echo "Executing migration: $(basename $migration_file)"
+                psql "$DB_URL" -f "$migration_file" || {
+                  echo "ERROR: Migration $(basename $migration_file) failed"
+                  exit 1
+                }
+                echo "Migration $(basename $migration_file) completed successfully"
+              done
+              
+              echo "All migrations completed successfully!"
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+              readOnly: true
+      containers:
+        - name: complete
+          image: busybox:latest
+          command: ["sh", "-c", "echo Database migrations completed successfully"]
+      volumes:
+        - name: migrations
+          configMap:
+            name: redpanda-sink-migrations
+  backoffLimit: 3
+  # Automatically clean up completed jobs after 5 minutes
+  # This allows Flux to recreate the job if the spec changes
+  ttlSecondsAfterFinished: 300
+

@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redpanda-sink-config
+  namespace: redpanda-sink
+data:
+  config.yaml: |
+    redpanda:
+      brokers: "redpanda.redpanda.svc.cluster.local:9092"
+      group_id: "redpanda-sink"
+      auto_offset_reset: "earliest"
+    
+    database:
+      url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@timescaledb.heatpump-mqtt.svc.cluster.local:5432/timescaledb"
+      write:
+        batch_size: 500
+        linger_ms: 500
+    
+    pipelines:
+      - name: "heatpump"
+        topic: "heatpump-realtime"
+        table: "heatpump_new"
+        data_type: "timeseries"
+        timestamp:
+          path: "$.timestamp"
+          format: "unix_s"
+          use_now: true
+        tags:
+          device_id: "$.device_id"
+          room: "$.room"
+        fields:
+          outdoor_temp: { 
+            path: "$.d0", 
+            type: "float" 
+          }
+          supplyline_temp: { 
+            path: "$.d5", 
+            type: "float" 
+          }
+          returnline_temp: {
+            path: "$.d6",
+            type: "float"
+          }
+          hotwater_temp: {
+            path: "$.d7",
+            type: "int"
+          }
+          brine_out_temp: {
+            path: "$.d8",
+            type: "int"
+          }
+          brine_in_temp: {
+            path: "$.d9",
+            type: "int"
+          }
+          integral: {
+            path: "$.d25",
+            type: "int"
+          }
+          flowlinepump_speed: {
+            path: "$.d30",
+            type: "int"
+          }
+          brinepump_speed: {
+            path: "$.d31",
+            type: "int"
+          }    
+          runtime_compressor: {
+            path: "$.d104",
+            type: "int"
+          } 
+          runtime_hotwater: {
+            path: "$.d108",
+            type: "int"
+          } 
+          runtime_3kw: {
+            path: "$.d106",
+            type: "int"
+          }    
+          runtime_6kw: {
+            path: "$.d114",
+            type: "int"
+          }    
+        bit_flags:
+          - source_path: "$.d16"
+            flags:
+              0: "brinepump_on"
+              1: "compressor_on"
+              2: "flowlinepump_on"
+              3: "hotwater_production"
+              4: "circulation_pump"
+          - source_path: "$.d13"
+            flags:
+              0: "aux_heater_3kw_on"
+              1: "aux_heater_6kw_on"
+      - name: "sensors"
+        topic: "heatpump-telemetry"
+        table: "telemetry_new"
+        data_type: "timeseries"
+        timestamp:
+          use_now: true
+        tags:
+          sensor: "$.name"
+          location: "$.location"
+        fields:
+          temperature_c:
+            path: "$.temperature"
+            type: "float"
+          humidity_pct:
+            path: "$.humidity"
+            type: "float"
+      - name: "energy"  
+        topic: "energy-realtime"
+        table: "energy_new"
+        data_type: "timeseries"
+        store_interval: "MINUTE"
+        timestamp:
+          path: "$.timestamp"
+          format: "iso8601"
+          use_now: true
+        fields:
+          activeTotalConsumption:
+            path: "$.activeTotalConsumption"
+            type: "nested" 
+            attributes:
+              total: "consumption_total_w"
+              L1: "consumption_l1_w"
+              L2: "consumption_l2_w"
+              L3: "consumption_l3_w"
+

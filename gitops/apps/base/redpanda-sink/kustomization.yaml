@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: redpanda-sink
+resources:
+  - namespace.yaml
+  - ghcr-secret-sealed.yaml
+  - configmap.yaml
+  - migration-job.yaml
+  - deployment.yaml
+  - timescaledb-secret-sealed.yaml
+configMapGenerator:
+  - name: redpanda-sink-migrations
+    files:
+      - migrations/001_init_timeseries_tables.sql
+# Note: timescaledb-secret-sealed.yaml should be created manually
+# This secret should use the same structure as heatpump-mqtt (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB)
+# The connection string is constructed in configmap.yaml using $(DATABASE_USER) and $(DATABASE_PASSWORD) substitution
+# See SETUP.md for detailed instructions
+
