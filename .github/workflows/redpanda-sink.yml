@@ -112,6 +112,14 @@ jobs:
             postgresql-client \
             netcat-openbsd
 
+      - name: Cleanup existing containers
+        run: |
+          # Stop and remove any existing test containers
+          docker stop redpanda-test postgres-test 2>/dev/null || true
+          docker rm -f redpanda-test postgres-test 2>/dev/null || true
+          # Wait a moment for ports to be released
+          sleep 2
+
       - name: Start Redpanda with Docker
         run: |
           docker run -d \
@@ -121,10 +129,7 @@ jobs:
             redpanda start \
             --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:9092 \
             --advertise-kafka-addr internal://localhost:9092,external://localhost:9092 \
-            --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:8082 \
-            --advertise-pandaproxy-addr internal://localhost:8082,external://localhost:8082 \
-            --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:8081 \
-            --rpc-addr localhost:33145 \
+            --rpc-addr 0.0.0.0:33145 \
             --advertise-rpc-addr localhost:33145 \
             --smp 1 \
             --memory 1G \
