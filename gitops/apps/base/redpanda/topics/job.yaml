@@ -5,6 +5,8 @@ metadata:
   namespace: redpanda
   annotations:
     "fluxcd.io/ignore": "false"
+  labels:
+    topics-version: "v2"  # Update this when topics change to force recreation
 spec:
   template:
     spec:
