@@ -18,81 +18,94 @@ data:
     
     pipelines:
       - name: "heatpump"
-        topic: "heatpump-realtime"
+        topic: "heatpump-telemetry"
         table: "heatpump_new"
         data_type: "timeseries"
         timestamp:
-          path: "$.timestamp"
-          format: "unix_s"
-          use_now: true
-        tags:
-          device_id: "$.device_id"
-          room: "$.room"
+          path: "$.ts"
+          format: "rfc3339"
+        tags: {}
         fields:
           outdoor_temp: { 
-            path: "$.d0", 
+            path: "$.fields.outdoor_temp", 
             type: "float" 
           }
           supplyline_temp: { 
-            path: "$.d5", 
+            path: "$.fields.supplyline_temp", 
             type: "float" 
           }
           returnline_temp: {
-            path: "$.d6",
+            path: "$.fields.returnline_temp",
             type: "float"
           }
           hotwater_temp: {
-            path: "$.d7",
+            path: "$.fields.hotwater_temp",
             type: "int"
           }
           brine_out_temp: {
-            path: "$.d8",
+            path: "$.fields.brine_out_temp",
             type: "int"
           }
           brine_in_temp: {
-            path: "$.d9",
+            path: "$.fields.brine_in_temp",
             type: "int"
           }
           integral: {
-            path: "$.d25",
+            path: "$.fields.integral",
             type: "int"
           }
           flowlinepump_speed: {
-            path: "$.d30",
+            path: "$.fields.flowlinepump_speed",
             type: "int"
           }
           brinepump_speed: {
-            path: "$.d31",
+            path: "$.fields.brinepump_speed",
             type: "int"
           }    
           runtime_compressor: {
-            path: "$.d104",
+            path: "$.fields.runtime_compressor",
             type: "int"
           } 
           runtime_hotwater: {
-            path: "$.d108",
+            path: "$.fields.runtime_hotwater",
             type: "int"
           } 
           runtime_3kw: {
-            path: "$.d106",
+            path: "$.fields.runtime_3kw",
             type: "int"
           }    
           runtime_6kw: {
-            path: "$.d114",
+            path: "$.fields.runtime_6kw",
             type: "int"
-          }    
-        bit_flags:
-          - source_path: "$.d16"
-            flags:
-              0: "brinepump_on"
-              1: "compressor_on"
-              2: "flowlinepump_on"
-              3: "hotwater_production"
-              4: "circulation_pump"
-          - source_path: "$.d13"
-            flags:
-              0: "aux_heater_3kw_on"
-              1: "aux_heater_6kw_on"
+          }
+          brinepump_on: {
+            path: "$.fields.brinepump_on",
+            type: "bool"
+          }
+          compressor_on: {
+            path: "$.fields.compressor_on",
+            type: "bool"
+          }
+          flowlinepump_on: {
+            path: "$.fields.flowlinepump_on",
+            type: "bool"
+          }
+          hotwater_production: {
+            path: "$.fields.hotwater_production",
+            type: "bool"
+          }
+          circulation_pump: {
+            path: "$.fields.circulation_pump",
+            type: "bool"
+          }
+          aux_heater_3kw_on: {
+            path: "$.fields.aux_heater_3kw_on",
+            type: "bool"
+          }
+          aux_heater_6kw_on: {
+            path: "$.fields.aux_heater_6kw_on",
+            type: "bool"
+          }
       - name: "sensors"
         topic: "heatpump-telemetry"
         table: "telemetry_new"
