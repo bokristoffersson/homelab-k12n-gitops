@@ -5,6 +5,8 @@ metadata:
   namespace: redpanda-sink
   annotations:
     "fluxcd.io/ignore": "false"
+  labels:
+    migration-version: "002"  # Update this when migrations change to force recreation
 spec:
   template:
     spec:
