@@ -97,6 +97,23 @@ spec:
                 echo "energy-realtime topic already exists"
               fi
               
+              # Check and create heatpump-telemetry topic (1 hour retention)
+              if ! rpk topic describe heatpump-telemetry --brokers "$BROKERS" >/dev/null 2>&1; then
+                echo "Creating heatpump-telemetry topic..."
+                rpk topic create heatpump-telemetry \
+                  --brokers "$BROKERS" \
+                  --partitions 1 \
+                  --replicas 1 \
+                  -c retention.ms=3600000 \
+                  -c segment.ms=300000 || {
+                  echo "ERROR: Failed to create heatpump-telemetry topic"
+                  exit 1
+                }
+                echo "heatpump-telemetry topic created successfully"
+              else
+                echo "heatpump-telemetry topic already exists"
+              fi
+              
               # List all topics to verify
               echo "Verifying topics..."
               rpk topic list --brokers "$BROKERS" || {

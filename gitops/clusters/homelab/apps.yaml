@@ -115,3 +115,17 @@ spec:
   path: ./gitops/apps/homelab/redpanda
   prune: true
   wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: mqtt-input
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/mqtt-input
+  prune: true
+  wait: true

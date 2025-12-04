@@ -272,6 +272,39 @@ docker compose exec redpanda rpk topic consume heatpump-telemetry --brokers loca
 docker exec redpanda rpk topic consume heatpump-telemetry --brokers localhost:9092
 ```
 
+### Subscribing to Topics in Kubernetes Cluster
+
+To verify that data is being published to Redpanda topics in your Kubernetes cluster:
+
+**List all topics:**
+```bash
+kubectl exec -it redpanda-0 -n redpanda -c redpanda -- rpk topic list
+```
+
+**Consume from heatpump-telemetry topic:**
+```bash
+# Consume last 10 messages
+kubectl exec -it redpanda-0 -n redpanda -c redpanda -- rpk topic consume heatpump-telemetry \
+  --format '%k: %v\n' \
+  --num 10
+
+# Consume from beginning (all messages)
+kubectl exec -it redpanda-0 -n redpanda -c redpanda -- rpk topic consume heatpump-telemetry \
+  --format '%k: %v\n' \
+  --offset 0
+
+# Follow new messages (real-time)
+kubectl exec -it redpanda-0 -n redpanda -c redpanda -- rpk topic consume heatpump-telemetry \
+  --format '%k: %v\n'
+```
+
+**Describe topic to see configuration:**
+```bash
+kubectl exec -it redpanda-0 -n redpanda -c redpanda -- rpk topic describe heatpump-telemetry
+```
+
+**Note**: If you encounter connection issues, ensure you're specifying the container with `-c redpanda` as the Redpanda pod has multiple containers.
+
 ---
 
 ## GitHub Actions (build & push image)
