@@ -1,0 +1,59 @@
+redpanda:
+  brokers: "localhost:9092"
+  group_id: "redpanda-sink"
+  auto_offset_reset: "earliest"  # "earliest", "latest", or "none"
+
+database:
+  url: "postgres://postgres:postgres@localhost:5432/postgres"
+  write:
+    batch_size: 500
+    linger_ms: 500
+
+pipelines:
+  # Timeseries pipeline example
+  - name: "telemetry"
+    topic: "telemetry"
+    table: "telemetry"
+    data_type: "timeseries"
+    timestamp:
+      path: "$.timestamp"
+      format: "rfc3339"
+      use_now: true
+    tags:
+      device_id: "$.device_id"
+      room: "$.room"
+    fields:
+      flow_temp_c:
+        path: "$.flow_temp"
+        type: "float"
+      return_temp_c:
+        path: "$.return_temp"
+        type: "float"
+      power_w:
+        path: "$.power"
+        type: "int"
+    store_interval: "MINUTE"  # Only store one message per minute
+
+  # Static data pipeline example
+  - name: "devices"
+    topic: "devices"
+    table: "devices"
+    data_type: "static"
+    upsert_key: ["device_id"]  # Required for static data
+    timestamp:
+      use_now: true
+    tags:
+      device_id: "$.device_id"
+      location: "$.location"
+    fields:
+      name:
+        path: "$.name"
+        type: "text"
+      status:
+        path: "$.status"
+        type: "text"
+      firmware_version:
+        path: "$.firmware_version"
+        type: "text"
+    # No store_interval for static data - all updates are stored
+
