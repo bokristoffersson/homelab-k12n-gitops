@@ -127,6 +127,7 @@ spec:
           image: busybox:latest
           command: ["sh", "-c", "echo Topics setup job completed successfully"]
   backoffLimit: 3
-  # Don't keep completed jobs (optional, uncomment if you want cleanup)
-  # ttlSecondsAfterFinished: 300
+  # Automatically clean up completed jobs after 5 minutes
+  # This allows Flux to recreate the job if the spec changes
+  ttlSecondsAfterFinished: 300
 
