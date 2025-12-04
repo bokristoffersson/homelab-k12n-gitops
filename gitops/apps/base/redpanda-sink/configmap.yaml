@@ -133,16 +133,16 @@ data:
         fields:
           consumption_total_w:
             path: "$.fields.consumption_total_w"
-            type: "int"
+            type: "float"
           consumption_total_actual_w:
             path: "$.fields.consumption_total_actual_w"
-            type: "int"
+            type: "float"
           consumption_L1_actual_w:
             path: "$.fields.consumption_L1_actual_w"
-            type: "int"
+            type: "float"
           consumption_L2_actual_w:
             path: "$.fields.consumption_L2_actual_w"
-            type: "int"
+            type: "float"
           consumption_L3_actual_w:
             path: "$.fields.consumption_L3_actual_w"
-            type: "int"
+            type: "float"

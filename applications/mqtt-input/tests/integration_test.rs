@@ -393,6 +393,180 @@ async fn test_nested_field_extraction() {
     }
 }
 
+/// Test multiple nested fields extraction (activeTotalConsumption and activeActualConsumption)
+/// This test verifies that multiple nested fields can be extracted from the same message
+#[tokio::test]
+async fn test_multiple_nested_fields_extraction() {
+    use mqtt_input::config::{FieldConfig, Pipeline};
+    use mqtt_input::mapping::extract_row;
+    use serde_json::json;
+
+    // Configure activeTotalConsumption nested field
+    let mut total_consumption_attrs = BTreeMap::new();
+    total_consumption_attrs.insert("total".to_string(), "consumption_total_w".to_string());
+
+    // Configure activeActualConsumption nested field
+    let mut actual_consumption_attrs = BTreeMap::new();
+    actual_consumption_attrs.insert("total".to_string(), "consumption_total_actual_w".to_string());
+    actual_consumption_attrs.insert("L1".to_string(), "consumption_L1_actual_w".to_string());
+    actual_consumption_attrs.insert("L2".to_string(), "consumption_L2_actual_w".to_string());
+    actual_consumption_attrs.insert("L3".to_string(), "consumption_L3_actual_w".to_string());
+
+    let mut fields = BTreeMap::new();
+    
+    // Add activeTotalConsumption field
+    fields.insert(
+        "activeTotalConsumption".to_string(),
+        FieldConfig {
+            path: "$.activeTotalConsumption".to_string(),
+            r#type: "nested".to_string(),
+            attributes: Some(total_consumption_attrs),
+        },
+    );
+    
+    // Add activeActualConsumption field
+    fields.insert(
+        "activeActualConsumption".to_string(),
+        FieldConfig {
+            path: "$.activeActualConsumption".to_string(),
+            r#type: "nested".to_string(),
+            attributes: Some(actual_consumption_attrs),
+        },
+    );
+
+    let pipeline = Pipeline {
+        name: "energy".to_string(),
+        topic: "saveeye/telemetry".to_string(),
+        qos: 1,
+        redpanda_topic: "energy-realtime".to_string(),
+        timestamp: TimestampConfig {
+            use_now: true,
+            ..Default::default()
+        },
+        tags: BTreeMap::new(),
+        fields,
+        bit_flags: None,
+        store_interval: None,
+    };
+
+    // Sample message matching the actual MQTT message structure
+    let payload = json!({
+        "saveeyeDeviceSerialNumber": "9MANZWNG",
+        "meterType": "",
+        "meterSerialNumber": "Not found",
+        "timestamp": "2025-12-02T20:17:48",
+        "wifiRssi": -89,
+        "activeActualConsumption": {
+            "total": 956,
+            "L1": 638,
+            "L2": 250,
+            "L3": 67
+        },
+        "activeActualProduction": {
+            "total": 0,
+            "L1": 0,
+            "L2": 0,
+            "L3": 0
+        },
+        "activeTotalConsumption": {
+            "total": 102795417
+        },
+        "activeTotalProduction": {
+            "total": 83
+        },
+        "reactiveActualConsumption": {
+            "total": 0
+        },
+        "reactiveActualProduction": {
+            "total": 621
+        },
+        "reactiveTotalConsumption": {
+            "total": 30100902
+        },
+        "reactiveTotalProduction": {
+            "total": 15964771
+        },
+        "rmsVoltage": {
+            "L1": 235,
+            "L2": 236,
+            "L3": 237
+        },
+        "rmsCurrent": {
+            "L1": 3100,
+            "L2": 1700,
+            "L3": 400
+        },
+        "powerFactor": {
+            "total": 100
+        }
+    });
+
+    let row = extract_row(&pipeline, "saveeye/telemetry", payload.to_string().as_bytes()).unwrap();
+
+    // Verify activeTotalConsumption extraction
+    match row.fields.get("consumption_total_w") {
+        Some(FieldValue::F64(v)) => assert_eq!(*v, 102795417.0, "activeTotalConsumption.total should be extracted"),
+        Some(other) => panic!("Expected F64 for consumption_total_w, got {:?}", other),
+        None => panic!("consumption_total_w field is missing - activeTotalConsumption not extracted"),
+    }
+
+    // Verify activeActualConsumption extraction - total
+    match row.fields.get("consumption_total_actual_w") {
+        Some(FieldValue::F64(v)) => assert_eq!(*v, 956.0, "activeActualConsumption.total should be extracted"),
+        Some(other) => panic!("Expected F64 for consumption_total_actual_w, got {:?}", other),
+        None => panic!("consumption_total_actual_w field is missing - activeActualConsumption.total not extracted"),
+    }
+
+    // Verify activeActualConsumption extraction - L1
+    match row.fields.get("consumption_L1_actual_w") {
+        Some(FieldValue::F64(v)) => assert_eq!(*v, 638.0, "activeActualConsumption.L1 should be extracted"),
+        Some(other) => panic!("Expected F64 for consumption_L1_actual_w, got {:?}", other),
+        None => panic!("consumption_L1_actual_w field is missing - activeActualConsumption.L1 not extracted"),
+    }
+
+    // Verify activeActualConsumption extraction - L2
+    match row.fields.get("consumption_L2_actual_w") {
+        Some(FieldValue::F64(v)) => assert_eq!(*v, 250.0, "activeActualConsumption.L2 should be extracted"),
+        Some(other) => panic!("Expected F64 for consumption_L2_actual_w, got {:?}", other),
+        None => panic!("consumption_L2_actual_w field is missing - activeActualConsumption.L2 not extracted"),
+    }
+
+    // Verify activeActualConsumption extraction - L3
+    match row.fields.get("consumption_L3_actual_w") {
+        Some(FieldValue::F64(v)) => assert_eq!(*v, 67.0, "activeActualConsumption.L3 should be extracted"),
+        Some(other) => panic!("Expected F64 for consumption_L3_actual_w, got {:?}", other),
+        None => panic!("consumption_L3_actual_w field is missing - activeActualConsumption.L3 not extracted"),
+    }
+
+    // Verify all expected fields are present
+    let expected_fields = vec![
+        "consumption_total_w",
+        "consumption_total_actual_w",
+        "consumption_L1_actual_w",
+        "consumption_L2_actual_w",
+        "consumption_L3_actual_w",
+    ];
+
+    for field_name in &expected_fields {
+        assert!(
+            row.fields.contains_key(*field_name),
+            "Field {} should be present in extracted fields. Available fields: {:?}",
+            field_name,
+            row.fields.keys().collect::<Vec<_>>()
+        );
+    }
+
+    // Verify we have exactly the expected number of fields
+    assert_eq!(
+        row.fields.len(),
+        expected_fields.len(),
+        "Expected {} fields, but got {}. Fields: {:?}",
+        expected_fields.len(),
+        row.fields.len(),
+        row.fields.keys().collect::<Vec<_>>()
+    );
+}
+
 /// Test timestamp extraction with different formats
 #[tokio::test]
 async fn test_timestamp_extraction() {

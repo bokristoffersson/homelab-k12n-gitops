@@ -114,6 +114,23 @@ spec:
                 echo "heatpump-telemetry topic already exists"
               fi
               
+              # Check and create sensor-state topic (24 hours retention)
+              if ! rpk topic describe sensor-state --brokers "$BROKERS" >/dev/null 2>&1; then
+                echo "Creating sensor-state topic..."
+                rpk topic create sensor-state \
+                  --brokers "$BROKERS" \
+                  --partitions 1 \
+                  --replicas 1 \
+                  -c retention.ms=86400000 \
+                  -c segment.ms=900000 || {
+                  echo "ERROR: Failed to create sensor-state topic"
+                  exit 1
+                }
+                echo "sensor-state topic created successfully"
+              else
+                echo "sensor-state topic already exists"
+              fi
+              
               # List all topics to verify
               echo "Verifying topics..."
               rpk topic list --brokers "$BROKERS" || {
