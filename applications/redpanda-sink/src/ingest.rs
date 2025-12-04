@@ -74,11 +74,16 @@ impl Ingestor {
         }
     }
 
-    pub async fn handle_message(&self, pipelines: &[Pipeline], topic: &str, payload: &[u8]) -> Result<(), AppError> {
+    pub async fn handle_message(
+        &self,
+        pipelines: &[Pipeline],
+        topic: &str,
+        payload: &[u8],
+    ) -> Result<(), AppError> {
         for p in pipelines {
             if topic_matches(&p.topic, topic) {
                 let row = extract_row(p, topic, payload)?;
-                
+
                 // Check if we should store based on time interval
                 if let Some(interval) = &p.store_interval {
                     if !self.should_store(&p.name, &row.ts, interval)? {
@@ -86,30 +91,38 @@ impl Ingestor {
                         continue;
                     }
                 }
-                
-                self.tx.send(RowEnvelope {
-                    table: p.table.clone(),
-                    row,
-                    data_type: p.data_type.clone(),
-                    upsert_key: p.upsert_key.clone(),
-                }).await.map_err(|e| AppError::Other(anyhow::anyhow!("send row: {}", e)))?;
+
+                self.tx
+                    .send(RowEnvelope {
+                        table: p.table.clone(),
+                        row,
+                        data_type: p.data_type.clone(),
+                        upsert_key: p.upsert_key.clone(),
+                    })
+                    .await
+                    .map_err(|e| AppError::Other(anyhow::anyhow!("send row: {}", e)))?;
             }
         }
         Ok(())
     }
-    
+
     /// Check if enough time has passed since the last stored message for this pipeline
-    fn should_store(&self, pipeline_name: &str, msg_time: &chrono::DateTime<chrono::Utc>, interval: &str) -> Result<bool, AppError> {
+    fn should_store(
+        &self,
+        pipeline_name: &str,
+        msg_time: &chrono::DateTime<chrono::Utc>,
+        interval: &str,
+    ) -> Result<bool, AppError> {
         let duration = parse_interval(interval)?;
         let mut times = self.last_store_times.lock().unwrap();
-        
+
         if let Some(last_time) = times.get(pipeline_name) {
             let elapsed = *msg_time - *last_time;
             if elapsed < duration {
                 return Ok(false);
             }
         }
-        
+
         // Update the last store time for this pipeline
         times.insert(pipeline_name.to_string(), *msg_time);
         Ok(true)
@@ -126,11 +139,11 @@ async fn flush_batch(pool: &DbPool, rows_env: &[RowEnvelope]) -> Result<(), AppE
     let rows: Vec<Row> = rows_env.iter().map(|e| e.row.clone()).collect();
 
     match data_type.as_str() {
-        "timeseries" => {
-            insert_batch(pool, table, &rows).await
-        }
+        "timeseries" => insert_batch(pool, table, &rows).await,
         "static" => {
-            let upsert_key = rows_env[0].upsert_key.as_ref()
+            let upsert_key = rows_env[0]
+                .upsert_key
+                .as_ref()
                 .ok_or_else(|| AppError::Config("upsert_key missing for static data".into()))?;
             upsert_batch(pool, table, upsert_key, &rows).await
         }
@@ -145,7 +158,10 @@ fn parse_interval(interval: &str) -> Result<ChronoDuration, AppError> {
         "MINUTE" => Ok(ChronoDuration::minutes(1)),
         "HOUR" => Ok(ChronoDuration::hours(1)),
         "DAY" => Ok(ChronoDuration::days(1)),
-        _ => Err(AppError::Other(anyhow::anyhow!("Unknown interval: {}. Supported: SECOND, MINUTE, HOUR, DAY", interval))),
+        _ => Err(AppError::Other(anyhow::anyhow!(
+            "Unknown interval: {}. Supported: SECOND, MINUTE, HOUR, DAY",
+            interval
+        ))),
     }
 }
 
@@ -170,4 +186,3 @@ mod tests {
         assert_eq!(second.num_seconds(), 1);
     }
 }
-

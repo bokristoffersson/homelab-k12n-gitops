@@ -28,23 +28,28 @@ pub async fn create_consumer(
     Ok(consumer)
 }
 
-pub async fn subscribe_to_topics(consumer: &RedpandaConsumer, topics: &[String]) -> Result<(), AppError> {
+pub async fn subscribe_to_topics(
+    consumer: &RedpandaConsumer,
+    topics: &[String],
+) -> Result<(), AppError> {
     let topic_refs: Vec<&str> = topics.iter().map(|s| s.as_str()).collect();
     consumer
         .subscribe(&topic_refs)
         .map_err(|e| AppError::Kafka(format!("Failed to subscribe to topics: {}", e)))?;
-    
+
     debug!(topics=?topics, "subscribed to topics");
     Ok(())
 }
 
-pub async fn receive_message(consumer: &RedpandaConsumer) -> Result<Option<ReceivedMessage>, AppError> {
+pub async fn receive_message(
+    consumer: &RedpandaConsumer,
+) -> Result<Option<ReceivedMessage>, AppError> {
     match tokio::time::timeout(Duration::from_secs(1), consumer.recv()).await {
         Ok(Ok(message)) => {
             let topic = message.topic().to_string();
             let partition = message.partition();
             let offset = message.offset();
-            
+
             let payload = match message.payload() {
                 Some(p) => p.to_vec(),
                 None => {
@@ -107,4 +112,3 @@ mod tests {
         assert!(matches!(auto_offset_reset, "earliest" | "latest" | "none"));
     }
 }
-

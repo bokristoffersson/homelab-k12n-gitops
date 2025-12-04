@@ -86,8 +86,7 @@ pipelines:
 
     let config = Config::load(&temp_file).unwrap();
     assert_eq!(
-        config.redpanda.brokers,
-        "override:9092",
+        config.redpanda.brokers, "override:9092",
         "Environment variable override failed"
     );
 
@@ -183,14 +182,23 @@ async fn test_message_transformation() {
 /// Test pipeline matching with wildcards
 #[tokio::test]
 async fn test_pipeline_matching() {
-    assert!(topic_matches("home/heatpump/telemetry", "home/heatpump/telemetry"));
+    assert!(topic_matches(
+        "home/heatpump/telemetry",
+        "home/heatpump/telemetry"
+    ));
     assert!(topic_matches("home/+/telemetry", "home/heatpump/telemetry"));
     assert!(topic_matches("home/+/telemetry", "home/sensor/telemetry"));
-    assert!(!topic_matches("home/+/telemetry", "home/heatpump/sensor/telemetry"));
+    assert!(!topic_matches(
+        "home/+/telemetry",
+        "home/heatpump/sensor/telemetry"
+    ));
     assert!(topic_matches("home/#", "home/heatpump/telemetry"));
     assert!(topic_matches("home/#", "home/sensors/kitchen/state"));
     assert!(!topic_matches("home/#", "other/heatpump/telemetry"));
-    assert!(!topic_matches("home/heatpump/telemetry", "home/sensor/telemetry"));
+    assert!(!topic_matches(
+        "home/heatpump/telemetry",
+        "home/sensor/telemetry"
+    ));
 }
 
 /// Test timestamp extraction with different formats
@@ -255,7 +263,8 @@ pipelines:
     fields: {}
 "#;
 
-    let temp_file = std::env::temp_dir().join(format!("test-config-dt-{}.yaml", std::process::id()));
+    let temp_file =
+        std::env::temp_dir().join(format!("test-config-dt-{}.yaml", std::process::id()));
     std::fs::write(&temp_file, config_str).unwrap();
 
     let config = Config::load(&temp_file).unwrap();
@@ -264,4 +273,3 @@ pipelines:
 
     std::fs::remove_file(&temp_file).ok();
 }
-

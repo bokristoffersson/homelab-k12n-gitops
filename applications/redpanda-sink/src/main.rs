@@ -18,7 +18,8 @@ async fn main() -> Result<(), anyhow::Error> {
         .compact()
         .init();
 
-    let cfg_path = std::env::var("APP_CONFIG").unwrap_or_else(|_| "config/config.example.yaml".into());
+    let cfg_path =
+        std::env::var("APP_CONFIG").unwrap_or_else(|_| "config/config.example.yaml".into());
     let mut cfg = Config::load(&cfg_path)?;
     if let Ok(url) = std::env::var("DATABASE_URL") {
         cfg.database.url = url;
@@ -36,7 +37,8 @@ async fn main() -> Result<(), anyhow::Error> {
         &cfg.redpanda.brokers,
         &cfg.redpanda.group_id,
         &cfg.redpanda.auto_offset_reset,
-    ).await?;
+    )
+    .await?;
     info!(
         brokers = %cfg.redpanda.brokers,
         group_id = %cfg.redpanda.group_id,
@@ -82,4 +84,3 @@ async fn main() -> Result<(), anyhow::Error> {
 
     Ok(())
 }
-

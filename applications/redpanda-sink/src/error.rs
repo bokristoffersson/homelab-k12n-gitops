@@ -15,4 +15,3 @@ pub enum AppError {
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
-

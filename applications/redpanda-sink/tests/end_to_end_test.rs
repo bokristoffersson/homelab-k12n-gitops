@@ -1,3 +1,6 @@
+use rdkafka::config::ClientConfig;
+use rdkafka::producer::{FutureProducer, FutureRecord};
+use rdkafka::util::Timeout;
 /// End-to-end integration test
 ///
 /// This test requires Docker to be running and will use
@@ -10,9 +13,6 @@
 use redpanda_sink::config::{FieldConfig, Pipeline, TimestampConfig};
 use redpanda_sink::db::{connect, insert_batch, upsert_batch};
 use redpanda_sink::mapping::extract_row;
-use rdkafka::config::ClientConfig;
-use rdkafka::producer::{FutureProducer, FutureRecord};
-use rdkafka::util::Timeout;
 use serde_json::json;
 use sqlx::Row;
 use std::collections::BTreeMap;
@@ -28,7 +28,8 @@ async fn test_redpanda_to_database_timeseries() {
     // To run: Start Redpanda and PostgreSQL locally and set env vars
     // Example: REDPANDA_BROKERS=localhost:9092 DATABASE_URL=postgres://postgres:postgres@localhost:5432/test cargo test --test end_to_end_test -- --ignored
 
-    let brokers = std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
+    let brokers =
+        std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
 
@@ -148,8 +149,12 @@ async fn test_redpanda_to_database_timeseries() {
     }
 
     // Simulate consuming and processing
-    let row = extract_row(&pipeline, "test-telemetry", test_payload.to_string().as_bytes())
-        .expect("Failed to extract row");
+    let row = extract_row(
+        &pipeline,
+        "test-telemetry",
+        test_payload.to_string().as_bytes(),
+    )
+    .expect("Failed to extract row");
 
     // Insert into database
     match insert_batch(&pool, "test_telemetry", &[row]).await {
@@ -194,7 +199,8 @@ async fn test_redpanda_to_database_timeseries() {
 #[ignore]
 async fn test_redpanda_to_database_static() {
     // Test static data with upsert
-    let brokers = std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
+    let brokers =
+        std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
 
@@ -266,11 +272,22 @@ async fn test_redpanda_to_database_static() {
     });
 
     // Extract row
-    let row = extract_row(&pipeline, "test-devices", test_payload.to_string().as_bytes())
-        .expect("Failed to extract row");
+    let row = extract_row(
+        &pipeline,
+        "test-devices",
+        test_payload.to_string().as_bytes(),
+    )
+    .expect("Failed to extract row");
 
     // Upsert into database
-    match upsert_batch(&pool, "test_devices", &["device_id".to_string()], &[row.clone()]).await {
+    match upsert_batch(
+        &pool,
+        "test_devices",
+        &["device_id".to_string()],
+        &[row.clone()],
+    )
+    .await
+    {
         Ok(_) => {
             println!("✅ Upserted data into database");
         }
@@ -287,10 +304,21 @@ async fn test_redpanda_to_database_static() {
         "status": "inactive"
     });
 
-    let updated_row = extract_row(&pipeline, "test-devices", updated_payload.to_string().as_bytes())
-        .expect("Failed to extract row");
+    let updated_row = extract_row(
+        &pipeline,
+        "test-devices",
+        updated_payload.to_string().as_bytes(),
+    )
+    .expect("Failed to extract row");
 
-    match upsert_batch(&pool, "test_devices", &["device_id".to_string()], &[updated_row]).await {
+    match upsert_batch(
+        &pool,
+        "test_devices",
+        &["device_id".to_string()],
+        &[updated_row],
+    )
+    .await
+    {
         Ok(_) => {
             println!("✅ Updated data via upsert");
         }
@@ -301,9 +329,11 @@ async fn test_redpanda_to_database_static() {
     }
 
     // Verify data was updated
-    let result = sqlx::query("SELECT device_id, name, status FROM test_devices WHERE device_id = 'device-001'")
-        .fetch_one(&pool)
-        .await;
+    let result = sqlx::query(
+        "SELECT device_id, name, status FROM test_devices WHERE device_id = 'device-001'",
+    )
+    .fetch_one(&pool)
+    .await;
 
     match result {
         Ok(row) => {
@@ -327,4 +357,3 @@ async fn test_redpanda_to_database_static() {
         .await
         .ok();
 }
-

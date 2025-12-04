@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path};
 use std::collections::BTreeMap;
+use std::{fs, path::Path};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
@@ -34,7 +34,12 @@ pub struct DbConfig {
     #[serde(default = "default_write")]
     pub write: WriteConfig,
 }
-fn default_write() -> WriteConfig { WriteConfig { batch_size: 500, linger_ms: 500 } }
+fn default_write() -> WriteConfig {
+    WriteConfig {
+        batch_size: 500,
+        linger_ms: 500,
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WriteConfig {
@@ -64,7 +69,6 @@ pub struct Pipeline {
     pub store_interval: Option<String>,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TimestampConfig {
     /// JSONPath to the timestamp; if absent and use_now=true, now() is used.
@@ -75,10 +79,20 @@ pub struct TimestampConfig {
     #[serde(default = "default_use_now")]
     pub use_now: bool,
 }
-fn default_ts_format() -> String { "rfc3339".into() }
-fn default_use_now() -> bool { true }
+fn default_ts_format() -> String {
+    "rfc3339".into()
+}
+fn default_use_now() -> bool {
+    true
+}
 impl Default for TimestampConfig {
-    fn default() -> Self { Self { path: None, format: default_ts_format(), use_now: true } }
+    fn default() -> Self {
+        Self {
+            path: None,
+            format: default_ts_format(),
+            use_now: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,8 +132,11 @@ impl Config {
             cfg.redpanda.brokers = brokers;
         }
 
-        anyhow::ensure!(!cfg.pipelines.is_empty(), "config must include at least one pipeline");
-        
+        anyhow::ensure!(
+            !cfg.pipelines.is_empty(),
+            "config must include at least one pipeline"
+        );
+
         // Validate pipelines
         for pipeline in &cfg.pipelines {
             anyhow::ensure!(
@@ -129,7 +146,8 @@ impl Config {
             );
             if pipeline.data_type == "static" {
                 anyhow::ensure!(
-                    pipeline.upsert_key.is_some() && !pipeline.upsert_key.as_ref().unwrap().is_empty(),
+                    pipeline.upsert_key.is_some()
+                        && !pipeline.upsert_key.as_ref().unwrap().is_empty(),
                     "pipeline '{}' with data_type 'static' must specify upsert_key",
                     pipeline.name
                 );
@@ -239,7 +257,8 @@ pipelines:
     fields: {}
 "#;
 
-        let temp_file = std::env::temp_dir().join(format!("test-config-{}.yaml", std::process::id()));
+        let temp_file =
+            std::env::temp_dir().join(format!("test-config-{}.yaml", std::process::id()));
         std::fs::write(&temp_file, config_str).unwrap();
 
         let config = Config::load(&temp_file).unwrap();
@@ -271,7 +290,8 @@ pipelines:
     fields: {}
 "#;
 
-        let temp_file = std::env::temp_dir().join(format!("test-config-env-{}.yaml", std::process::id()));
+        let temp_file =
+            std::env::temp_dir().join(format!("test-config-env-{}.yaml", std::process::id()));
         std::fs::write(&temp_file, config_str).unwrap();
 
         let original_db = std::env::var("DATABASE_URL").ok();
@@ -298,4 +318,3 @@ pipelines:
         std::fs::remove_file(&temp_file).ok();
     }
 }
-
