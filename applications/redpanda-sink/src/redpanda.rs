@@ -88,6 +88,7 @@ pub async fn receive_message(
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ReceivedMessage {
     pub topic: String,
     pub partition: i32,

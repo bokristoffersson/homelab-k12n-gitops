@@ -214,7 +214,7 @@ where
     I: Iterator<Item = char>,
 {
     let mut buf = String::new();
-    while let Some(ch) = it.next() {
+    for ch in it.by_ref() {
         if ch == end {
             return Some(buf);
         }

@@ -17,7 +17,6 @@ use serde_json::json;
 use sqlx::Row;
 use std::collections::BTreeMap;
 use std::time::Duration;
-use tokio::time::timeout;
 
 #[tokio::test]
 #[ignore]
@@ -199,7 +198,7 @@ async fn test_redpanda_to_database_timeseries() {
 #[ignore]
 async fn test_redpanda_to_database_static() {
     // Test static data with upsert
-    let brokers =
+    let _brokers =
         std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
     let db_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
@@ -284,7 +283,7 @@ async fn test_redpanda_to_database_static() {
         &pool,
         "test_devices",
         &["device_id".to_string()],
-        &[row.clone()],
+        std::slice::from_ref(&row),
     )
     .await
     {

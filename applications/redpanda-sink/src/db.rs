@@ -216,8 +216,8 @@ mod tests {
             fields,
         };
 
-        let rows = vec![row];
-        let upsert_key = vec!["device_id".to_string()];
+        let rows = [row];
+        let upsert_key = ["device_id".to_string()];
 
         // We can't easily test the SQL generation without a database,
         // but we can verify the function signature and error handling
