@@ -862,7 +862,7 @@ async fn test_multiple_pipelines_same_message() {
     for topic in &topics {
         let consumer: StreamConsumer = ClientConfig::new()
             .set("bootstrap.servers", &brokers)
-            .set("group.id", &format!("test-consumer-{}", topic))
+            .set("group.id", format!("test-consumer-{}", topic))
             .set("auto.offset.reset", "earliest")
             .create()
             .expect("Failed to create consumer");
