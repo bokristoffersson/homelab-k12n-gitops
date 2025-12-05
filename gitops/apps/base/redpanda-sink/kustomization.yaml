@@ -13,6 +13,7 @@ configMapGenerator:
     files:
       - migrations/001_init_timeseries_tables.sql
       - migrations/002_add_energy_actual_consumption_fields.sql
+      - migrations/003_add_heatpump_settings_table.sql
 # Note: timescaledb-secret-sealed.yaml should be created manually
 # This secret should use the same structure as heatpump-mqtt (POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB)
 # The connection string is constructed in configmap.yaml using $(DATABASE_USER) and $(DATABASE_PASSWORD) substitution

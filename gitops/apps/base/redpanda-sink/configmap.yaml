@@ -148,3 +148,40 @@ data:
           consumption_L3_actual_w:
             path: "$.fields.consumption_L3_actual_w"
             type: "float"
+      - name: "heatpump-settings"
+        topic: "heatpump-settings"
+        table: "heatpump_settings"
+        data_type: "static"
+        upsert_key: ["device_id"]
+        timestamp:
+          use_now: true
+        tags:
+          device_id: "$.Client_Name"
+        fields:
+          d50_indoor_target_temp:
+            path: "$.d50"
+            type: "float"
+          d51_mode:
+            path: "$.d51"
+            type: "int"
+          d52_curve:
+            path: "$.d52"
+            type: "int"
+          d53_curve_min:
+            path: "$.d53"
+            type: "int"
+          d54_curve_max:
+            path: "$.d54"
+            type: "int"
+          d55_curve_plus5:
+            path: "$.d55"
+            type: "int"
+          d56_curve_0:
+            path: "$.d56"
+            type: "int"
+          d57_curve_minus5:
+            path: "$.d57"
+            type: "int"
+          d58_heatstop:
+            path: "$.d58"
+            type: "int"
