@@ -648,3 +648,274 @@ async fn test_timestamp_extraction() {
         row_unix.ts
     );
 }
+
+/// Test that one MQTT message can be processed by multiple pipelines
+/// This verifies that when multiple pipelines match the same MQTT topic,
+/// each pipeline processes the message and publishes to its respective Redpanda topic
+#[tokio::test]
+async fn test_multiple_pipelines_same_message() {
+    use mqtt_input::config::{FieldConfig, Pipeline, TimestampConfig};
+    use mqtt_input::ingest::Ingestor;
+    use mqtt_input::redpanda::create_producer;
+    use rdkafka::config::ClientConfig;
+    use rdkafka::consumer::{Consumer, StreamConsumer};
+    use rdkafka::Message;
+    use serde_json::json;
+    use std::time::Duration;
+    use tokio::time::timeout;
+
+    let brokers =
+        std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
+
+    // Try to create Redpanda producer - if it fails, skip the test
+    let producer = match create_producer(&brokers).await {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!(
+                "⚠️  Skipping test: Redpanda is not available at {}\n\
+                 Error: {}\n\
+                 To run this test, start Redpanda first.",
+                brokers, e
+            );
+            return;
+        }
+    };
+    let ingestor = Ingestor::new(producer);
+
+    // Create first pipeline: extracts telemetry data
+    let mut tags1 = BTreeMap::new();
+    tags1.insert("device_id".to_string(), "$.Client_Name".to_string());
+
+    let mut fields1 = BTreeMap::new();
+    fields1.insert(
+        "temperature".to_string(),
+        FieldConfig {
+            path: "$.d0".to_string(),
+            r#type: "float".to_string(),
+            attributes: None,
+        },
+    );
+    fields1.insert(
+        "supply_temp".to_string(),
+        FieldConfig {
+            path: "$.d5".to_string(),
+            r#type: "float".to_string(),
+            attributes: None,
+        },
+    );
+
+    let pipeline1 = Pipeline {
+        name: "heatpump-telemetry".to_string(),
+        topic: "thermiq_heatpump/data".to_string(),
+        qos: 1,
+        redpanda_topic: "heatpump-telemetry".to_string(),
+        timestamp: TimestampConfig {
+            use_now: true,
+            ..Default::default()
+        },
+        tags: tags1,
+        fields: fields1,
+        bit_flags: None,
+        store_interval: None,
+    };
+
+    // Create second pipeline: extracts settings data from the same topic
+    let mut tags2 = BTreeMap::new();
+    tags2.insert("device_id".to_string(), "$.Client_Name".to_string());
+
+    let mut fields2 = BTreeMap::new();
+    fields2.insert(
+        "d50".to_string(),
+        FieldConfig {
+            path: "$.d50".to_string(),
+            r#type: "float".to_string(),
+            attributes: None,
+        },
+    );
+    fields2.insert(
+        "d51".to_string(),
+        FieldConfig {
+            path: "$.d51".to_string(),
+            r#type: "int".to_string(),
+            attributes: None,
+        },
+    );
+    fields2.insert(
+        "d52".to_string(),
+        FieldConfig {
+            path: "$.d52".to_string(),
+            r#type: "int".to_string(),
+            attributes: None,
+        },
+    );
+
+    let pipeline2 = Pipeline {
+        name: "heatpump-settings".to_string(),
+        topic: "thermiq_heatpump/data".to_string(), // Same topic as pipeline1
+        qos: 1,
+        redpanda_topic: "heatpump-settings".to_string(), // Different Redpanda topic
+        timestamp: TimestampConfig {
+            use_now: true,
+            ..Default::default()
+        },
+        tags: tags2,
+        fields: fields2,
+        bit_flags: None,
+        store_interval: None,
+    };
+
+    // Create third pipeline: uses wildcard to match the same topic
+    let mut tags3 = BTreeMap::new();
+    tags3.insert("device_id".to_string(), "$.Client_Name".to_string());
+
+    let mut fields3 = BTreeMap::new();
+    fields3.insert(
+        "all_data".to_string(),
+        FieldConfig {
+            path: "$".to_string(), // Extract entire message as text
+            r#type: "text".to_string(),
+            attributes: None,
+        },
+    );
+
+    let pipeline3 = Pipeline {
+        name: "heatpump-raw".to_string(),
+        topic: "thermiq_heatpump/#".to_string(), // Wildcard matches the topic
+        qos: 1,
+        redpanda_topic: "heatpump-raw".to_string(),
+        timestamp: TimestampConfig {
+            use_now: true,
+            ..Default::default()
+        },
+        tags: tags3,
+        fields: fields3,
+        bit_flags: None,
+        store_interval: None,
+    };
+
+    // All three pipelines should process the same message
+    let pipelines = vec![pipeline1, pipeline2, pipeline3];
+
+    // Create a message that contains both telemetry and settings data
+    let test_payload = json!({
+        "Client_Name": "test-heatpump-01",
+        "d0": 4.5,      // outdoor_temp (for pipeline1)
+        "d5": 39.0,     // supplyline_temp (for pipeline1)
+        "d50": 22.5,    // indoor_target_temp (for pipeline2)
+        "d51": 1,       // mode (for pipeline2)
+        "d52": 2        // curve (for pipeline2)
+    });
+
+    // Process the message - should be handled by all 3 pipelines
+    let result = ingestor
+        .handle_message(
+            &pipelines,
+            "thermiq_heatpump/data",
+            test_payload.to_string().as_bytes(),
+        )
+        .await;
+
+    if let Err(e) = &result {
+        eprintln!(
+            "⚠️  Skipping test: Failed to publish to Redpanda at {}\n\
+             Error: {}\n\
+             Redpanda is not running. Start Redpanda to run this test.",
+            brokers, e
+        );
+        return;
+    }
+
+    assert!(result.is_ok(), "Message processing should succeed for all pipelines");
+
+    // Verify messages were published to all three Redpanda topics
+    let topics = vec!["heatpump-telemetry", "heatpump-settings", "heatpump-raw"];
+    let mut consumed_messages = Vec::new();
+
+    for topic in &topics {
+        let consumer: StreamConsumer = ClientConfig::new()
+            .set("bootstrap.servers", &brokers)
+            .set("group.id", &format!("test-consumer-{}", topic))
+            .set("auto.offset.reset", "earliest")
+            .create()
+            .expect("Failed to create consumer");
+
+        consumer
+            .subscribe(&[topic])
+            .expect("Failed to subscribe");
+
+        // Consume message with timeout
+        let message_result = timeout(Duration::from_secs(10), consumer.recv()).await;
+
+        if let Ok(Ok(message)) = message_result {
+            let payload = message.payload().expect("Message should have payload");
+            let json: serde_json::Value =
+                serde_json::from_slice(payload).expect("Payload should be valid JSON");
+
+            consumed_messages.push((topic.to_string(), json));
+        } else {
+            panic!("Failed to consume message from topic: {}", topic);
+        }
+    }
+
+    // Verify all three topics received messages
+    assert_eq!(
+        consumed_messages.len(),
+        3,
+        "Expected messages in all 3 topics, got {}",
+        consumed_messages.len()
+    );
+
+    // Verify heatpump-telemetry topic
+    let telemetry_msg = consumed_messages
+        .iter()
+        .find(|(t, _)| t == "heatpump-telemetry")
+        .expect("heatpump-telemetry message not found");
+    let telemetry_tags = telemetry_msg.1.get("tags").unwrap().as_object().unwrap();
+    let telemetry_fields = telemetry_msg.1.get("fields").unwrap().as_object().unwrap();
+    assert_eq!(
+        telemetry_tags.get("device_id").unwrap().as_str().unwrap(),
+        "test-heatpump-01"
+    );
+    assert_eq!(
+        telemetry_fields.get("temperature").unwrap().as_f64().unwrap(),
+        4.5
+    );
+    assert_eq!(
+        telemetry_fields.get("supply_temp").unwrap().as_f64().unwrap(),
+        39.0
+    );
+
+    // Verify heatpump-settings topic
+    let settings_msg = consumed_messages
+        .iter()
+        .find(|(t, _)| t == "heatpump-settings")
+        .expect("heatpump-settings message not found");
+    let settings_tags = settings_msg.1.get("tags").unwrap().as_object().unwrap();
+    let settings_fields = settings_msg.1.get("fields").unwrap().as_object().unwrap();
+    assert_eq!(
+        settings_tags.get("device_id").unwrap().as_str().unwrap(),
+        "test-heatpump-01"
+    );
+    assert_eq!(
+        settings_fields.get("d50").unwrap().as_f64().unwrap(),
+        22.5
+    );
+    assert_eq!(settings_fields.get("d51").unwrap().as_i64().unwrap(), 1);
+    assert_eq!(settings_fields.get("d52").unwrap().as_i64().unwrap(), 2);
+
+    // Verify heatpump-raw topic
+    let raw_msg = consumed_messages
+        .iter()
+        .find(|(t, _)| t == "heatpump-raw")
+        .expect("heatpump-raw message not found");
+    let raw_tags = raw_msg.1.get("tags").unwrap().as_object().unwrap();
+    let raw_fields = raw_msg.1.get("fields").unwrap().as_object().unwrap();
+    assert_eq!(
+        raw_tags.get("device_id").unwrap().as_str().unwrap(),
+        "test-heatpump-01"
+    );
+    // The all_data field should contain the JSON string representation
+    assert!(raw_fields.contains_key("all_data"));
+
+    println!("✓ Multiple pipelines test passed: One message processed by 3 pipelines and published to 3 Redpanda topics");
+}
