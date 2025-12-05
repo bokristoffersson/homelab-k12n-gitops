@@ -68,7 +68,10 @@ COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
 COPY --from=builder /app/packages/backend/package.json ./packages/backend/
 COPY --from=builder /app/packages/app/dist ./packages/app/dist
 COPY --from=builder /app/packages/app/package.json ./packages/app/
-COPY --from=builder /app/package.json ./app-config.yaml ./
+COPY --from=builder /app/package.json ./
+# Create app-config directory and copy config file
+RUN mkdir -p /app-config
+COPY --from=builder /app/app-config.yaml /app-config/app-config.yaml
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/*/node_modules ./packages/*/node_modules
 COPY --from=builder /app/plugins/*/node_modules ./plugins/*/node_modules
