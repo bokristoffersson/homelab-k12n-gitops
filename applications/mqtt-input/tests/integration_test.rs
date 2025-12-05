@@ -407,13 +407,16 @@ async fn test_multiple_nested_fields_extraction() {
 
     // Configure activeActualConsumption nested field
     let mut actual_consumption_attrs = BTreeMap::new();
-    actual_consumption_attrs.insert("total".to_string(), "consumption_total_actual_w".to_string());
+    actual_consumption_attrs.insert(
+        "total".to_string(),
+        "consumption_total_actual_w".to_string(),
+    );
     actual_consumption_attrs.insert("L1".to_string(), "consumption_L1_actual_w".to_string());
     actual_consumption_attrs.insert("L2".to_string(), "consumption_L2_actual_w".to_string());
     actual_consumption_attrs.insert("L3".to_string(), "consumption_L3_actual_w".to_string());
 
     let mut fields = BTreeMap::new();
-    
+
     // Add activeTotalConsumption field
     fields.insert(
         "activeTotalConsumption".to_string(),
@@ -423,7 +426,7 @@ async fn test_multiple_nested_fields_extraction() {
             attributes: Some(total_consumption_attrs),
         },
     );
-    
+
     // Add activeActualConsumption field
     fields.insert(
         "activeActualConsumption".to_string(),
@@ -501,13 +504,23 @@ async fn test_multiple_nested_fields_extraction() {
         }
     });
 
-    let row = extract_row(&pipeline, "saveeye/telemetry", payload.to_string().as_bytes()).unwrap();
+    let row = extract_row(
+        &pipeline,
+        "saveeye/telemetry",
+        payload.to_string().as_bytes(),
+    )
+    .unwrap();
 
     // Verify activeTotalConsumption extraction
     match row.fields.get("consumption_total_w") {
-        Some(FieldValue::F64(v)) => assert_eq!(*v, 102795417.0, "activeTotalConsumption.total should be extracted"),
+        Some(FieldValue::F64(v)) => assert_eq!(
+            *v, 102795417.0,
+            "activeTotalConsumption.total should be extracted"
+        ),
         Some(other) => panic!("Expected F64 for consumption_total_w, got {:?}", other),
-        None => panic!("consumption_total_w field is missing - activeTotalConsumption not extracted"),
+        None => {
+            panic!("consumption_total_w field is missing - activeTotalConsumption not extracted")
+        }
     }
 
     // Verify activeActualConsumption extraction - total
@@ -519,23 +532,35 @@ async fn test_multiple_nested_fields_extraction() {
 
     // Verify activeActualConsumption extraction - L1
     match row.fields.get("consumption_L1_actual_w") {
-        Some(FieldValue::F64(v)) => assert_eq!(*v, 638.0, "activeActualConsumption.L1 should be extracted"),
+        Some(FieldValue::F64(v)) => {
+            assert_eq!(*v, 638.0, "activeActualConsumption.L1 should be extracted")
+        }
         Some(other) => panic!("Expected F64 for consumption_L1_actual_w, got {:?}", other),
-        None => panic!("consumption_L1_actual_w field is missing - activeActualConsumption.L1 not extracted"),
+        None => panic!(
+            "consumption_L1_actual_w field is missing - activeActualConsumption.L1 not extracted"
+        ),
     }
 
     // Verify activeActualConsumption extraction - L2
     match row.fields.get("consumption_L2_actual_w") {
-        Some(FieldValue::F64(v)) => assert_eq!(*v, 250.0, "activeActualConsumption.L2 should be extracted"),
+        Some(FieldValue::F64(v)) => {
+            assert_eq!(*v, 250.0, "activeActualConsumption.L2 should be extracted")
+        }
         Some(other) => panic!("Expected F64 for consumption_L2_actual_w, got {:?}", other),
-        None => panic!("consumption_L2_actual_w field is missing - activeActualConsumption.L2 not extracted"),
+        None => panic!(
+            "consumption_L2_actual_w field is missing - activeActualConsumption.L2 not extracted"
+        ),
     }
 
     // Verify activeActualConsumption extraction - L3
     match row.fields.get("consumption_L3_actual_w") {
-        Some(FieldValue::F64(v)) => assert_eq!(*v, 67.0, "activeActualConsumption.L3 should be extracted"),
+        Some(FieldValue::F64(v)) => {
+            assert_eq!(*v, 67.0, "activeActualConsumption.L3 should be extracted")
+        }
         Some(other) => panic!("Expected F64 for consumption_L3_actual_w, got {:?}", other),
-        None => panic!("consumption_L3_actual_w field is missing - activeActualConsumption.L3 not extracted"),
+        None => panic!(
+            "consumption_L3_actual_w field is missing - activeActualConsumption.L3 not extracted"
+        ),
     }
 
     // Verify all expected fields are present
@@ -825,7 +850,10 @@ async fn test_multiple_pipelines_same_message() {
         return;
     }
 
-    assert!(result.is_ok(), "Message processing should succeed for all pipelines");
+    assert!(
+        result.is_ok(),
+        "Message processing should succeed for all pipelines"
+    );
 
     // Verify messages were published to all three Redpanda topics
     let topics = vec!["heatpump-telemetry", "heatpump-settings", "heatpump-raw"];
@@ -839,9 +867,7 @@ async fn test_multiple_pipelines_same_message() {
             .create()
             .expect("Failed to create consumer");
 
-        consumer
-            .subscribe(&[topic])
-            .expect("Failed to subscribe");
+        consumer.subscribe(&[topic]).expect("Failed to subscribe");
 
         // Consume message with timeout
         let message_result = timeout(Duration::from_secs(10), consumer.recv()).await;
@@ -877,11 +903,19 @@ async fn test_multiple_pipelines_same_message() {
         "test-heatpump-01"
     );
     assert_eq!(
-        telemetry_fields.get("temperature").unwrap().as_f64().unwrap(),
+        telemetry_fields
+            .get("temperature")
+            .unwrap()
+            .as_f64()
+            .unwrap(),
         4.5
     );
     assert_eq!(
-        telemetry_fields.get("supply_temp").unwrap().as_f64().unwrap(),
+        telemetry_fields
+            .get("supply_temp")
+            .unwrap()
+            .as_f64()
+            .unwrap(),
         39.0
     );
 
@@ -896,10 +930,7 @@ async fn test_multiple_pipelines_same_message() {
         settings_tags.get("device_id").unwrap().as_str().unwrap(),
         "test-heatpump-01"
     );
-    assert_eq!(
-        settings_fields.get("d50").unwrap().as_f64().unwrap(),
-        22.5
-    );
+    assert_eq!(settings_fields.get("d50").unwrap().as_f64().unwrap(), 22.5);
     assert_eq!(settings_fields.get("d51").unwrap().as_i64().unwrap(), 1);
     assert_eq!(settings_fields.get("d52").unwrap().as_i64().unwrap(), 2);
 
