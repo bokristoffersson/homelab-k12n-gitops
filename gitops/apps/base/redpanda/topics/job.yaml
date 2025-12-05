@@ -6,7 +6,7 @@ metadata:
   annotations:
     "fluxcd.io/ignore": "false"
   labels:
-    topics-version: "v2"  # Update this when topics change to force recreation
+    topics-version: "v3"  # Update this when topics change to force recreation
 spec:
   template:
     spec:
@@ -131,6 +131,23 @@ spec:
                 echo "sensor-state topic created successfully"
               else
                 echo "sensor-state topic already exists"
+              fi
+              
+              # Check and create heatpump-settings topic (static data, longer retention)
+              if ! rpk topic describe heatpump-settings --brokers "$BROKERS" >/dev/null 2>&1; then
+                echo "Creating heatpump-settings topic..."
+                rpk topic create heatpump-settings \
+                  --brokers "$BROKERS" \
+                  --partitions 1 \
+                  --replicas 1 \
+                  -c retention.ms=604800000 \
+                  -c segment.ms=3600000 || {
+                  echo "ERROR: Failed to create heatpump-settings topic"
+                  exit 1
+                }
+                echo "heatpump-settings topic created successfully"
+              else
+                echo "heatpump-settings topic already exists"
               fi
               
               # List all topics to verify
