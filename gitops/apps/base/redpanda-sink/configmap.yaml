@@ -156,32 +156,32 @@ data:
         timestamp:
           use_now: true
         tags:
-          device_id: "$.Client_Name"
+          device_id: "$.tags.device_id"
         fields:
           d50_indoor_target_temp:
-            path: "$.d50"
+            path: "$.fields.d50"
             type: "float"
           d51_mode:
-            path: "$.d51"
+            path: "$.fields.d51"
             type: "int"
           d52_curve:
-            path: "$.d52"
+            path: "$.fields.d52"
             type: "int"
           d53_curve_min:
-            path: "$.d53"
+            path: "$.fields.d53"
             type: "int"
           d54_curve_max:
-            path: "$.d54"
+            path: "$.fields.d54"
             type: "int"
           d55_curve_plus5:
-            path: "$.d55"
+            path: "$.fields.d55"
             type: "int"
           d56_curve_0:
-            path: "$.d56"
+            path: "$.fields.d56"
             type: "int"
           d57_curve_minus5:
-            path: "$.d57"
+            path: "$.fields.d57"
             type: "int"
           d58_heatstop:
-            path: "$.d58"
+            path: "$.fields.d58"
             type: "int"

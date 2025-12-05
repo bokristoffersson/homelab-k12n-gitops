@@ -120,4 +120,40 @@ data:
               L2: "consumption_L2_actual_w"
               L3: "consumption_L3_actual_w"
         store_interval: "MINUTE"
+      - name: "heatpump-settings"
+        topic: "thermiq_heatpump/settings"
+        qos: 1
+        redpanda_topic: "heatpump-settings"
+        timestamp:
+          use_now: true
+        tags:
+          device_id: "$.Client_Name"
+        fields:
+          d50:
+            path: "$.d50"
+            type: "float"
+          d51:
+            path: "$.d51"
+            type: "int"
+          d52:
+            path: "$.d52"
+            type: "int"
+          d53:
+            path: "$.d53"
+            type: "int"
+          d54:
+            path: "$.d54"
+            type: "int"
+          d55:
+            path: "$.d55"
+            type: "int"
+          d56:
+            path: "$.d56"
+            type: "int"
+          d57:
+            path: "$.d57"
+            type: "int"
+          d58:
+            path: "$.d58"
+            type: "int"
 
