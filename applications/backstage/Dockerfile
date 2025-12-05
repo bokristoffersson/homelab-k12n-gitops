@@ -17,24 +17,40 @@ RUN apt-get update && apt-get install -y \
 RUN corepack enable
 
 # Copy Yarn configuration files (required for Yarn v4)
+# .yarnrc.yml specifies yarnPath pointing to .yarn/releases/yarn-4.4.1.cjs
 COPY .yarnrc.yml ./
-COPY .yarn/releases/ ./.yarn/releases/
+COPY .yarn ./.yarn
 
-# Copy package files
+# Ensure Yarn binary is executable
+RUN chmod +x .yarn/releases/yarn-4.4.1.cjs
+
+# Copy all package.json files and lockfile together
+# This ensures the lockfile matches the package.json files
+# Copy root package.json and lockfile first
 COPY package.json yarn.lock* package-lock.json* ./
-COPY packages/*/package.json ./packages/
-COPY plugins/*/package.json ./plugins/
+
+# Copy package.json files from all workspaces to preserve structure
+COPY packages/app/package.json ./packages/app/
+COPY packages/backend/package.json ./packages/backend/
+# Copy plugins directory (may be empty, but structure is needed)
+COPY plugins/ ./plugins/
+
+# Verify Yarn is available and can find the binary
+RUN yarn --version
 
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN yarn install --immutable
 
 # Copy source code
 COPY . .
 
+# Ensure Yarn is still available after copying source
+RUN chmod +x .yarn/releases/yarn-4.4.1.cjs && yarn --version
+
 # Build the application
 RUN yarn tsc
-RUN yarn build:backend --config app-config.yaml
-RUN yarn build
+RUN yarn build:backend
+RUN yarn build:all
 
 # Runtime stage
 FROM node:20-slim
