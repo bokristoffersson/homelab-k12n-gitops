@@ -13,6 +13,13 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Enable Corepack for Yarn v4 (Berry)
+RUN corepack enable
+
+# Copy Yarn configuration files (required for Yarn v4)
+COPY .yarnrc.yml ./
+COPY .yarn/releases/ ./.yarn/releases/
+
 # Copy package files
 COPY package.json yarn.lock* package-lock.json* ./
 COPY packages/*/package.json ./packages/
