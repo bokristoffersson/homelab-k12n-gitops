@@ -121,7 +121,7 @@ data:
               L3: "consumption_L3_actual_w"
         store_interval: "MINUTE"
       - name: "heatpump-settings"
-        topic: "thermiq_heatpump/settings"
+        topic: "thermiq_heatpump/data"
         qos: 1
         redpanda_topic: "heatpump-settings"
         timestamp:
