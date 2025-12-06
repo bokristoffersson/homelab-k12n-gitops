@@ -8,15 +8,15 @@ CREATE TABLE IF NOT EXISTS heatpump_settings
 (
     device_id              TEXT PRIMARY KEY,
     latest_update          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    d50_indoor_target_temp DOUBLE PRECISION,
-    d51_mode               BIGINT,
-    d52_curve              BIGINT,
-    d53_curve_min          BIGINT,
-    d54_curve_max          BIGINT,
-    d55_curve_plus5        BIGINT,
-    d56_curve_0            BIGINT,
-    d57_curve_minus5       BIGINT,
-    d58_heatstop           BIGINT
+    indoor_target_temp     DOUBLE PRECISION,
+    mode                   BIGINT,
+    curve                  BIGINT,
+    curve_min              BIGINT,
+    curve_max              BIGINT,
+    curve_plus5            BIGINT,
+    curve_0                BIGINT,
+    curve_minus5           BIGINT,
+    heatstop               BIGINT
 );
 
 -- Create index on latest_update for querying recent updates
