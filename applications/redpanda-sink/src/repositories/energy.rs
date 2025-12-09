@@ -68,7 +68,7 @@ impl EnergyRepository {
             Ok(Some(value)) => Some(value),
             Ok(None) => None,
             Err(sqlx::Error::Database(db_err)) 
-                if db_err.code() == Some("42P01") || db_err.message().contains("does not exist") => {
+                if db_err.code().as_deref() == Some("42P01") || db_err.message().contains("does not exist") => {
                 // View doesn't exist (TimescaleDB not available), return 0.0
                 None
             }
@@ -106,7 +106,7 @@ impl EnergyRepository {
         {
             Ok(results) => Ok(results),
             Err(sqlx::Error::Database(db_err)) 
-                if db_err.code() == Some("42P01") || db_err.message().contains("does not exist") => {
+                if db_err.code().as_deref() == Some("42P01") || db_err.message().contains("does not exist") => {
                 // View doesn't exist (TimescaleDB not available), return empty vector
                 Ok(Vec::new())
             }
