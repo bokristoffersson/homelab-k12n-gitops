@@ -32,9 +32,6 @@ BEGIN
       -- Energy consumption calculated as difference between last and first reading
       -- This ensures continuity: each hour ends where the next hour begins
       (last(consumption_total_w, ts) - first(consumption_total_w, ts)) AS energy_consumption_w,
-      (last(consumption_l1_w, ts) - first(consumption_l1_w, ts)) AS energy_consumption_l1_w,
-      (last(consumption_l2_w, ts) - first(consumption_l2_w, ts)) AS energy_consumption_l2_w,
-      (last(consumption_l3_w, ts) - first(consumption_l3_w, ts)) AS energy_consumption_l3_w,
       
       -- Energy consumption from actual values (if available)
       (last(consumption_total_actual_w, ts) - first(consumption_total_actual_w, ts)) AS energy_consumption_total_actual_w,
@@ -54,9 +51,6 @@ BEGIN
       -- Total energy per hour (kWh) - calculated from energy consumption
       -- Energy (kWh) = Energy consumption (W) / 1000
       (last(consumption_total_w, ts) - first(consumption_total_w, ts)) / 1000.0 AS total_energy_kwh,
-      (last(consumption_l1_w, ts) - first(consumption_l1_w, ts)) / 1000.0 AS total_energy_l1_kwh,
-      (last(consumption_l2_w, ts) - first(consumption_l2_w, ts)) / 1000.0 AS total_energy_l2_kwh,
-      (last(consumption_l3_w, ts) - first(consumption_l3_w, ts)) / 1000.0 AS total_energy_l3_kwh,
       
       -- Total energy from actual consumption (kWh)
       (last(consumption_total_actual_w, ts) - first(consumption_total_actual_w, ts)) / 1000.0 AS total_energy_actual_kwh,
