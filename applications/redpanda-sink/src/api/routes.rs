@@ -12,11 +12,13 @@ use axum::{
 pub fn create_router(pool: DbPool, config: Config) -> Router {
     let config_for_middleware = config.clone();
 
-    Router::new()
-        // Public routes
-        .route("/api/v1/auth/login", post(auth::login))
+    // Public routes (no authentication required)
+    let public_routes = Router::new()
         .route("/health", get(health::health))
-        // Protected API routes - apply auth middleware to this group
+        .route("/api/v1/auth/login", post(auth::login));
+
+    // Protected API routes (require authentication)
+    let protected_routes = Router::new()
         .route("/api/v1/energy/latest", get(energy::get_latest))
         .route("/api/v1/energy/hourly-total", get(energy::get_hourly_total))
         .route("/api/v1/energy/history", get(energy::get_history))
@@ -30,7 +32,12 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
                     require_auth(request, next).await
                 }
             },
-        ))
+        ));
+
+    // Merge public and protected routes
+    Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .with_state((pool, config))
         .layer(tower_http::cors::CorsLayer::permissive())
 }
