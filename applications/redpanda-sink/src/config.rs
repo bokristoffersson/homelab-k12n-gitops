@@ -7,6 +7,10 @@ pub struct Config {
     pub redpanda: RedpandaConfig,
     pub database: DbConfig,
     pub pipelines: Vec<Pipeline>,
+    #[serde(default)]
+    pub api: Option<ApiConfig>,
+    #[serde(default)]
+    pub auth: Option<AuthConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,6 +117,47 @@ pub struct BitFlagConfig {
     pub flags: BTreeMap<u8, String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiConfig {
+    #[serde(default = "default_api_enabled")]
+    pub enabled: bool,
+    #[serde(default = "default_api_host")]
+    pub host: String,
+    #[serde(default = "default_api_port")]
+    pub port: u16,
+}
+
+fn default_api_enabled() -> bool {
+    false
+}
+
+fn default_api_host() -> String {
+    "0.0.0.0".into()
+}
+
+fn default_api_port() -> u16 {
+    8080
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthConfig {
+    pub jwt_secret: String,
+    #[serde(default = "default_jwt_expiry_hours")]
+    pub jwt_expiry_hours: u64,
+    #[serde(default)]
+    pub users: Vec<User>,
+}
+
+fn default_jwt_expiry_hours() -> u64 {
+    24
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct User {
+    pub username: String,
+    pub password_hash: String,
+}
+
 impl Config {
     /// Load YAML from disk, substitute $(VAR)/${VAR} with env vars, then parse.
     /// Afterwards, if DATABASE_URL env is set, override `database.url`.
@@ -130,6 +175,13 @@ impl Config {
         // Optional: allow REDPANDA_BROKERS env to override whatever YAML had
         if let Ok(brokers) = std::env::var("REDPANDA_BROKERS") {
             cfg.redpanda.brokers = brokers;
+        }
+
+        // Optional: allow JWT_SECRET env to override auth.jwt_secret
+        if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
+            if let Some(ref mut auth) = cfg.auth {
+                auth.jwt_secret = jwt_secret;
+            }
         }
 
         anyhow::ensure!(
