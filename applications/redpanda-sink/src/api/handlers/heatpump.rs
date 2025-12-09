@@ -1,4 +1,4 @@
-use crate::api::models::heatpump::HeatpumpLatestResponse;
+use crate::api::models::heatpump::{HeatpumpDailySummaryResponse, HeatpumpLatestResponse};
 use crate::db::DbPool;
 use crate::repositories::HeatpumpRepository;
 use axum::{
@@ -6,6 +6,7 @@ use axum::{
     http::StatusCode,
     response::Json,
 };
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 pub async fn get_latest(
@@ -34,4 +35,44 @@ pub async fn get_latest(
         brine_out_temp: reading.brine_out_temp,
         brine_in_temp: reading.brine_in_temp,
     }))
+}
+
+pub async fn get_daily_summary(
+    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<HeatpumpDailySummaryResponse>>, StatusCode> {
+    let from = params
+        .get("from")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok_or(StatusCode::BAD_REQUEST)?;
+
+    let to = params
+        .get("to")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now);
+
+    let summaries = HeatpumpRepository::get_daily_summary(&pool, from, to)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let responses: Vec<HeatpumpDailySummaryResponse> = summaries
+        .into_iter()
+        .map(|s| HeatpumpDailySummaryResponse {
+            day: s.day,
+            daily_runtime_compressor_increase: s.daily_runtime_compressor_increase,
+            daily_runtime_hotwater_increase: s.daily_runtime_hotwater_increase,
+            daily_runtime_3kw_increase: s.daily_runtime_3kw_increase,
+            daily_runtime_6kw_increase: s.daily_runtime_6kw_increase,
+            avg_outdoor_temp: s.avg_outdoor_temp,
+            avg_supplyline_temp: s.avg_supplyline_temp,
+            avg_returnline_temp: s.avg_returnline_temp,
+            avg_hotwater_temp: s.avg_hotwater_temp,
+            avg_brine_out_temp: s.avg_brine_out_temp,
+            avg_brine_in_temp: s.avg_brine_in_temp,
+        })
+        .collect();
+
+    Ok(Json(responses))
 }

@@ -19,6 +19,21 @@ pub struct HeatpumpLatestResponse {
     pub brine_in_temp: Option<i64>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct HeatpumpDailySummaryResponse {
+    pub day: DateTime<Utc>,
+    pub daily_runtime_compressor_increase: Option<i64>,
+    pub daily_runtime_hotwater_increase: Option<i64>,
+    pub daily_runtime_3kw_increase: Option<i64>,
+    pub daily_runtime_6kw_increase: Option<i64>,
+    pub avg_outdoor_temp: Option<f64>,
+    pub avg_supplyline_temp: Option<f64>,
+    pub avg_returnline_temp: Option<f64>,
+    pub avg_hotwater_temp: Option<f64>,
+    pub avg_brine_out_temp: Option<f64>,
+    pub avg_brine_in_temp: Option<f64>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

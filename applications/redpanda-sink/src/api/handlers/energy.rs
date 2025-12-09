@@ -1,4 +1,6 @@
-use crate::api::models::energy::{EnergyHourlyResponse, EnergyLatestResponse, HourlyTotalResponse};
+use crate::api::models::energy::{
+    EnergyHourlyResponse, EnergyLatestResponse, EnergySummaryResponse, HourlyTotalResponse,
+};
 use crate::db::DbPool;
 use crate::repositories::EnergyRepository;
 use axum::{
@@ -81,6 +83,117 @@ pub async fn get_history(
             total_energy_l3_kwh: r.total_energy_l3_kwh,
             total_energy_actual_kwh: r.total_energy_actual_kwh,
             measurement_count: r.measurement_count,
+        })
+        .collect();
+
+    Ok(Json(responses))
+}
+
+pub async fn get_daily_summary(
+    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<EnergySummaryResponse>>, StatusCode> {
+    let from = params
+        .get("from")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok_or(StatusCode::BAD_REQUEST)?;
+
+    let to = params
+        .get("to")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now);
+
+    let summaries = EnergyRepository::get_daily_summary(&pool, from, to)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let responses: Vec<EnergySummaryResponse> = summaries
+        .into_iter()
+        .map(|s| EnergySummaryResponse {
+            day_start: s.day_start,
+            day_end: s.day_end,
+            month_start: s.month_start,
+            month_end: s.month_end,
+            year_start: s.year_start,
+            year_end: s.year_end,
+            energy_consumption_kwh: s.energy_consumption_w,
+            measurement_count: s.measurement_count,
+        })
+        .collect();
+
+    Ok(Json(responses))
+}
+
+pub async fn get_monthly_summary(
+    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<EnergySummaryResponse>>, StatusCode> {
+    let from = params
+        .get("from")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok_or(StatusCode::BAD_REQUEST)?;
+
+    let to = params
+        .get("to")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now);
+
+    let summaries = EnergyRepository::get_monthly_summary(&pool, from, to)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let responses: Vec<EnergySummaryResponse> = summaries
+        .into_iter()
+        .map(|s| EnergySummaryResponse {
+            day_start: s.day_start,
+            day_end: s.day_end,
+            month_start: s.month_start,
+            month_end: s.month_end,
+            year_start: s.year_start,
+            year_end: s.year_end,
+            energy_consumption_kwh: s.energy_consumption_w,
+            measurement_count: s.measurement_count,
+        })
+        .collect();
+
+    Ok(Json(responses))
+}
+
+pub async fn get_yearly_summary(
+    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<EnergySummaryResponse>>, StatusCode> {
+    let from = params
+        .get("from")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .ok_or(StatusCode::BAD_REQUEST)?;
+
+    let to = params
+        .get("to")
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+        .unwrap_or_else(Utc::now);
+
+    let summaries = EnergyRepository::get_yearly_summary(&pool, from, to)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let responses: Vec<EnergySummaryResponse> = summaries
+        .into_iter()
+        .map(|s| EnergySummaryResponse {
+            day_start: s.day_start,
+            day_end: s.day_end,
+            month_start: s.month_start,
+            month_end: s.month_end,
+            year_start: s.year_start,
+            year_end: s.year_end,
+            energy_consumption_kwh: s.energy_consumption_w,
+            measurement_count: s.measurement_count,
         })
         .collect();
 

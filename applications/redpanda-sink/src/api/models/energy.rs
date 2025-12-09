@@ -30,6 +30,18 @@ pub struct EnergyHourlyResponse {
     pub measurement_count: i64,
 }
 
+#[derive(Debug, Serialize)]
+pub struct EnergySummaryResponse {
+    pub day_start: Option<DateTime<Utc>>,
+    pub day_end: Option<DateTime<Utc>>,
+    pub month_start: Option<DateTime<Utc>>,
+    pub month_end: Option<DateTime<Utc>>,
+    pub year_start: Option<DateTime<Utc>>,
+    pub year_end: Option<DateTime<Utc>>,
+    pub energy_consumption_kwh: Option<f64>,
+    pub measurement_count: i64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

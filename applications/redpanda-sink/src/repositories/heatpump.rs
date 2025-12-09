@@ -21,6 +21,21 @@ pub struct HeatpumpLatest {
     pub brine_in_temp: Option<i64>,
 }
 
+#[derive(Debug, Clone, FromRow)]
+pub struct HeatpumpDailySummary {
+    pub day: DateTime<Utc>,
+    pub daily_runtime_compressor_increase: Option<i64>,
+    pub daily_runtime_hotwater_increase: Option<i64>,
+    pub daily_runtime_3kw_increase: Option<i64>,
+    pub daily_runtime_6kw_increase: Option<i64>,
+    pub avg_outdoor_temp: Option<f64>,
+    pub avg_supplyline_temp: Option<f64>,
+    pub avg_returnline_temp: Option<f64>,
+    pub avg_hotwater_temp: Option<f64>,
+    pub avg_brine_out_temp: Option<f64>,
+    pub avg_brine_in_temp: Option<f64>,
+}
+
 pub struct HeatpumpRepository;
 
 impl HeatpumpRepository {
@@ -82,6 +97,47 @@ impl HeatpumpRepository {
             .fetch_one(pool)
             .await
             .map_err(AppError::Db)
+        }
+    }
+
+    pub async fn get_daily_summary(
+        pool: &DbPool,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<HeatpumpDailySummary>, AppError> {
+        match sqlx::query_as::<_, HeatpumpDailySummary>(
+            r#"
+            SELECT 
+                day,
+                daily_runtime_compressor_increase,
+                daily_runtime_hotwater_increase,
+                daily_runtime_3kw_increase,
+                daily_runtime_6kw_increase,
+                avg_outdoor_temp,
+                avg_supplyline_temp,
+                avg_returnline_temp,
+                avg_hotwater_temp,
+                avg_brine_out_temp,
+                avg_brine_in_temp
+            FROM heatpump_daily_summary
+            WHERE day >= $1 AND day < $2
+            ORDER BY day
+            "#,
+        )
+        .bind(from)
+        .bind(to)
+        .fetch_all(pool)
+        .await
+        {
+            Ok(results) => Ok(results),
+            Err(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("42P01")
+                    || db_err.message().contains("does not exist") =>
+            {
+                // View doesn't exist (TimescaleDB not available), return empty vector
+                Ok(Vec::new())
+            }
+            Err(e) => Err(AppError::Db(e)),
         }
     }
 }

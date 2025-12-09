@@ -16,6 +16,18 @@ pub struct EnergyHourly {
 }
 
 #[derive(Debug, Clone, FromRow)]
+pub struct EnergySummary {
+    pub day_start: Option<DateTime<Utc>>,
+    pub day_end: Option<DateTime<Utc>>,
+    pub month_start: Option<DateTime<Utc>>,
+    pub month_end: Option<DateTime<Utc>>,
+    pub year_start: Option<DateTime<Utc>>,
+    pub year_end: Option<DateTime<Utc>>,
+    pub energy_consumption_w: Option<f64>,
+    pub measurement_count: i64,
+}
+
+#[derive(Debug, Clone, FromRow)]
 pub struct EnergyLatest {
     pub ts: DateTime<Utc>,
     pub consumption_total_w: Option<f64>,
@@ -99,6 +111,120 @@ impl EnergyRepository {
             FROM energy_hourly
             WHERE hour_start >= $1 AND hour_start < $2
             ORDER BY hour_start
+            "#,
+        )
+        .bind(from)
+        .bind(to)
+        .fetch_all(pool)
+        .await
+        {
+            Ok(results) => Ok(results),
+            Err(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("42P01")
+                    || db_err.message().contains("does not exist") =>
+            {
+                // View doesn't exist (TimescaleDB not available), return empty vector
+                Ok(Vec::new())
+            }
+            Err(e) => Err(AppError::Db(e)),
+        }
+    }
+
+    pub async fn get_daily_summary(
+        pool: &DbPool,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<EnergySummary>, AppError> {
+        match sqlx::query_as::<_, EnergySummary>(
+            r#"
+            SELECT 
+                day_start,
+                day_end,
+                NULL::timestamptz AS month_start,
+                NULL::timestamptz AS month_end,
+                NULL::timestamptz AS year_start,
+                NULL::timestamptz AS year_end,
+                (energy_consumption_w / 1000.0) AS energy_consumption_w,
+                measurement_count
+            FROM energy_daily_summary
+            WHERE day_start >= $1 AND day_start < $2
+            ORDER BY day_start
+            "#,
+        )
+        .bind(from)
+        .bind(to)
+        .fetch_all(pool)
+        .await
+        {
+            Ok(results) => Ok(results),
+            Err(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("42P01")
+                    || db_err.message().contains("does not exist") =>
+            {
+                // View doesn't exist (TimescaleDB not available), return empty vector
+                Ok(Vec::new())
+            }
+            Err(e) => Err(AppError::Db(e)),
+        }
+    }
+
+    pub async fn get_monthly_summary(
+        pool: &DbPool,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<EnergySummary>, AppError> {
+        match sqlx::query_as::<_, EnergySummary>(
+            r#"
+            SELECT 
+                NULL::timestamptz AS day_start,
+                NULL::timestamptz AS day_end,
+                month_start,
+                month_end,
+                NULL::timestamptz AS year_start,
+                NULL::timestamptz AS year_end,
+                (energy_consumption_w / 1000.0) AS energy_consumption_w,
+                measurement_count
+            FROM energy_monthly_summary
+            WHERE month_start >= $1 AND month_start < $2
+            ORDER BY month_start
+            "#,
+        )
+        .bind(from)
+        .bind(to)
+        .fetch_all(pool)
+        .await
+        {
+            Ok(results) => Ok(results),
+            Err(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("42P01")
+                    || db_err.message().contains("does not exist") =>
+            {
+                // View doesn't exist (TimescaleDB not available), return empty vector
+                Ok(Vec::new())
+            }
+            Err(e) => Err(AppError::Db(e)),
+        }
+    }
+
+    pub async fn get_yearly_summary(
+        pool: &DbPool,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+    ) -> Result<Vec<EnergySummary>, AppError> {
+        match sqlx::query_as::<_, EnergySummary>(
+            r#"
+            SELECT 
+                NULL::timestamptz AS day_start,
+                NULL::timestamptz AS day_end,
+                NULL::timestamptz AS month_start,
+                NULL::timestamptz AS month_end,
+                year_start,
+                year_end,
+                (energy_consumption_w / 1000.0) AS energy_consumption_w,
+                measurement_count
+            FROM energy_yearly_summary
+            WHERE year_start >= $1 AND year_start < $2
+            ORDER BY year_start
             "#,
         )
         .bind(from)
