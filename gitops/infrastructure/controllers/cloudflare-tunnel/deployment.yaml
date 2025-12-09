@@ -84,9 +84,9 @@ data:
       - hostname: grafana.k12n.com
         service: http://grafana.grafana.svc.cluster.local:80
       
-      # api (protected with Cloudflare Access - see README.md)
+      # Backend API (login and API endpoints - protected with Cloudflare Access - see README.md)
       - hostname: api.k12n.com
-        service: http://heatpump-api.heatpump-api.svc.cluster.local:3000
+        service: http://redpanda-sink.redpanda-sink.svc.cluster.local:8080
       
       # Catch-all rule (required)
       - service: http_status:404
