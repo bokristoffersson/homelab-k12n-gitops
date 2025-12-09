@@ -369,4 +369,158 @@ pipelines:
 
         std::fs::remove_file(&temp_file).ok();
     }
+
+    #[test]
+    fn test_config_with_api_and_auth() {
+        let original_jwt = std::env::var("JWT_SECRET").ok();
+        std::env::remove_var("JWT_SECRET");
+        
+        let config_str = r#"
+redpanda:
+  brokers: "localhost:9092"
+  group_id: "test-group"
+
+database:
+  url: "postgres://localhost/test"
+
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+
+auth:
+  jwt_secret: "test-secret-key"
+  jwt_expiry_hours: 24
+  users:
+    - username: "admin"
+      password_hash: "$2b$12$testhash"
+
+pipelines:
+  - name: "test"
+    topic: "test-topic"
+    table: "telemetry"
+    data_type: "timeseries"
+    timestamp:
+      use_now: true
+    tags: {}
+    fields: {}
+"#;
+
+        let temp_file =
+            std::env::temp_dir().join(format!("test-config-api-auth-{}.yaml", std::process::id()));
+        std::fs::write(&temp_file, config_str).unwrap();
+
+        let config = Config::load(&temp_file).unwrap();
+        
+        // Verify API config
+        assert!(config.api.is_some());
+        let api = config.api.as_ref().unwrap();
+        assert!(api.enabled);
+        assert_eq!(api.host, "0.0.0.0");
+        assert_eq!(api.port, 8080);
+        
+        // Verify Auth config
+        assert!(config.auth.is_some());
+        let auth = config.auth.as_ref().unwrap();
+        assert_eq!(auth.jwt_secret, "test-secret-key");
+        assert_eq!(auth.jwt_expiry_hours, 24);
+        assert_eq!(auth.users.len(), 1);
+        assert_eq!(auth.users[0].username, "admin");
+        assert_eq!(auth.users[0].password_hash, "$2b$12$testhash");
+
+        std::fs::remove_file(&temp_file).ok();
+        
+        if let Some(val) = original_jwt {
+            std::env::set_var("JWT_SECRET", val);
+        }
+    }
+
+    #[test]
+    fn test_config_api_defaults() {
+        let config_str = r#"
+redpanda:
+  brokers: "localhost:9092"
+  group_id: "test-group"
+
+database:
+  url: "postgres://localhost/test"
+
+api:
+  enabled: true
+
+pipelines:
+  - name: "test"
+    topic: "test-topic"
+    table: "telemetry"
+    data_type: "timeseries"
+    timestamp:
+      use_now: true
+    tags: {}
+    fields: {}
+"#;
+
+        let temp_file =
+            std::env::temp_dir().join(format!("test-config-api-defaults-{}.yaml", std::process::id()));
+        std::fs::write(&temp_file, config_str).unwrap();
+
+        let config = Config::load(&temp_file).unwrap();
+        
+        // Verify API config defaults
+        assert!(config.api.is_some());
+        let api = config.api.as_ref().unwrap();
+        assert_eq!(api.host, "0.0.0.0");
+        assert_eq!(api.port, 8080);
+
+        std::fs::remove_file(&temp_file).ok();
+    }
+
+    #[test]
+    fn test_config_jwt_secret_env_override() {
+        let config_str = r#"
+redpanda:
+  brokers: "localhost:9092"
+  group_id: "test-group"
+
+database:
+  url: "postgres://localhost/test"
+
+auth:
+  jwt_secret: "original-secret"
+  jwt_expiry_hours: 12
+  users: []
+
+pipelines:
+  - name: "test"
+    topic: "test-topic"
+    table: "telemetry"
+    data_type: "timeseries"
+    timestamp:
+      use_now: true
+    tags: {}
+    fields: {}
+"#;
+
+        let temp_file =
+            std::env::temp_dir().join(format!("test-config-jwt-env-{}.yaml", std::process::id()));
+        std::fs::write(&temp_file, config_str).unwrap();
+
+        let original_jwt = std::env::var("JWT_SECRET").ok();
+        std::env::set_var("JWT_SECRET", "env-override-secret");
+
+        let config = Config::load(&temp_file).unwrap();
+        
+        // Verify JWT_SECRET was overridden
+        assert!(config.auth.is_some());
+        let auth = config.auth.as_ref().unwrap();
+        assert_eq!(auth.jwt_secret, "env-override-secret");
+        assert_eq!(auth.jwt_expiry_hours, 12); // Should remain unchanged
+
+        if let Some(val) = original_jwt {
+            std::env::set_var("JWT_SECRET", val);
+        } else {
+            std::env::remove_var("JWT_SECRET");
+        }
+
+        std::fs::remove_file(&temp_file).ok();
+    }
 }
