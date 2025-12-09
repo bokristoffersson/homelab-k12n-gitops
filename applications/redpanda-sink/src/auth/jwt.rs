@@ -92,6 +92,100 @@ mod tests {
         // Validation should fail due to expiration
         assert!(validate_token(&token, secret).is_err());
     }
+
+    #[test]
+    fn test_create_token_with_empty_secret() {
+        let secret = "";
+        let username = "testuser";
+        
+        // Empty secret should still work (though not recommended)
+        let result = create_token(username, secret, 24);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_create_token_with_empty_username() {
+        let secret = "test-secret-key";
+        let username = "";
+        
+        // Empty username should work
+        let token = create_token(username, secret, 24).unwrap();
+        let claims = validate_token(&token, secret).unwrap();
+        assert_eq!(claims.sub, "");
+    }
+
+    #[test]
+    fn test_create_token_with_zero_expiry() {
+        let secret = "test-secret-key";
+        let username = "testuser";
+        
+        // Token with 0 hours expiry should still be created
+        let token = create_token(username, secret, 0).unwrap();
+        // It might be immediately expired, but creation should succeed
+        assert!(!token.is_empty());
+    }
+
+    #[test]
+    fn test_validate_token_malformed() {
+        let secret = "test-secret-key";
+        
+        // Test with completely invalid token string
+        assert!(validate_token("not.a.valid.token", secret).is_err());
+        
+        // Test with empty string
+        assert!(validate_token("", secret).is_err());
+        
+        // Test with only two parts (missing signature)
+        assert!(validate_token("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0", secret).is_err());
+    }
+
+    #[test]
+    fn test_token_claims_include_timestamps() {
+        let secret = "test-secret-key";
+        let username = "testuser";
+        let expiry_hours = 24;
+        
+        let token = create_token(username, secret, expiry_hours).unwrap();
+        let claims = validate_token(&token, secret).unwrap();
+        
+        // Verify timestamps are set
+        assert!(!claims.sub.is_empty());
+        assert!(claims.exp > 0);
+        assert!(claims.iat > 0);
+        assert!(claims.exp > claims.iat);
+    }
+
+    #[test]
+    fn test_token_different_expiry_hours() {
+        let secret = "test-secret-key";
+        let username = "testuser";
+        
+        // Create tokens with different expiry times
+        let token_1h = create_token(username, secret, 1).unwrap();
+        let token_24h = create_token(username, secret, 24).unwrap();
+        let token_168h = create_token(username, secret, 168).unwrap();
+        
+        // All should be valid
+        assert!(validate_token(&token_1h, secret).is_ok());
+        assert!(validate_token(&token_24h, secret).is_ok());
+        assert!(validate_token(&token_168h, secret).is_ok());
+        
+        // Tokens should be different
+        assert_ne!(token_1h, token_24h);
+        assert_ne!(token_24h, token_168h);
+    }
+
+    #[test]
+    fn test_token_username_preserved() {
+        let secret = "test-secret-key";
+        let usernames = vec!["user1", "admin", "test-user-123", "user@example.com"];
+        
+        for username in usernames {
+            let token = create_token(username, secret, 24).unwrap();
+            let claims = validate_token(&token, secret).unwrap();
+            assert_eq!(claims.sub, username);
+        }
+    }
 }
 
 

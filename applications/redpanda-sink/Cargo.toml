@@ -32,4 +32,5 @@ tokio-test = "0.4"
 testcontainers = "0.16"
 rdkafka = { version = "0.36", features = ["cmake-build", "ssl-vendored"] }
 serial_test = "3.0"
+axum-test = "18.0"
 

@@ -4,7 +4,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use crate::api::handlers::{auth, energy, heatpump};
+use crate::api::handlers::{auth, energy, heatpump, health};
 use crate::api::middleware::require_auth;
 use crate::config::Config;
 use crate::db::DbPool;
@@ -15,7 +15,7 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
     Router::new()
         // Public routes
         .route("/api/v1/auth/login", post(auth::login))
-        .route("/health", get(|| async { "OK" }))
+        .route("/health", get(health::health))
         
         // Protected API routes - apply auth middleware to this group
         .route("/api/v1/energy/latest", get(energy::get_latest))
