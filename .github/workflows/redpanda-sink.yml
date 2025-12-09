@@ -24,6 +24,21 @@ jobs:
       run:
         working-directory: applications/redpanda-sink
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,6 +70,94 @@ jobs:
             zlib1g-dev \
             postgresql-client
 
+      - name: Wait for PostgreSQL
+        run: |
+          until PGPASSWORD=postgres psql -h localhost -U postgres -d test -c '\q' 2>/dev/null; do
+            echo "Waiting for PostgreSQL..."
+            sleep 1
+          done
+          echo "PostgreSQL is ready!"
+
+      - name: Setup test database schema
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d test <<EOF
+          -- Create energy table
+          CREATE TABLE IF NOT EXISTS energy
+          (
+              ts                 TIMESTAMPTZ       NOT NULL,
+              consumption_total_w DOUBLE PRECISION,
+              consumption_l1_w    DOUBLE PRECISION,
+              consumption_l2_w    DOUBLE PRECISION,
+              consumption_l3_w    DOUBLE PRECISION,
+              consumption_total_actual_w BIGINT,
+              consumption_L1_actual_w BIGINT,
+              consumption_L2_actual_w BIGINT,
+              consumption_L3_actual_w BIGINT
+          );
+          
+          -- Create heatpump table
+          CREATE TABLE IF NOT EXISTS heatpump
+          (
+              ts                  TIMESTAMPTZ       NOT NULL,
+              device_id           TEXT,
+              room                TEXT,
+              outdoor_temp        DOUBLE PRECISION,
+              supplyline_temp     DOUBLE PRECISION,
+              returnline_temp     DOUBLE PRECISION,
+              hotwater_temp       BIGINT,
+              brine_out_temp      BIGINT,
+              brine_in_temp       BIGINT,
+              integral            BIGINT,
+              flowlinepump_speed  BIGINT,
+              brinepump_speed     BIGINT,
+              runtime_compressor  BIGINT,
+              runtime_hotwater    BIGINT,
+              runtime_3kw         BIGINT,
+              runtime_6kw         BIGINT,
+              brinepump_on        BOOLEAN,
+              compressor_on       BOOLEAN,
+              flowlinepump_on     BOOLEAN,
+              hotwater_production BOOLEAN,
+              circulation_pump    BOOLEAN,
+              aux_heater_3kw_on   BOOLEAN,
+              aux_heater_6kw_on   BOOLEAN
+          );
+          
+          -- Try to enable TimescaleDB extension (optional)
+          CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+          
+          -- Try to create hypertables (will fail if TimescaleDB not available, that's OK)
+          SELECT create_hypertable('energy', 'ts', if_not_exists => TRUE);
+          SELECT create_hypertable('heatpump', 'ts', if_not_exists => TRUE);
+          
+          -- Try to create continuous aggregate (will fail if TimescaleDB not available, that's OK)
+          DROP MATERIALIZED VIEW IF EXISTS energy_hourly CASCADE;
+          CREATE MATERIALIZED VIEW energy_hourly
+          WITH (timescaledb.continuous) AS
+          SELECT
+            time_bucket('01:00:00'::interval, ts, origin => '2000-01-01 00:00:00+00'::timestamp with time zone) AS hour_start,
+            (time_bucket('01:00:00'::interval, ts, origin => '2000-01-01 00:00:00+00'::timestamp with time zone) + '01:00:00'::interval) AS hour_end,
+            (last(consumption_total_w, ts) - first(consumption_total_w, ts)) AS energy_consumption_w,
+            (last(consumption_total_actual_w, ts) - first(consumption_total_actual_w, ts)) AS energy_consumption_total_actual_w,
+            (last(consumption_L1_actual_w, ts) - first(consumption_L1_actual_w, ts)) AS energy_consumption_L1_actual_w,
+            (last(consumption_L2_actual_w, ts) - first(consumption_L2_actual_w, ts)) AS energy_consumption_L2_actual_w,
+            (last(consumption_L3_actual_w, ts) - first(consumption_L3_actual_w, ts)) AS energy_consumption_L3_actual_w,
+            first(consumption_total_w, ts) AS hour_start_w,
+            last(consumption_total_w, ts) AS hour_end_w,
+            first(consumption_total_actual_w, ts) AS hour_start_actual_w,
+            last(consumption_total_actual_w, ts) AS hour_end_actual_w,
+            count(*) AS measurement_count,
+            (last(consumption_total_w, ts) - first(consumption_total_w, ts)) / 1000.0 AS total_energy_kwh,
+            (last(consumption_total_actual_w, ts) - first(consumption_total_actual_w, ts)) / 1000.0 AS total_energy_actual_kwh,
+            (last(consumption_L1_actual_w, ts) - first(consumption_L1_actual_w, ts)) / 1000.0 AS total_energy_L1_actual_kwh,
+            (last(consumption_L2_actual_w, ts) - first(consumption_L2_actual_w, ts)) / 1000.0 AS total_energy_L2_actual_kwh,
+            (last(consumption_L3_actual_w, ts) - first(consumption_L3_actual_w, ts)) / 1000.0 AS total_energy_L3_actual_kwh
+          FROM energy
+          GROUP BY (time_bucket('01:00:00'::interval, ts, origin => '2000-01-01 00:00:00+00'::timestamp with time zone))
+          WITH NO DATA;
+          EOF
+        continue-on-error: true
+
       - name: Run unit tests
         run: cargo test --lib
 
@@ -64,6 +167,12 @@ jobs:
           # Allow longer timeouts for integration tests
           RUST_TEST_TIME_OUT: 300
         # Note: End-to-end tests are run in a separate job (e2e-test) that requires Docker
+
+      - name: Run repository integration tests
+        run: cargo test --test repository_test -- --ignored
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+          RUST_TEST_TIME_OUT: 300
 
       - name: Check formatting
         run: cargo fmt --all -- --check
