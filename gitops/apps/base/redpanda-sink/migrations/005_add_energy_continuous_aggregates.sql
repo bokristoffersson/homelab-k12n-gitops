@@ -67,7 +67,7 @@ BEGIN
     -- start_offset: How far back to refresh (3 hours)
     -- end_offset: How recent to keep in raw data (1 hour - allows for late-arriving data)
     -- schedule_interval: How often to run the refresh (5 minutes)
-    SELECT add_continuous_aggregate_policy('energy_hourly',
+    PERFORM add_continuous_aggregate_policy('energy_hourly',
       start_offset => INTERVAL '3 hours',
       end_offset => INTERVAL '1 hour',
       schedule_interval => INTERVAL '5 minutes',
