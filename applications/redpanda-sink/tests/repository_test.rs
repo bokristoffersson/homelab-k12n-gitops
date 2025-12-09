@@ -252,6 +252,19 @@ async fn test_energy_repository_get_latest_empty_table() {
     let pool = connect(&database_url).await.expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
+    
+    // Ensure table is empty - use CASCADE to handle any dependencies
+    sqlx::query("TRUNCATE TABLE energy RESTART IDENTITY CASCADE")
+        .execute(&pool)
+        .await
+        .expect("Failed to truncate energy table");
+    
+    // Verify table is actually empty
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM energy")
+        .fetch_one(&pool)
+        .await
+        .expect("Failed to count rows");
+    assert_eq!(count, 0, "Table should be empty before testing get_latest");
 
     // Test get_latest on empty table - should return an error
     let result = EnergyRepository::get_latest(&pool).await;
@@ -322,9 +335,9 @@ async fn test_energy_repository_get_hourly_history() {
     let result = EnergyRepository::get_hourly_history(&pool, from, to).await;
     assert!(result.is_ok(), "get_hourly_history should succeed");
 
-    let history = result.unwrap();
     // Should return a valid vector (may be empty if continuous aggregate not available)
-    // The length check is implicit - if we got here, the vector is valid
+    // The unwrap() verifies it doesn't panic, which is sufficient
+    let _history = result.unwrap();
 }
 
 #[tokio::test]
@@ -395,6 +408,19 @@ async fn test_heatpump_repository_get_latest_empty_table() {
     let pool = connect(&database_url).await.expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
+    
+    // Ensure table is empty - use CASCADE to handle any dependencies
+    sqlx::query("TRUNCATE TABLE heatpump RESTART IDENTITY CASCADE")
+        .execute(&pool)
+        .await
+        .expect("Failed to truncate heatpump table");
+    
+    // Verify table is actually empty
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM heatpump")
+        .fetch_one(&pool)
+        .await
+        .expect("Failed to count rows");
+    assert_eq!(count, 0, "Table should be empty before testing get_latest");
 
     // Test get_latest on empty table - should return an error
     let result = HeatpumpRepository::get_latest(&pool, None).await;
