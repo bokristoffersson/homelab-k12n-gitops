@@ -323,12 +323,8 @@ async fn test_energy_repository_get_hourly_history() {
     assert!(result.is_ok(), "get_hourly_history should succeed");
 
     let history = result.unwrap();
-    // Should have at least one entry if continuous aggregate exists
-    // If not, it will be empty (which is also valid)
-    assert!(
-        history.len() >= 0,
-        "history should return a valid vector (may be empty if continuous aggregate not available)"
-    );
+    // Should return a valid vector (may be empty if continuous aggregate not available)
+    // The length check is implicit - if we got here, the vector is valid
 }
 
 #[tokio::test]

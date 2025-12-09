@@ -17,7 +17,7 @@ async fn test_health_endpoint() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     let response = server.get("/health").await;
     response.assert_status(200);
@@ -33,7 +33,7 @@ async fn test_login_endpoint() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Test successful login
     let response = server
@@ -70,7 +70,7 @@ async fn test_protected_endpoint_without_token() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     let response = server.get("/api/v1/energy/latest").await;
     response.assert_status(401);
@@ -85,7 +85,7 @@ async fn test_protected_endpoint_with_token() {
     
     let config = create_test_config();
     let app = create_router(pool.clone(), config.clone());
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // First login to get token
     let response = server
@@ -121,7 +121,7 @@ async fn test_login_endpoint_invalid_username() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Test with non-existent username
     let response = server
@@ -144,7 +144,7 @@ async fn test_login_endpoint_missing_fields() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Test with missing password
     let response = server
@@ -167,7 +167,7 @@ async fn test_protected_endpoint_invalid_token() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Test with invalid token
     let response = server
@@ -187,7 +187,7 @@ async fn test_protected_endpoint_malformed_header() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Test with malformed Authorization header
     let response = server
@@ -207,7 +207,7 @@ async fn test_energy_hourly_total_endpoint() {
     
     let config = create_test_config();
     let app = create_router(pool.clone(), config.clone());
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Login first
     let login_response = server
@@ -250,7 +250,7 @@ async fn test_energy_history_endpoint() {
     
     let config = create_test_config();
     let app = create_router(pool.clone(), config.clone());
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Login first
     let login_response = server
@@ -295,7 +295,7 @@ async fn test_energy_history_endpoint_missing_from() {
     
     let config = create_test_config();
     let app = create_router(pool.clone(), config.clone());
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Login first
     let login_response = server
@@ -328,7 +328,7 @@ async fn test_energy_history_endpoint_invalid_date() {
     
     let config = create_test_config();
     let app = create_router(pool.clone(), config.clone());
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Login first
     let login_response = server
@@ -361,7 +361,7 @@ async fn test_heatpump_latest_endpoint() {
     
     let config = create_test_config();
     let app = create_router(pool.clone(), config.clone());
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Login first
     let login_response = server
@@ -402,7 +402,7 @@ async fn test_heatpump_latest_endpoint_with_device_id() {
     
     let config = create_test_config();
     let app = create_router(pool.clone(), config.clone());
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     // Login first
     let login_response = server
@@ -438,7 +438,7 @@ async fn test_token_expires_in_field() {
     
     let config = create_test_config();
     let app = create_router(pool, config);
-    let server = TestServer::new(app.into_make_service()).unwrap();
+    let server = TestServer::new(app).unwrap();
     
     let response = server
         .post("/api/v1/auth/login")

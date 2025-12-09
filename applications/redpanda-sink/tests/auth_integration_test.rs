@@ -235,3 +235,4 @@ fn test_auth_with_config_structure() {
     let claims = validate_token(&token, &auth.jwt_secret).unwrap();
     assert_eq!(claims.sub, username);
 }
+

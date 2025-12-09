@@ -1,13 +1,17 @@
+mod api;
+mod auth;
 mod config;
 mod db;
 mod error;
 mod ingest;
 mod mapping;
 mod redpanda;
+mod repositories;
 
 use config::Config;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
+use tokio::sync::broadcast;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -51,36 +55,101 @@ async fn main() -> Result<(), anyhow::Error> {
     info!("subscribed to {} topic(s)", topics.len());
 
     let ingestor = ingest::Ingestor::new(
-        pool,
+        pool.clone(),
         cfg.database.write.batch_size,
         cfg.database.write.linger_ms,
     );
 
-    let sig = tokio::signal::ctrl_c();
-    tokio::pin!(sig);
-    loop {
-        tokio::select! {
-            biased;
-            _ = &mut sig => {
-                info!("shutdown requested");
-                break;
-            }
-            res = redpanda::receive_message(&consumer) => {
-                match res {
-                    Ok(Some(msg)) => {
-                        if let Err(e) = ingestor.handle_message(&cfg.pipelines, &msg.topic, &msg.payload).await {
-                            warn!(topic=%msg.topic, error=%e, "processing failed for incoming message");
-                        }
+    // Create shutdown signal channel
+    let (shutdown_tx, _) = broadcast::channel::<()>(1);
+    let shutdown_tx_for_api = shutdown_tx.clone();
+
+    // Start API server if enabled
+    let api_handle = if let Some(api_cfg) = &cfg.api {
+        if api_cfg.enabled {
+            info!(
+                host = %api_cfg.host,
+                port = api_cfg.port,
+                "starting API server"
+            );
+            
+            let router = api::create_router(pool.clone(), cfg.clone());
+            let addr = format!("{}:{}", api_cfg.host, api_cfg.port);
+            
+            let mut shutdown_rx_api = shutdown_tx_for_api.subscribe();
+            let listener = tokio::net::TcpListener::bind(&addr)
+                .await
+                .map_err(|e| anyhow::anyhow!("failed to bind to {}: {}", addr, e))?;
+            
+            info!("API server listening on {}", addr);
+            
+            Some(tokio::spawn(async move {
+                let serve = axum::serve(listener, router);
+                let shutdown = async move {
+                    shutdown_rx_api.recv().await.ok();
+                    info!("API server shutdown signal received");
+                };
+                
+                if let Err(e) = serve.with_graceful_shutdown(shutdown).await {
+                    warn!(error = %e, "API server error");
+                }
+            }))
+        } else {
+            info!("API server disabled in config");
+            None
+        }
+    } else {
+        info!("API config not provided, API server disabled");
+        None
+    };
+
+    // Main consumer loop with graceful shutdown
+    let pipelines = cfg.pipelines.clone();
+    let consumer_handle = tokio::spawn(async move {
+        loop {
+            match redpanda::receive_message(&consumer).await {
+                Ok(Some(msg)) => {
+                    if let Err(e) = ingestor.handle_message(&pipelines, &msg.topic, &msg.payload).await {
+                        warn!(topic=%msg.topic, error=%e, "processing failed for incoming message");
                     }
-                    Ok(None) => continue,
-                    Err(e) => {
-                        warn!("redpanda error: {e}; continuing after short delay");
-                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                    }
+                }
+                Ok(None) => continue,
+                Err(e) => {
+                    warn!("redpanda error: {e}; continuing after short delay");
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
                 }
             }
         }
+    });
+
+    // Wait for shutdown signal or either task to complete
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            info!("shutdown requested");
+            let _ = shutdown_tx.send(());
+        }
+        _ = consumer_handle => {
+            info!("consumer task completed");
+            let _ = shutdown_tx.send(());
+        }
+        result = async {
+            if let Some(handle) = api_handle {
+                handle.await
+            } else {
+                Ok(())
+            }
+        } => {
+            if let Err(e) = result {
+                warn!(error = %e, "API server task error");
+            }
+            info!("API server task completed");
+            let _ = shutdown_tx.send(());
+        }
     }
+
+    // Give a moment for graceful shutdown
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    info!("application shutdown complete");
 
     Ok(())
 }

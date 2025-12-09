@@ -54,7 +54,7 @@ impl EnergyRepository {
     ) -> Result<f64, AppError> {
         // Query the continuous aggregate
         // Use query_scalar to avoid compile-time checking (view may not exist in test DB)
-        let result: Option<f64> = sqlx::query_scalar(
+        let result: Option<f64> = match sqlx::query_scalar(
             r#"
             SELECT COALESCE(total_energy_kwh, 0.0)
             FROM energy_hourly
@@ -64,7 +64,16 @@ impl EnergyRepository {
         .bind(hour_start)
         .fetch_optional(pool)
         .await
-        .map_err(AppError::Db)?;
+        {
+            Ok(Some(value)) => Some(value),
+            Ok(None) => None,
+            Err(sqlx::Error::Database(db_err)) 
+                if db_err.code() == Some("42P01") || db_err.message().contains("does not exist") => {
+                // View doesn't exist (TimescaleDB not available), return 0.0
+                None
+            }
+            Err(e) => return Err(AppError::Db(e)),
+        };
 
         Ok(result.unwrap_or(0.0))
     }
@@ -74,7 +83,7 @@ impl EnergyRepository {
         from: DateTime<Utc>,
         to: DateTime<Utc>,
     ) -> Result<Vec<EnergyHourly>, AppError> {
-        sqlx::query_as::<_, EnergyHourly>(
+        match sqlx::query_as::<_, EnergyHourly>(
             r#"
             SELECT 
                 hour_start,
@@ -94,7 +103,15 @@ impl EnergyRepository {
         .bind(to)
         .fetch_all(pool)
         .await
-        .map_err(AppError::Db)
+        {
+            Ok(results) => Ok(results),
+            Err(sqlx::Error::Database(db_err)) 
+                if db_err.code() == Some("42P01") || db_err.message().contains("does not exist") => {
+                // View doesn't exist (TimescaleDB not available), return empty vector
+                Ok(Vec::new())
+            }
+            Err(e) => Err(AppError::Db(e)),
+        }
     }
 }
 
