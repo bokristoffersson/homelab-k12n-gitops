@@ -6,7 +6,7 @@ metadata:
   annotations:
     "fluxcd.io/ignore": "false"
   labels:
-    migration-version: "005"  # Update this when migrations change to force recreation
+    migration-version: "007"  # Update this when migrations change to force recreation
 spec:
   template:
     spec:
