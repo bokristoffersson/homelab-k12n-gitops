@@ -28,7 +28,9 @@ spec:
             - name: APP_CONFIG
               value: /config/config.yaml
             - name: RUST_LOG
-              value: info
+              value: "debug,redpanda_sink=debug,redpanda_sink::api=debug,redpanda_sink::database=debug"
+            - name: RUST_BACKTRACE
+              value: "full"
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:

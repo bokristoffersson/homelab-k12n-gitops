@@ -20,6 +20,9 @@ data:
       enabled: true
       host: "0.0.0.0"
       port: 8080
+      # Enable detailed error responses (for debugging)
+      # In production, set to false to hide internal errors
+      detailed_errors: true
     
     auth:
       jwt_secret: "$(JWT_SECRET)"
