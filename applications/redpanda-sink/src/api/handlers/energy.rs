@@ -1,8 +1,12 @@
-use axum::{extract::{Query, State}, http::StatusCode, response::Json};
-use chrono::{DateTime, Utc};
-use crate::api::models::energy::{EnergyLatestResponse, HourlyTotalResponse, EnergyHourlyResponse};
+use crate::api::models::energy::{EnergyHourlyResponse, EnergyLatestResponse, HourlyTotalResponse};
 use crate::db::DbPool;
 use crate::repositories::EnergyRepository;
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::Json,
+};
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 pub async fn get_latest(
@@ -82,6 +86,3 @@ pub async fn get_history(
 
     Ok(Json(responses))
 }
-
-
-

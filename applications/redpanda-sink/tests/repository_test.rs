@@ -7,7 +7,6 @@
 ///
 /// Note: These tests are marked with #[ignore] by default. Use --ignored flag to run them.
 /// For CI/CD, use testcontainers or a test database setup.
-
 use chrono::{DateTime, Utc};
 use redpanda_sink::db::{connect, insert_batch};
 use redpanda_sink::mapping::{FieldValue, Row};
@@ -182,7 +181,10 @@ async fn insert_test_heatpump_data(
     device_id: &str,
 ) -> Result<(), redpanda_sink::error::AppError> {
     let mut fields = BTreeMap::new();
-    fields.insert("device_id".to_string(), FieldValue::Text(device_id.to_string()));
+    fields.insert(
+        "device_id".to_string(),
+        FieldValue::Text(device_id.to_string()),
+    );
     fields.insert("compressor_on".to_string(), FieldValue::Bool(true));
     fields.insert("hotwater_production".to_string(), FieldValue::Bool(false));
     fields.insert("flowlinepump_on".to_string(), FieldValue::Bool(true));
@@ -222,7 +224,9 @@ fn align_to_hour_boundary(time: DateTime<Utc>) -> DateTime<Utc> {
 async fn test_energy_repository_get_latest() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
@@ -249,16 +253,18 @@ async fn test_energy_repository_get_latest() {
 async fn test_energy_repository_get_latest_empty_table() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
-    
+
     // Ensure table is empty - use CASCADE to handle any dependencies
     sqlx::query("TRUNCATE TABLE energy RESTART IDENTITY CASCADE")
         .execute(&pool)
         .await
         .expect("Failed to truncate energy table");
-    
+
     // Verify table is actually empty
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM energy")
         .fetch_one(&pool)
@@ -277,7 +283,9 @@ async fn test_energy_repository_get_latest_empty_table() {
 async fn test_energy_repository_get_hourly_total() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
@@ -311,7 +319,9 @@ async fn test_energy_repository_get_hourly_total() {
 async fn test_energy_repository_get_hourly_history() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
@@ -346,7 +356,9 @@ async fn test_energy_repository_get_hourly_history() {
 async fn test_heatpump_repository_get_latest() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
@@ -372,7 +384,9 @@ async fn test_heatpump_repository_get_latest() {
 async fn test_heatpump_repository_get_latest_with_device_id() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
@@ -380,9 +394,13 @@ async fn test_heatpump_repository_get_latest_with_device_id() {
     insert_test_heatpump_data(&pool, base_time, "device-001")
         .await
         .expect("Failed to insert test data");
-    insert_test_heatpump_data(&pool, base_time + chrono::Duration::seconds(1), "device-002")
-        .await
-        .expect("Failed to insert test data");
+    insert_test_heatpump_data(
+        &pool,
+        base_time + chrono::Duration::seconds(1),
+        "device-002",
+    )
+    .await
+    .expect("Failed to insert test data");
 
     // Test get_latest with device_id filter
     let result = HeatpumpRepository::get_latest(&pool, Some("device-001")).await;
@@ -405,16 +423,18 @@ async fn test_heatpump_repository_get_latest_with_device_id() {
 async fn test_heatpump_repository_get_latest_empty_table() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
-    
+
     // Ensure table is empty - use CASCADE to handle any dependencies
     sqlx::query("TRUNCATE TABLE heatpump RESTART IDENTITY CASCADE")
         .execute(&pool)
         .await
         .expect("Failed to truncate heatpump table");
-    
+
     // Verify table is actually empty
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM heatpump")
         .fetch_one(&pool)
@@ -436,7 +456,9 @@ async fn test_heatpump_repository_get_latest_empty_table() {
 async fn test_energy_repository_get_hourly_total_no_data() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
@@ -445,8 +467,15 @@ async fn test_energy_repository_get_hourly_total_no_data() {
 
     // Test get_hourly_total with no data - should return 0.0
     let result = EnergyRepository::get_hourly_total(&pool, hour_start).await;
-    assert!(result.is_ok(), "get_hourly_total should succeed even with no data");
-    assert_eq!(result.unwrap(), 0.0, "should return 0.0 when no data exists");
+    assert!(
+        result.is_ok(),
+        "get_hourly_total should succeed even with no data"
+    );
+    assert_eq!(
+        result.unwrap(),
+        0.0,
+        "should return 0.0 when no data exists"
+    );
 }
 
 #[tokio::test]
@@ -455,7 +484,9 @@ async fn test_energy_repository_get_hourly_total_no_data() {
 async fn test_energy_repository_get_hourly_history_empty_range() {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    let pool = connect(&database_url).await.expect("Failed to connect to test database");
+    let pool = connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
@@ -465,7 +496,10 @@ async fn test_energy_repository_get_hourly_history_empty_range() {
 
     // Test get_hourly_history with no data in range
     let result = EnergyRepository::get_hourly_history(&pool, from, to).await;
-    assert!(result.is_ok(), "get_hourly_history should succeed even with no data");
+    assert!(
+        result.is_ok(),
+        "get_hourly_history should succeed even with no data"
+    );
     assert_eq!(
         result.unwrap().len(),
         0,

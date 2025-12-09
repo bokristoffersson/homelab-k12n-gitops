@@ -1,7 +1,11 @@
-use axum::{extract::{Query, State}, http::StatusCode, response::Json};
 use crate::api::models::heatpump::HeatpumpLatestResponse;
 use crate::db::DbPool;
 use crate::repositories::HeatpumpRepository;
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::Json,
+};
 use std::collections::HashMap;
 
 pub async fn get_latest(
@@ -9,7 +13,7 @@ pub async fn get_latest(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<HeatpumpLatestResponse>, StatusCode> {
     let device_id = params.get("device_id").map(|s| s.as_str());
-    
+
     let reading = HeatpumpRepository::get_latest(&pool, device_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -31,6 +35,3 @@ pub async fn get_latest(
         brine_in_temp: reading.brine_in_temp,
     }))
 }
-
-
-

@@ -9,9 +9,9 @@ mod redpanda;
 mod repositories;
 
 use config::Config;
+use tokio::sync::broadcast;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
-use tokio::sync::broadcast;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -72,24 +72,24 @@ async fn main() -> Result<(), anyhow::Error> {
                 port = api_cfg.port,
                 "starting API server"
             );
-            
+
             let router = api::create_router(pool.clone(), cfg.clone());
             let addr = format!("{}:{}", api_cfg.host, api_cfg.port);
-            
+
             let mut shutdown_rx_api = shutdown_tx_for_api.subscribe();
             let listener = tokio::net::TcpListener::bind(&addr)
                 .await
                 .map_err(|e| anyhow::anyhow!("failed to bind to {}: {}", addr, e))?;
-            
+
             info!("API server listening on {}", addr);
-            
+
             Some(tokio::spawn(async move {
                 let serve = axum::serve(listener, router);
                 let shutdown = async move {
                     shutdown_rx_api.recv().await.ok();
                     info!("API server shutdown signal received");
                 };
-                
+
                 if let Err(e) = serve.with_graceful_shutdown(shutdown).await {
                     warn!(error = %e, "API server error");
                 }
@@ -109,7 +109,10 @@ async fn main() -> Result<(), anyhow::Error> {
         loop {
             match redpanda::receive_message(&consumer).await {
                 Ok(Some(msg)) => {
-                    if let Err(e) = ingestor.handle_message(&pipelines, &msg.topic, &msg.payload).await {
+                    if let Err(e) = ingestor
+                        .handle_message(&pipelines, &msg.topic, &msg.payload)
+                        .await
+                    {
                         warn!(topic=%msg.topic, error=%e, "processing failed for incoming message");
                     }
                 }

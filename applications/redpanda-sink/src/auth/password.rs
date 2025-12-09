@@ -16,7 +16,7 @@ mod tests {
     fn test_hash_and_verify_password() {
         let password = "test-password-123";
         let hash = hash_password(password).unwrap();
-        
+
         assert!(verify_password(password, &hash).unwrap());
         assert!(!verify_password("wrong-password", &hash).unwrap());
     }
@@ -25,17 +25,17 @@ mod tests {
     fn test_hash_different_passwords() {
         let password1 = "password1";
         let password2 = "password2";
-        
+
         let hash1 = hash_password(password1).unwrap();
         let hash2 = hash_password(password2).unwrap();
-        
+
         // Hashes should be different
         assert_ne!(hash1, hash2);
-        
+
         // Each should verify with its own password
         assert!(verify_password(password1, &hash1).unwrap());
         assert!(verify_password(password2, &hash2).unwrap());
-        
+
         // But not with the other password
         assert!(!verify_password(password1, &hash2).unwrap());
         assert!(!verify_password(password2, &hash1).unwrap());
@@ -45,7 +45,7 @@ mod tests {
     fn test_hash_empty_password() {
         let password = "";
         let hash = hash_password(password).unwrap();
-        
+
         // Empty password should hash successfully
         assert!(!hash.is_empty());
         assert!(verify_password(password, &hash).unwrap());
@@ -61,7 +61,7 @@ mod tests {
             "密码123",
             "very-long-password-with-many-characters-that-should-still-work-correctly",
         ];
-        
+
         for password in passwords {
             let hash = hash_password(password).unwrap();
             assert!(verify_password(password, &hash).unwrap());
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn test_verify_invalid_hash() {
         let password = "test-password";
-        
+
         // Test with invalid hash format
         assert!(verify_password(password, "not-a-valid-hash").is_err());
         assert!(verify_password(password, "").is_err());
@@ -82,18 +82,18 @@ mod tests {
     #[test]
     fn test_hash_same_password_different_hashes() {
         let password = "same-password";
-        
+
         // Hashing the same password multiple times should produce different hashes
         // (due to salt), but all should verify correctly
         let hash1 = hash_password(password).unwrap();
         let hash2 = hash_password(password).unwrap();
         let hash3 = hash_password(password).unwrap();
-        
+
         // Hashes should be different (due to random salt)
         assert_ne!(hash1, hash2);
         assert_ne!(hash2, hash3);
         assert_ne!(hash1, hash3);
-        
+
         // But all should verify with the same password
         assert!(verify_password(password, &hash1).unwrap());
         assert!(verify_password(password, &hash2).unwrap());
@@ -104,13 +104,13 @@ mod tests {
     fn test_hash_case_sensitive() {
         let password1 = "Password123";
         let password2 = "password123";
-        
+
         let hash1 = hash_password(password1).unwrap();
         let hash2 = hash_password(password2).unwrap();
-        
+
         // Case-sensitive passwords should produce different hashes
         assert_ne!(hash1, hash2);
-        
+
         // Each should only verify with its exact password
         assert!(verify_password(password1, &hash1).unwrap());
         assert!(verify_password(password2, &hash2).unwrap());
@@ -120,18 +120,11 @@ mod tests {
 
     #[test]
     fn test_hash_unicode_passwords() {
-        let passwords = vec![
-            "café",
-            "🚀password",
-            "пароль",
-            "パスワード",
-        ];
-        
+        let passwords = vec!["café", "🚀password", "пароль", "パスワード"];
+
         for password in passwords {
             let hash = hash_password(password).unwrap();
             assert!(verify_password(password, &hash).unwrap());
         }
     }
 }
-
-

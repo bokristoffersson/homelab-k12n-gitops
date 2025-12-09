@@ -50,7 +50,7 @@ impl HeatpumpRepository {
                 WHERE device_id = $1
                 ORDER BY ts DESC
                 LIMIT 1
-                "#
+                "#,
             )
             .bind(device_id)
             .fetch_one(pool)
@@ -77,7 +77,7 @@ impl HeatpumpRepository {
                 FROM heatpump
                 ORDER BY ts DESC
                 LIMIT 1
-                "#
+                "#,
             )
             .fetch_one(pool)
             .await
@@ -97,7 +97,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         let result = HeatpumpRepository::get_latest(&pool, None).await;
         // Will fail if no data exists, which is expected
         assert!(result.is_ok() || result.is_err());
@@ -109,7 +109,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // If data exists, verify it returns the most recent record
         if let Ok(latest) = HeatpumpRepository::get_latest(&pool, None).await {
             // Verify the structure is correct
@@ -125,7 +125,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         let result = HeatpumpRepository::get_latest(&pool, Some("test-device")).await;
         // Will fail if no data exists, which is expected
         assert!(result.is_ok() || result.is_err());
@@ -137,7 +137,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // If data exists, verify filtering works
         if let Ok(latest) = HeatpumpRepository::get_latest(&pool, Some("test-device")).await {
             // If device_id filter is applied, the result should match
@@ -154,7 +154,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // Try to get latest for a device that doesn't exist
         let result = HeatpumpRepository::get_latest(&pool, Some("nonexistent-device-12345")).await;
         // Should return an error if no data exists for that device
@@ -167,7 +167,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // If multiple records exist, verify it returns the most recent
         if let Ok(latest) = HeatpumpRepository::get_latest(&pool, None).await {
             // Verify timestamp is reasonable (not in the future)
@@ -194,10 +194,8 @@ mod tests {
             brine_out_temp: Some(8),
             brine_in_temp: Some(6),
         };
-        
+
         // If we get here, the struct is valid
         assert!(true);
     }
 }
-
-

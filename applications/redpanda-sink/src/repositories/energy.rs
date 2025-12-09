@@ -41,7 +41,7 @@ impl EnergyRepository {
             FROM energy
             ORDER BY ts DESC
             LIMIT 1
-            "#
+            "#,
         )
         .fetch_one(pool)
         .await
@@ -59,7 +59,7 @@ impl EnergyRepository {
             SELECT COALESCE(total_energy_kwh, 0.0)
             FROM energy_hourly
             WHERE hour_start = $1
-            "#
+            "#,
         )
         .bind(hour_start)
         .fetch_optional(pool)
@@ -67,8 +67,10 @@ impl EnergyRepository {
         {
             Ok(Some(value)) => Some(value),
             Ok(None) => None,
-            Err(sqlx::Error::Database(db_err)) 
-                if db_err.code().as_deref() == Some("42P01") || db_err.message().contains("does not exist") => {
+            Err(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("42P01")
+                    || db_err.message().contains("does not exist") =>
+            {
                 // View doesn't exist (TimescaleDB not available), return 0.0
                 None
             }
@@ -97,7 +99,7 @@ impl EnergyRepository {
             FROM energy_hourly
             WHERE hour_start >= $1 AND hour_start < $2
             ORDER BY hour_start
-            "#
+            "#,
         )
         .bind(from)
         .bind(to)
@@ -105,8 +107,10 @@ impl EnergyRepository {
         .await
         {
             Ok(results) => Ok(results),
-            Err(sqlx::Error::Database(db_err)) 
-                if db_err.code().as_deref() == Some("42P01") || db_err.message().contains("does not exist") => {
+            Err(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("42P01")
+                    || db_err.message().contains("does not exist") =>
+            {
                 // View doesn't exist (TimescaleDB not available), return empty vector
                 Ok(Vec::new())
             }
@@ -136,7 +140,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // This will fail if no data exists, which is expected
         let result = EnergyRepository::get_latest(&pool).await;
         // Just verify the function doesn't panic
@@ -149,7 +153,7 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // If data exists, verify it returns the most recent record
         if let Ok(latest) = EnergyRepository::get_latest(&pool).await {
             // Verify the structure is correct
@@ -165,13 +169,13 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         let now = Utc::now();
         let hour_start = align_to_hour_boundary(now);
-        
+
         let result = EnergyRepository::get_hourly_total(&pool, hour_start).await;
         assert!(result.is_ok());
-        
+
         // Should return a non-negative value
         let total = result.unwrap();
         assert!(total >= 0.0, "total should be non-negative");
@@ -183,13 +187,17 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // Use a far future hour that definitely has no data
         let future_hour = align_to_hour_boundary(Utc::now() + chrono::Duration::days(365));
-        
+
         let result = EnergyRepository::get_hourly_total(&pool, future_hour).await;
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 0.0, "should return 0.0 when no data exists");
+        assert_eq!(
+            result.unwrap(),
+            0.0,
+            "should return 0.0 when no data exists"
+        );
     }
 
     #[tokio::test]
@@ -198,14 +206,14 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         let now = Utc::now();
         let from = align_to_hour_boundary(now) - chrono::Duration::hours(24);
         let to = align_to_hour_boundary(now) + chrono::Duration::hours(1);
-        
+
         let result = EnergyRepository::get_hourly_history(&pool, from, to).await;
         assert!(result.is_ok());
-        
+
         let history = result.unwrap();
         // Verify structure of returned data
         for entry in history {
@@ -222,11 +230,11 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         // Use a date range that definitely has no data
         let from = Utc::now() - chrono::Duration::days(365);
         let to = Utc::now() - chrono::Duration::days(364);
-        
+
         let result = EnergyRepository::get_hourly_history(&pool, from, to).await;
         assert!(result.is_ok());
         let history = result.unwrap();
@@ -240,11 +248,11 @@ mod tests {
         let database_url = std::env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".into());
         let pool = db::connect(&database_url).await.unwrap();
-        
+
         let now = Utc::now();
         let from = align_to_hour_boundary(now) - chrono::Duration::hours(48);
         let to = align_to_hour_boundary(now) + chrono::Duration::hours(1);
-        
+
         let result = EnergyRepository::get_hourly_history(&pool, from, to).await;
         if let Ok(history) = result {
             // Verify results are ordered by hour_start
@@ -262,12 +270,10 @@ mod tests {
         use chrono::Timelike;
         let now = Utc::now();
         let aligned = align_to_hour_boundary(now);
-        
+
         // Verify it's aligned to hour boundary
         assert_eq!(aligned.minute(), 0);
         assert_eq!(aligned.second(), 0);
         assert_eq!(aligned.nanosecond(), 0);
     }
 }
-
-

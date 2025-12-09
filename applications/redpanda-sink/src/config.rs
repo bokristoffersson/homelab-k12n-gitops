@@ -374,7 +374,7 @@ pipelines:
     fn test_config_with_api_and_auth() {
         let original_jwt = std::env::var("JWT_SECRET").ok();
         std::env::remove_var("JWT_SECRET");
-        
+
         let config_str = r#"
 redpanda:
   brokers: "localhost:9092"
@@ -411,14 +411,14 @@ pipelines:
         std::fs::write(&temp_file, config_str).unwrap();
 
         let config = Config::load(&temp_file).unwrap();
-        
+
         // Verify API config
         assert!(config.api.is_some());
         let api = config.api.as_ref().unwrap();
         assert!(api.enabled);
         assert_eq!(api.host, "0.0.0.0");
         assert_eq!(api.port, 8080);
-        
+
         // Verify Auth config
         assert!(config.auth.is_some());
         let auth = config.auth.as_ref().unwrap();
@@ -429,7 +429,7 @@ pipelines:
         assert_eq!(auth.users[0].password_hash, "$2b$12$testhash");
 
         std::fs::remove_file(&temp_file).ok();
-        
+
         if let Some(val) = original_jwt {
             std::env::set_var("JWT_SECRET", val);
         }
@@ -459,12 +459,14 @@ pipelines:
     fields: {}
 "#;
 
-        let temp_file =
-            std::env::temp_dir().join(format!("test-config-api-defaults-{}.yaml", std::process::id()));
+        let temp_file = std::env::temp_dir().join(format!(
+            "test-config-api-defaults-{}.yaml",
+            std::process::id()
+        ));
         std::fs::write(&temp_file, config_str).unwrap();
 
         let config = Config::load(&temp_file).unwrap();
-        
+
         // Verify API config defaults
         assert!(config.api.is_some());
         let api = config.api.as_ref().unwrap();
@@ -508,7 +510,7 @@ pipelines:
         std::env::set_var("JWT_SECRET", "env-override-secret");
 
         let config = Config::load(&temp_file).unwrap();
-        
+
         // Verify JWT_SECRET was overridden
         assert!(config.auth.is_some());
         let auth = config.auth.as_ref().unwrap();

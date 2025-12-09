@@ -41,7 +41,7 @@ mod tests {
             brine_out_temp: Some(8),
             brine_in_temp: Some(6),
         };
-        
+
         assert_eq!(response.device_id.as_ref().unwrap(), "hp-01");
         assert_eq!(response.compressor_on.unwrap(), true);
         assert_eq!(response.outdoor_temp.unwrap(), 5.5);
@@ -65,7 +65,7 @@ mod tests {
             brine_out_temp: None,
             brine_in_temp: None,
         };
-        
+
         assert!(response.device_id.is_none());
         assert!(response.compressor_on.is_none());
         assert!(response.outdoor_temp.is_none());
@@ -91,7 +91,7 @@ mod tests {
             brine_out_temp: Some(10),
             brine_in_temp: Some(8),
         };
-        
+
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("device-123"));
         assert!(json.contains("true"));
@@ -108,7 +108,7 @@ mod tests {
             (false, true, true, false),
             (false, false, false, false),
         ];
-        
+
         for (compressor, hotwater, flowline, brine) in combinations {
             let response = HeatpumpLatestResponse {
                 ts: Utc::now(),
@@ -126,7 +126,7 @@ mod tests {
                 brine_out_temp: Some(0),
                 brine_in_temp: Some(0),
             };
-            
+
             assert_eq!(response.compressor_on.unwrap(), compressor);
             assert_eq!(response.hotwater_production.unwrap(), hotwater);
             assert_eq!(response.flowlinepump_on.unwrap(), flowline);
@@ -134,5 +134,3 @@ mod tests {
         }
     }
 }
-
-

@@ -23,7 +23,7 @@ mod tests {
             username: "testuser".to_string(),
             password: "testpass".to_string(),
         };
-        
+
         assert_eq!(request.username, "testuser");
         assert_eq!(request.password, "testpass");
     }
@@ -32,7 +32,7 @@ mod tests {
     fn test_login_request_deserialization() {
         let json = r#"{"username":"admin","password":"secret123"}"#;
         let request: LoginRequest = serde_json::from_str(json).unwrap();
-        
+
         assert_eq!(request.username, "admin");
         assert_eq!(request.password, "secret123");
     }
@@ -53,7 +53,7 @@ mod tests {
             username: "testuser".to_string(),
             expires_in: 86400,
         };
-        
+
         assert_eq!(response.token, "jwt-token-here");
         assert_eq!(response.username, "testuser");
         assert_eq!(response.expires_in, 86400);
@@ -66,7 +66,7 @@ mod tests {
             username: "admin".to_string(),
             expires_in: 3600,
         };
-        
+
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"));
         assert!(json.contains("admin"));
@@ -78,13 +78,13 @@ mod tests {
         // Test that expires_in matches expected format (seconds)
         let hours = 24;
         let seconds = hours * 3600;
-        
+
         let response = LoginResponse {
             token: "token".to_string(),
             username: "user".to_string(),
             expires_in: seconds,
         };
-        
+
         assert_eq!(response.expires_in, 86400);
     }
 
@@ -94,7 +94,7 @@ mod tests {
             username: "".to_string(),
             password: "".to_string(),
         };
-        
+
         // Should still be valid struct
         assert_eq!(request.username, "");
         assert_eq!(request.password, "");
@@ -106,10 +106,8 @@ mod tests {
             username: "user@example.com".to_string(),
             password: "p@ssw0rd!123".to_string(),
         };
-        
+
         assert_eq!(request.username, "user@example.com");
         assert_eq!(request.password, "p@ssw0rd!123");
     }
 }
-
-

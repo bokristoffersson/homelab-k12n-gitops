@@ -3,8 +3,8 @@
 
 use redpanda_sink::config::Config;
 use std::time::Duration;
-use tokio::time::timeout;
 use tokio::sync::broadcast;
+use tokio::time::timeout;
 
 /// Test that API server configuration is properly loaded from config
 #[tokio::test]
@@ -44,18 +44,19 @@ pipelines:
     fields: {}
 "#;
 
-    let temp_file = std::env::temp_dir().join(format!("test-api-config-{}.yaml", std::process::id()));
+    let temp_file =
+        std::env::temp_dir().join(format!("test-api-config-{}.yaml", std::process::id()));
     std::fs::write(&temp_file, config_str).unwrap();
 
     let config = Config::load(&temp_file).unwrap();
-    
+
     // Verify API config
     assert!(config.api.is_some());
     let api = config.api.as_ref().unwrap();
     assert!(api.enabled);
     assert_eq!(api.host, "127.0.0.1");
     assert_eq!(api.port, 8080);
-    
+
     // Verify auth config
     assert!(config.auth.is_some());
     let auth = config.auth.as_ref().unwrap();
@@ -73,26 +74,27 @@ async fn test_shutdown_signal_propagation() {
     let (shutdown_tx, _) = broadcast::channel::<()>(1);
     let mut rx1 = shutdown_tx.subscribe();
     let mut rx2 = shutdown_tx.subscribe();
-    
+
     // Simulate API server and consumer tasks waiting for shutdown
     let api_task = tokio::spawn(async move {
         rx1.recv().await.ok();
         "api_shutdown"
     });
-    
+
     let consumer_task = tokio::spawn(async move {
         rx2.recv().await.ok();
         "consumer_shutdown"
     });
-    
+
     // Send shutdown signal
     let _ = shutdown_tx.send(());
-    
+
     // Both tasks should receive the signal and complete
     let result = timeout(Duration::from_secs(2), async {
         tokio::join!(api_task, consumer_task)
-    }).await;
-    
+    })
+    .await;
+
     assert!(result.is_ok(), "Both tasks should receive shutdown signal");
     let (api_result, consumer_result) = result.unwrap();
     assert_eq!(api_result.unwrap(), "api_shutdown");
@@ -105,12 +107,12 @@ async fn test_shutdown_signal_propagation() {
 async fn test_api_server_creation() {
     use redpanda_sink::api::create_router;
     use redpanda_sink::db;
-    
+
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/test".to_string());
-    
+
     let pool = db::connect(&database_url).await.unwrap();
-    
+
     let config_str = r#"
 redpanda:
   brokers: "localhost:9092"
@@ -144,12 +146,13 @@ pipelines:
     tags: {}
     fields: {}
 "#;
-    
-    let temp_file = std::env::temp_dir().join(format!("test-api-server-{}.yaml", std::process::id()));
+
+    let temp_file =
+        std::env::temp_dir().join(format!("test-api-server-{}.yaml", std::process::id()));
     std::fs::write(&temp_file, config_str).unwrap();
     let config = Config::load(&temp_file).unwrap();
     std::fs::remove_file(&temp_file).ok();
-    
+
     // Create router - should not panic
     let router = create_router(pool, config);
     drop(router);
@@ -187,11 +190,12 @@ pipelines:
     fields: {}
 "#;
 
-    let temp_file = std::env::temp_dir().join(format!("test-api-disabled-{}.yaml", std::process::id()));
+    let temp_file =
+        std::env::temp_dir().join(format!("test-api-disabled-{}.yaml", std::process::id()));
     std::fs::write(&temp_file, config_str).unwrap();
 
     let config = Config::load(&temp_file).unwrap();
-    
+
     assert!(config.api.is_some());
     assert!(!config.api.as_ref().unwrap().enabled);
 
@@ -240,9 +244,12 @@ pipelines:
     std::env::set_var("JWT_SECRET", "env-override-secret");
 
     let config = Config::load(&temp_file).unwrap();
-    
+
     assert!(config.auth.is_some());
-    assert_eq!(config.auth.as_ref().unwrap().jwt_secret, "env-override-secret");
+    assert_eq!(
+        config.auth.as_ref().unwrap().jwt_secret,
+        "env-override-secret"
+    );
 
     // Cleanup
     if let Some(val) = original_jwt {
@@ -258,12 +265,10 @@ pipelines:
 #[tokio::test]
 async fn test_multiple_shutdown_listeners() {
     let (shutdown_tx, _) = broadcast::channel::<()>(1);
-    
+
     // Create multiple receivers (simulating API server and consumer)
-    let mut receivers: Vec<_> = (0..3)
-        .map(|_| shutdown_tx.subscribe())
-        .collect();
-    
+    let mut receivers: Vec<_> = (0..3).map(|_| shutdown_tx.subscribe()).collect();
+
     // Spawn tasks that wait for shutdown
     let handles: Vec<_> = receivers
         .iter_mut()
@@ -276,10 +281,10 @@ async fn test_multiple_shutdown_listeners() {
             })
         })
         .collect();
-    
+
     // Send shutdown signal
     let _ = shutdown_tx.send(());
-    
+
     // All tasks should complete
     let result = timeout(Duration::from_secs(2), async {
         let mut results = Vec::new();
@@ -287,12 +292,12 @@ async fn test_multiple_shutdown_listeners() {
             results.push(handle.await);
         }
         results
-    }).await;
-    
+    })
+    .await;
+
     assert!(result.is_ok(), "All receivers should get shutdown signal");
     let results = result.unwrap();
     for handle_result in results {
         assert!(handle_result.is_ok());
     }
 }
-

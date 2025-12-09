@@ -1,32 +1,33 @@
-use axum::{extract::State, http::StatusCode, response::Json};
 use crate::api::models::auth::{LoginRequest, LoginResponse};
 use crate::auth::{jwt::create_token, password::verify_password};
 use crate::config::Config;
 use crate::db::DbPool;
+use axum::{extract::State, http::StatusCode, response::Json};
 
 pub async fn login(
     State((_pool, config)): State<(DbPool, Config)>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, StatusCode> {
-    let auth = config.auth.as_ref().ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    
-    let user = auth.users
+    let auth = config
+        .auth
+        .as_ref()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let user = auth
+        .users
         .iter()
         .find(|u| u.username == payload.username)
         .ok_or(StatusCode::UNAUTHORIZED)?;
-    
+
     if !verify_password(&payload.password, &user.password_hash)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? {
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    
-    let token = create_token(
-        &user.username,
-        &auth.jwt_secret,
-        auth.jwt_expiry_hours,
-    )
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
+
+    let token = create_token(&user.username, &auth.jwt_secret, auth.jwt_expiry_hours)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     Ok(Json(LoginResponse {
         token,
         username: user.username.clone(),
@@ -39,11 +40,13 @@ mod tests {
     use super::*;
     use crate::api::models::auth::LoginRequest;
     use crate::auth::hash_password;
-    use crate::config::{Config, AuthConfig, User, RedpandaConfig, DbConfig, WriteConfig, ApiConfig};
+    use crate::config::{
+        ApiConfig, AuthConfig, Config, DbConfig, RedpandaConfig, User, WriteConfig,
+    };
 
     fn create_test_config() -> Config {
         let password_hash = hash_password("testpass").unwrap();
-        
+
         Config {
             redpanda: RedpandaConfig {
                 brokers: "localhost:9092".into(),
@@ -127,7 +130,7 @@ mod tests {
         let hours = 24;
         let expected_seconds = hours * 3600;
         assert_eq!(expected_seconds, 86400);
-        
+
         let response = LoginResponse {
             token: "token".to_string(),
             username: "user".to_string(),
@@ -136,5 +139,3 @@ mod tests {
         assert_eq!(response.expires_in, 86400);
     }
 }
-
-
