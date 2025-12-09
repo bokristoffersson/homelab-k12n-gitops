@@ -7,7 +7,9 @@ resources:
   - configmap.yaml
   - migration-job.yaml
   - deployment.yaml
+  - service.yaml
   - timescaledb-secret-sealed.yaml
+  - auth-secret-sealed.yaml
 configMapGenerator:
   - name: redpanda-sink-migrations
     files:

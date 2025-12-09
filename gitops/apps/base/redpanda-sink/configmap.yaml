@@ -24,7 +24,9 @@ data:
     auth:
       jwt_secret: "$(JWT_SECRET)"
       jwt_expiry_hours: 24
-      users: []
+      users:
+        - username: "admin"
+          password_hash: "$(ADMIN_PASSWORD_HASH)"
     
     pipelines:
       - name: "heatpump"
