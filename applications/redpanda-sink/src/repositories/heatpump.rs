@@ -195,7 +195,6 @@ mod tests {
             brine_in_temp: Some(6),
         };
 
-        // If we get here, the struct is valid
-        assert!(true);
+        // If we get here, the struct is valid (no assertion needed)
     }
 }

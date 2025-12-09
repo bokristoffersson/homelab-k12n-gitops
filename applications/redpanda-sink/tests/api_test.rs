@@ -1,6 +1,7 @@
 // Integration tests for API endpoints
 // These tests require a running database and proper test data
 
+use axum::http::StatusCode;
 use axum_test::TestServer;
 use redpanda_sink::api::create_router;
 use redpanda_sink::auth::hash_password;
@@ -22,7 +23,7 @@ async fn test_health_endpoint() {
     let server = TestServer::new(app).unwrap();
 
     let response = server.get("/health").await;
-    response.assert_status(200);
+    response.assert_status(StatusCode::OK);
     response.assert_text("OK");
 }
 
@@ -46,7 +47,7 @@ async fn test_login_endpoint() {
         }))
         .await;
 
-    response.assert_status(200);
+    response.assert_status(StatusCode::OK);
     let body: serde_json::Value = response.json();
     assert!(body.get("token").is_some());
     assert_eq!(body.get("username").unwrap().as_str().unwrap(), "testuser");
@@ -60,7 +61,7 @@ async fn test_login_endpoint() {
         }))
         .await;
 
-    response.assert_status(401);
+    response.assert_status(StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -75,7 +76,7 @@ async fn test_protected_endpoint_without_token() {
     let server = TestServer::new(app).unwrap();
 
     let response = server.get("/api/v1/energy/latest").await;
-    response.assert_status(401);
+    response.assert_status(StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -98,7 +99,7 @@ async fn test_protected_endpoint_with_token() {
         }))
         .await;
 
-    response.assert_status(200);
+    response.assert_status(StatusCode::OK);
     let body: serde_json::Value = response.json();
     let token = body.get("token").unwrap().as_str().unwrap();
 
@@ -134,7 +135,7 @@ async fn test_login_endpoint_invalid_username() {
         }))
         .await;
 
-    response.assert_status(401);
+    response.assert_status(StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -177,7 +178,7 @@ async fn test_protected_endpoint_invalid_token() {
         .add_header("Authorization", "Bearer invalid-token-here")
         .await;
 
-    response.assert_status(401);
+    response.assert_status(StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -197,7 +198,7 @@ async fn test_protected_endpoint_malformed_header() {
         .add_header("Authorization", "InvalidFormat token")
         .await;
 
-    response.assert_status(401);
+    response.assert_status(StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]
@@ -220,7 +221,7 @@ async fn test_energy_hourly_total_endpoint() {
         }))
         .await;
 
-    login_response.assert_status(200);
+    login_response.assert_status(StatusCode::OK);
     let login_body: serde_json::Value = login_response.json();
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
@@ -263,7 +264,7 @@ async fn test_energy_history_endpoint() {
         }))
         .await;
 
-    login_response.assert_status(200);
+    login_response.assert_status(StatusCode::OK);
     let login_body: serde_json::Value = login_response.json();
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
@@ -311,7 +312,7 @@ async fn test_energy_history_endpoint_missing_from() {
         }))
         .await;
 
-    login_response.assert_status(200);
+    login_response.assert_status(StatusCode::OK);
     let login_body: serde_json::Value = login_response.json();
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
@@ -321,7 +322,7 @@ async fn test_energy_history_endpoint_missing_from() {
         .add_header("Authorization", format!("Bearer {}", token))
         .await;
 
-    response.assert_status(400); // Bad Request
+    response.assert_status(StatusCode::BAD_REQUEST); // Bad Request
 }
 
 #[tokio::test]
@@ -344,7 +345,7 @@ async fn test_energy_history_endpoint_invalid_date() {
         }))
         .await;
 
-    login_response.assert_status(200);
+    login_response.assert_status(StatusCode::OK);
     let login_body: serde_json::Value = login_response.json();
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
@@ -354,7 +355,7 @@ async fn test_energy_history_endpoint_invalid_date() {
         .add_header("Authorization", format!("Bearer {}", token))
         .await;
 
-    response.assert_status(400); // Bad Request
+    response.assert_status(StatusCode::BAD_REQUEST); // Bad Request
 }
 
 #[tokio::test]
@@ -377,7 +378,7 @@ async fn test_heatpump_latest_endpoint() {
         }))
         .await;
 
-    login_response.assert_status(200);
+    login_response.assert_status(StatusCode::OK);
     let login_body: serde_json::Value = login_response.json();
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
@@ -418,7 +419,7 @@ async fn test_heatpump_latest_endpoint_with_device_id() {
         }))
         .await;
 
-    login_response.assert_status(200);
+    login_response.assert_status(StatusCode::OK);
     let login_body: serde_json::Value = login_response.json();
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
@@ -453,7 +454,7 @@ async fn test_token_expires_in_field() {
         }))
         .await;
 
-    response.assert_status(200);
+    response.assert_status(StatusCode::OK);
     let body: serde_json::Value = response.json();
 
     // Verify expires_in is present and is a number

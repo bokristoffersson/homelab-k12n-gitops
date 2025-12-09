@@ -44,6 +44,7 @@ mod tests {
         ApiConfig, AuthConfig, Config, DbConfig, RedpandaConfig, User, WriteConfig,
     };
 
+    #[allow(dead_code)] // Used in tests
     fn create_test_config() -> Config {
         let password_hash = hash_password("testpass").unwrap();
 

@@ -1,5 +1,6 @@
 use bcrypt::{hash, verify, DEFAULT_COST};
 
+#[allow(dead_code)] // Used in tests
 pub fn hash_password(password: &str) -> Result<String, String> {
     hash(password, DEFAULT_COST).map_err(|e| format!("Failed to hash password: {}", e))
 }

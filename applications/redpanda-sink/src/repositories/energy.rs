@@ -237,9 +237,9 @@ mod tests {
 
         let result = EnergyRepository::get_hourly_history(&pool, from, to).await;
         assert!(result.is_ok());
-        let history = result.unwrap();
+        let _history = result.unwrap();
         // Should return empty vector or valid data structure
-        assert!(history.len() >= 0);
+        // The unwrap() verifies it doesn't panic, which is sufficient
     }
 
     #[tokio::test]

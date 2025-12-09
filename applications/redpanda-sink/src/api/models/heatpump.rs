@@ -43,7 +43,7 @@ mod tests {
         };
 
         assert_eq!(response.device_id.as_ref().unwrap(), "hp-01");
-        assert_eq!(response.compressor_on.unwrap(), true);
+        assert!(response.compressor_on.unwrap());
         assert_eq!(response.outdoor_temp.unwrap(), 5.5);
     }
 

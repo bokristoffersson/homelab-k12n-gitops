@@ -267,14 +267,13 @@ async fn test_multiple_shutdown_listeners() {
     let (shutdown_tx, _) = broadcast::channel::<()>(1);
 
     // Create multiple receivers (simulating API server and consumer)
-    let mut receivers: Vec<_> = (0..3).map(|_| shutdown_tx.subscribe()).collect();
+    let receivers: Vec<_> = (0..3).map(|_| shutdown_tx.subscribe()).collect();
 
     // Spawn tasks that wait for shutdown
     let handles: Vec<_> = receivers
-        .iter_mut()
+        .into_iter()
         .enumerate()
-        .map(|(i, rx)| {
-            let mut rx = rx.clone();
+        .map(|(i, mut rx)| {
             tokio::spawn(async move {
                 rx.recv().await.ok();
                 i
