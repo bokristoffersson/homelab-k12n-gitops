@@ -362,6 +362,12 @@ async fn test_heatpump_repository_get_latest() {
 
     setup_schema(&pool).await.expect("Failed to set up schema");
 
+    // Ensure table is clean before test
+    sqlx::query("TRUNCATE TABLE heatpump RESTART IDENTITY CASCADE")
+        .execute(&pool)
+        .await
+        .expect("Failed to truncate heatpump table");
+
     let base_time = Utc::now();
     insert_test_heatpump_data(&pool, base_time, "device-001")
         .await
