@@ -42,8 +42,7 @@ async fn setup_schema(pool: &sqlx::PgPool) -> Result<(), sqlx::Error> {
         CREATE TABLE IF NOT EXISTS heatpump
         (
             ts                  TIMESTAMPTZ       NOT NULL,
-            -- device_id column doesn't exist in production table
-            -- device_id           TEXT,
+            device_id           TEXT,
             room                TEXT,
             outdoor_temp        DOUBLE PRECISION,
             supplyline_temp     DOUBLE PRECISION,
@@ -179,10 +178,12 @@ async fn insert_test_energy_data(
 async fn insert_test_heatpump_data(
     pool: &sqlx::PgPool,
     base_time: DateTime<Utc>,
-    _device_id: &str, // Parameter kept for API compatibility but not used (column doesn't exist)
+    device_id: &str,
 ) -> Result<(), redpanda_sink::error::AppError> {
+    let mut tags = BTreeMap::new();
+    tags.insert("device_id".to_string(), device_id.to_string());
+    
     let mut fields = BTreeMap::new();
-    // device_id column doesn't exist in production table, so we don't insert it
     fields.insert("compressor_on".to_string(), FieldValue::Bool(true));
     fields.insert("hotwater_production".to_string(), FieldValue::Bool(false));
     fields.insert("flowlinepump_on".to_string(), FieldValue::Bool(true));
@@ -198,7 +199,7 @@ async fn insert_test_heatpump_data(
 
     let row = Row {
         ts: base_time,
-        tags: BTreeMap::new(),
+        tags,
         fields,
     };
 
@@ -376,7 +377,8 @@ async fn test_heatpump_repository_get_latest() {
     assert!(result.is_ok(), "get_latest should succeed");
 
     let latest = result.unwrap();
-    // device_id column doesn't exist in production table
+    // Verify device_id is returned (should match the inserted device)
+    assert_eq!(latest.device_id, Some("device-001".to_string()));
     assert_eq!(latest.compressor_on, Some(true));
     assert_eq!(latest.hotwater_production, Some(false));
     assert_eq!(latest.outdoor_temp, Some(5.5));
@@ -406,23 +408,22 @@ async fn test_heatpump_repository_get_latest_with_device_id() {
     .await
     .expect("Failed to insert test data");
 
-    // Test get_latest with device_id parameter
-    // Note: device_id filtering is not supported since the column doesn't exist
-    // The parameter is ignored and latest record is returned regardless
+    // Test get_latest with device_id parameter - should filter correctly
     let result = HeatpumpRepository::get_latest(&pool, Some("device-001")).await;
     assert!(result.is_ok(), "get_latest should succeed");
 
     let latest = result.unwrap();
-    // device_id column doesn't exist, so we can't verify filtering
-    // Just verify we got valid data
+    // Verify device_id filtering works - should return device-001 data
+    assert_eq!(latest.device_id, Some("device-001".to_string()));
     assert_eq!(latest.compressor_on, Some(true));
 
-    // Test with different device_id parameter (should return same result since filtering isn't supported)
+    // Test with different device_id parameter - should return device-002 data
     let result = HeatpumpRepository::get_latest(&pool, Some("device-002")).await;
     assert!(result.is_ok(), "get_latest should succeed");
 
     let latest = result.unwrap();
-    // Should still return valid data (filtering not supported)
+    // Verify device_id filtering works - should return device-002 data
+    assert_eq!(latest.device_id, Some("device-002".to_string()));
     assert_eq!(latest.compressor_on, Some(true));
 }
 

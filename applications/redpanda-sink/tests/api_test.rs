@@ -424,8 +424,7 @@ async fn test_heatpump_latest_endpoint_with_device_id() {
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
     // Test heatpump latest endpoint with device_id parameter
-    // Note: device_id filtering is not supported since the column doesn't exist
-    // The parameter is ignored and latest record is returned regardless
+    // device_id filtering is now supported
     let response = server
         .get("/api/v1/heatpump/latest?device_id=test-device")
         .add_header("Authorization", format!("Bearer {}", token))

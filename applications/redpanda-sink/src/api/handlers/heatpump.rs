@@ -38,7 +38,7 @@ pub async fn get_latest(
 
     Ok(Json(HeatpumpLatestResponse {
         ts: reading.ts,
-        device_id: None, // device_id column doesn't exist in heatpump table
+        device_id: reading.device_id,
         compressor_on: reading.compressor_on,
         hotwater_production: reading.hotwater_production,
         flowlinepump_on: reading.flowlinepump_on,
@@ -70,7 +70,9 @@ pub async fn get_daily_summary(
         .map(|dt| dt.with_timezone(&Utc))
         .unwrap_or_else(Utc::now);
 
-    let summaries = HeatpumpRepository::get_daily_summary(&pool, from, to)
+    let device_id = params.get("device_id").map(|s| s.as_str());
+
+    let summaries = HeatpumpRepository::get_daily_summary(&pool, from, to, device_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
