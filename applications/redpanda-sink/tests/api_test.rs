@@ -423,13 +423,15 @@ async fn test_heatpump_latest_endpoint_with_device_id() {
     let login_body: serde_json::Value = login_response.json();
     let token = login_body.get("token").unwrap().as_str().unwrap();
 
-    // Test heatpump latest endpoint with device_id
+    // Test heatpump latest endpoint with device_id parameter
+    // Note: device_id filtering is not supported since the column doesn't exist
+    // The parameter is ignored and latest record is returned regardless
     let response = server
         .get("/api/v1/heatpump/latest?device_id=test-device")
         .add_header("Authorization", format!("Bearer {}", token))
         .await;
 
-    // Should either succeed (if data exists) or return 500 (if no data)
+    // Should either succeed (if data exists) or return 404/500 (if no data)
     // But not 401 (unauthorized)
     let status = response.status_code();
     assert_ne!(status.as_u16(), 401);
