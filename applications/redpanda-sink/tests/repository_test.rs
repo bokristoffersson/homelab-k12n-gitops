@@ -182,7 +182,7 @@ async fn insert_test_heatpump_data(
 ) -> Result<(), redpanda_sink::error::AppError> {
     let mut tags = BTreeMap::new();
     tags.insert("device_id".to_string(), device_id.to_string());
-    
+
     let mut fields = BTreeMap::new();
     fields.insert("compressor_on".to_string(), FieldValue::Bool(true));
     fields.insert("hotwater_production".to_string(), FieldValue::Bool(false));
