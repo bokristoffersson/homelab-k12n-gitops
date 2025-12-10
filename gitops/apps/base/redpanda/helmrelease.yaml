@@ -34,6 +34,8 @@ spec:
 
     listeners:
       admin:
+        enabled: true
+        port: 9644
         tls:
           enabled: false
         external:
