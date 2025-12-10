@@ -71,11 +71,19 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
                 .on_request(|_request: &Request, _span: &tracing::Span| {
                     tracing::event!(Level::DEBUG, "received request");
                 })
-                .on_response(|_response: &axum::response::Response, latency: std::time::Duration, _span: &tracing::Span| {
-                    tracing::event!(Level::INFO, latency = ?latency, "request completed");
-                })
-                .on_failure(|_error: tower_http::classify::ServerErrorsFailureClass, _latency: std::time::Duration, _span: &tracing::Span| {
-                    tracing::event!(Level::ERROR, "request failed");
-                }),
+                .on_response(
+                    |_response: &axum::response::Response,
+                     latency: std::time::Duration,
+                     _span: &tracing::Span| {
+                        tracing::event!(Level::INFO, latency = ?latency, "request completed");
+                    },
+                )
+                .on_failure(
+                    |_error: tower_http::classify::ServerErrorsFailureClass,
+                     _latency: std::time::Duration,
+                     _span: &tracing::Span| {
+                        tracing::event!(Level::ERROR, "request failed");
+                    },
+                ),
         )
 }

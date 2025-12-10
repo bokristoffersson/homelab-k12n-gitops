@@ -7,16 +7,16 @@ use axum::{
     response::Json,
 };
 use chrono::{DateTime, Utc};
+use sqlx::Error as SqlxError;
 use std::collections::HashMap;
 use tracing::{error, warn};
-use sqlx::Error as SqlxError;
 
 pub async fn get_latest(
     State((pool, _config)): State<(DbPool, crate::config::Config)>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<HeatpumpLatestResponse>, StatusCode> {
     let device_id = params.get("device_id").map(|s| s.as_str());
-    
+
     tracing::debug!(device_id = ?device_id, "fetching latest heatpump reading");
 
     let reading = HeatpumpRepository::get_latest(&pool, device_id)

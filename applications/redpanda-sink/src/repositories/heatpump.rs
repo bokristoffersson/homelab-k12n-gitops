@@ -51,7 +51,7 @@ impl HeatpumpRepository {
             // Return latest record regardless of device_id
             tracing::warn!(device_id = ?device_id, "device_id filtering requested but column doesn't exist in heatpump table");
         }
-        
+
         sqlx::query_as::<_, HeatpumpLatest>(
             r#"
             SELECT 
