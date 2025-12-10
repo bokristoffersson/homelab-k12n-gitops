@@ -8,6 +8,8 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use tower_http::trace::TraceLayer;
+use tracing::Level;
 
 pub fn create_router(pool: DbPool, config: Config) -> Router {
     let config_for_middleware = config.clone();
@@ -56,4 +58,24 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         .merge(protected_routes)
         .with_state((pool, config))
         .layer(tower_http::cors::CorsLayer::permissive())
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &Request| {
+                    tracing::span!(
+                        Level::INFO,
+                        "http_request",
+                        method = %request.method(),
+                        uri = %request.uri(),
+                    )
+                })
+                .on_request(|_request: &Request, _span: &tracing::Span| {
+                    tracing::event!(Level::DEBUG, "received request");
+                })
+                .on_response(|_response: &axum::response::Response, latency: std::time::Duration, _span: &tracing::Span| {
+                    tracing::event!(Level::INFO, latency = ?latency, "request completed");
+                })
+                .on_failure(|_error: tower_http::classify::ServerErrorsFailureClass, _latency: std::time::Duration, _span: &tracing::Span| {
+                    tracing::event!(Level::ERROR, "request failed");
+                }),
+        )
 }

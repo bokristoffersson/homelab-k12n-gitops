@@ -6,7 +6,8 @@ use sqlx::FromRow;
 #[derive(Debug, Clone, FromRow)]
 pub struct HeatpumpLatest {
     pub ts: DateTime<Utc>,
-    pub device_id: Option<String>,
+    // device_id column doesn't exist in the heatpump table
+    // pub device_id: Option<String>,
     pub compressor_on: Option<bool>,
     pub hotwater_production: Option<bool>,
     pub flowlinepump_on: Option<bool>,
@@ -43,61 +44,38 @@ impl HeatpumpRepository {
         pool: &DbPool,
         device_id: Option<&str>,
     ) -> Result<HeatpumpLatest, AppError> {
-        if let Some(device_id) = device_id {
-            sqlx::query_as::<_, HeatpumpLatest>(
-                r#"
-                SELECT 
-                    ts,
-                    device_id,
-                    compressor_on,
-                    hotwater_production,
-                    flowlinepump_on,
-                    brinepump_on,
-                    aux_heater_3kw_on,
-                    aux_heater_6kw_on,
-                    outdoor_temp,
-                    supplyline_temp,
-                    returnline_temp,
-                    hotwater_temp,
-                    brine_out_temp,
-                    brine_in_temp
-                FROM heatpump
-                WHERE device_id = $1
-                ORDER BY ts DESC
-                LIMIT 1
-                "#,
-            )
-            .bind(device_id)
-            .fetch_one(pool)
-            .await
-            .map_err(AppError::Db)
-        } else {
-            sqlx::query_as::<_, HeatpumpLatest>(
-                r#"
-                SELECT 
-                    ts,
-                    device_id,
-                    compressor_on,
-                    hotwater_production,
-                    flowlinepump_on,
-                    brinepump_on,
-                    aux_heater_3kw_on,
-                    aux_heater_6kw_on,
-                    outdoor_temp,
-                    supplyline_temp,
-                    returnline_temp,
-                    hotwater_temp,
-                    brine_out_temp,
-                    brine_in_temp
-                FROM heatpump
-                ORDER BY ts DESC
-                LIMIT 1
-                "#,
-            )
-            .fetch_one(pool)
-            .await
-            .map_err(AppError::Db)
+        // Note: device_id column doesn't exist in the heatpump table
+        // If device_id filtering is needed in the future, the column must be added first
+        if device_id.is_some() {
+            // device_id filtering not supported - column doesn't exist in table
+            // Return latest record regardless of device_id
+            tracing::warn!(device_id = ?device_id, "device_id filtering requested but column doesn't exist in heatpump table");
         }
+        
+        sqlx::query_as::<_, HeatpumpLatest>(
+            r#"
+            SELECT 
+                ts,
+                compressor_on,
+                hotwater_production,
+                flowlinepump_on,
+                brinepump_on,
+                aux_heater_3kw_on,
+                aux_heater_6kw_on,
+                outdoor_temp,
+                supplyline_temp,
+                returnline_temp,
+                hotwater_temp,
+                brine_out_temp,
+                brine_in_temp
+            FROM heatpump
+            ORDER BY ts DESC
+            LIMIT 1
+            "#,
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(AppError::Db)
     }
 
     pub async fn get_daily_summary(

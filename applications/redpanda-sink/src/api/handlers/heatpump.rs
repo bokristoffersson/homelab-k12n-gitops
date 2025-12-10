@@ -8,20 +8,37 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
+use tracing::{error, warn};
+use sqlx::Error as SqlxError;
 
 pub async fn get_latest(
     State((pool, _config)): State<(DbPool, crate::config::Config)>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<HeatpumpLatestResponse>, StatusCode> {
     let device_id = params.get("device_id").map(|s| s.as_str());
+    
+    tracing::debug!(device_id = ?device_id, "fetching latest heatpump reading");
 
     let reading = HeatpumpRepository::get_latest(&pool, device_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|e| {
+            if let crate::error::AppError::Db(db_err) = &e {
+                if matches!(db_err, SqlxError::RowNotFound) {
+                    warn!(device_id = ?device_id, "no heatpump data found");
+                    return StatusCode::NOT_FOUND;
+                }
+                error!(error = %db_err, device_id = ?device_id, "database error fetching heatpump data");
+            } else {
+                error!(error = %e, device_id = ?device_id, "error fetching heatpump data");
+            }
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    tracing::debug!(ts = ?reading.ts, "successfully fetched heatpump reading");
 
     Ok(Json(HeatpumpLatestResponse {
         ts: reading.ts,
-        device_id: reading.device_id,
+        device_id: None, // device_id column doesn't exist in heatpump table
         compressor_on: reading.compressor_on,
         hotwater_production: reading.hotwater_production,
         flowlinepump_on: reading.flowlinepump_on,
