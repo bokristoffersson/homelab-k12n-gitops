@@ -41,8 +41,11 @@ data:
           format: "rfc3339"
         tags:
           device_id: "$.tags.device_id"
-          room: "$.tags.room"
         fields:
+          device_id: {
+            path: "$.tags.device_id",
+            type: "string"
+          }
           outdoor_temp: { 
             path: "$.fields.outdoor_temp", 
             type: "float" 

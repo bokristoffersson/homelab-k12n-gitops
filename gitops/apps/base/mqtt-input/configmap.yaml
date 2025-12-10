@@ -129,6 +129,9 @@ data:
         tags:
           device_id: "$.Client_Name"
         fields:
+          device_id:
+            path: "$.Client_Name"
+            type: "string"
           d50:
             path: "$.d50"
             type: "float"
