@@ -26,8 +26,7 @@ data:
           format: "unix_s"
           use_now: true
         tags:
-          device_id: "$.device_id"
-          room: "$.room"
+          device_id: "$.Client_Name"
         fields:
           outdoor_temp:
             path: "$.d0"
