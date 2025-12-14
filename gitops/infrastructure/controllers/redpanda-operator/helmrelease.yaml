@@ -5,6 +5,10 @@ metadata:
   namespace: redpanda-system
 spec:
   interval: 10m
+  install:
+    crds: Skip
+  upgrade:
+    crds: Skip
   chart:
     spec:
       chart: operator
