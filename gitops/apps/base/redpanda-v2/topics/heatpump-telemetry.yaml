@@ -1,0 +1,14 @@
+apiVersion: cluster.redpanda.com/v1alpha2
+kind: Topic
+metadata:
+  name: heatpump-telemetry
+  namespace: redpanda-v2
+spec:
+  kafkaApiSpec:
+    brokers:
+      - "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+  partitions: 1
+  replicationFactor: 1
+  additionalConfig:
+    retention.ms: "3600000"      # 1 hour
+    segment.ms: "300000"         # 5 minutes

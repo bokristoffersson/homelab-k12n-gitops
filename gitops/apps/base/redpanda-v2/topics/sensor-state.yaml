@@ -1,0 +1,14 @@
+apiVersion: cluster.redpanda.com/v1alpha2
+kind: Topic
+metadata:
+  name: sensor-state
+  namespace: redpanda-v2
+spec:
+  kafkaApiSpec:
+    brokers:
+      - "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+  partitions: 1
+  replicationFactor: 1
+  additionalConfig:
+    retention.ms: "86400000"     # 24 hours
+    segment.ms: "900000"         # 15 minutes

@@ -1,0 +1,102 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: redpanda-v2
+  namespace: redpanda-v2
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: redpanda
+      version: "5.10.4"
+      sourceRef:
+        kind: HelmRepository
+        name: redpanda
+        namespace: flux-system
+  values:
+    # Override cluster name to avoid conflicts with old deployment
+    fullnameOverride: "redpanda-v2"
+
+    statefulset:
+      replicas: 1
+
+      # NEW: Explicit resource limits (GitOps best practice)
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+
+      # NEW: Health checks (GitOps best practice)
+      livenessProbe:
+        enabled: true
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+
+      readinessProbe:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+    storage:
+      persistentVolume:
+        enabled: true
+        size: 50Gi
+        storageClass: longhorn
+
+    tls:
+      enabled: false
+
+    # NEW: Console UI enabled (GitOps best practice)
+    console:
+      enabled: true
+      configmap:
+        create: true
+      service:
+        type: ClusterIP
+        port: 8080
+
+    # NEW: Better monitoring configuration
+    monitoring:
+      enabled: true
+      scrapeInterval: 30s
+
+    external:
+      enabled: false
+      service:
+        enabled: false
+
+    listeners:
+      admin:
+        enabled: true
+        port: 9644
+        tls:
+          enabled: false
+        external:
+          default:
+            enabled: false
+      kafka:
+        port: 9092
+        tls:
+          enabled: false
+        external:
+          default:
+            enabled: false
+        # Different advertised address to avoid conflicts
+        advertisedAddress: "redpanda-v2.redpanda-v2.svc.cluster.local"
+      http:
+        enabled: true
+        port: 8082
+      schemaRegistry:
+        enabled: false
+
+    # NEW: Pod disruption budget (GitOps best practice)
+    podDisruptionBudget:
+      enabled: true
+      maxUnavailable: 0

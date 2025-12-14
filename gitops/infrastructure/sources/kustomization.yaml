@@ -8,3 +8,4 @@ resources:
   - longhorn.yaml
   - postgres-operator.yaml
   - redpanda.yaml
+  - redpanda-operator.yaml
