@@ -56,11 +56,6 @@ spec:
     # NEW: Console UI enabled (GitOps best practice)
     console:
       enabled: true
-      configmap:
-        create: true
-      service:
-        type: ClusterIP
-        port: 8080
 
     # NEW: Better monitoring configuration
     monitoring:
