@@ -18,8 +18,9 @@ spec:
         name: redpanda-operator
         namespace: flux-system
   values:
-    # Enable cluster-wide scope to manage Topics in all namespaces
-    scope: Cluster
+    # Configure operator to watch redpanda-v2 namespace for Topic CRDs
+    additionalCmdFlags:
+      - --namespace=redpanda-v2
 
     # Minimal operator config - only for Topic CRD management
     resources:
