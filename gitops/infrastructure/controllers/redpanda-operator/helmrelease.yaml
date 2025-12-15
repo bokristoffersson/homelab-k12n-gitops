@@ -18,10 +18,6 @@ spec:
         name: redpanda-operator
         namespace: flux-system
   values:
-    # Configure operator to watch redpanda-v2 namespace for Topic CRDs
-    additionalCmdFlags:
-      - --namespace=redpanda-v2
-
     # Minimal operator config - only for Topic CRD management
     resources:
       limits:

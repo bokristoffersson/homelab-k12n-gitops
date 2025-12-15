@@ -1,0 +1,205 @@
+.dashboard {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+  color: #333;
+}
+
+.dashboard-header span {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.card h3 {
+  margin-bottom: 1rem;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.power-value, .energy-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #4a90e2;
+  margin: 1rem 0;
+}
+
+.unit {
+  font-size: 1.5rem;
+  font-weight: normal;
+  color: #666;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background-color: #4a90e2;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.subtitle {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.status-label {
+  color: #333;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.status-badge.on {
+  background-color: #4caf50;
+  color: white;
+}
+
+.status-badge.off {
+  background-color: #e0e0e0;
+  color: #666;
+}
+
+.temp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.temp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.temp-label {
+  color: #333;
+}
+
+.temp-value {
+  font-weight: bold;
+  color: #4a90e2;
+}
+
+.chart-card {
+  grid-column: 1 / -1;
+}
+
+.no-data {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+.loading {
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+.error-banner {
+  background-color: #fee;
+  border: 1px solid #fcc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  color: #c33;
+}
+
+.error-banner strong {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.error-banner > div {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.error-help {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #fcc;
+  font-size: 0.85rem;
+  color: #999;
+}
+
+.error-help code {
+  background-color: #fff;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+}
+
+.card-error {
+  border: 2px solid #fcc;
+  background-color: #fee;
+}
+
+.error-message {
+  padding: 1rem;
+  text-align: center;
+  color: #c33;
+  font-size: 0.9rem;
+}
+
+
+
