@@ -20,6 +20,10 @@ spec:
         - name: app
           image: ghcr.io/bokristoffersson/redpanda-sink:latest
           imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
           env:
             - name: APP_CONFIG
               value: /config/config.yaml
@@ -37,6 +41,16 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: REDPANDA_BROKERS
               value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secret
+                  key: JWT_SECRET
+            - name: ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secret
+                  key: ADMIN_PASSWORD_HASH
           volumeMounts:
             - name: config
               mountPath: /config

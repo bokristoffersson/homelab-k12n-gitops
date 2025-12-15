@@ -17,7 +17,9 @@ data:
         linger_ms: 500
 
     api:
-      enabled: false
+      enabled: true
+      host: "0.0.0.0"
+      port: 8081
 
     pipelines:
       - name: "heatpump"
