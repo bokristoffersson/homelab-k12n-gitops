@@ -1,0 +1,160 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt-input-v2-config
+  namespace: mqtt-input
+data:
+  config.yaml: |
+    mqtt:
+      host: "mosquitto.mosquitto.svc.cluster.local"
+      port: 1883
+      client_id: "mqtt-input-v2"
+      keep_alive_secs: 30
+      username: "$(MQTT_USER)"
+      password: "$(MQTT_PASSWORD)"
+      clean_session: true
+      protocol: "v5"
+    redpanda:
+      brokers: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+    pipelines:
+      - name: "heatpump"
+        topic: "thermiq_heatpump/data"
+        qos: 1
+        redpanda_topic: "heatpump-telemetry"
+        timestamp:
+          path: "$.timestamp"
+          format: "unix_s"
+          use_now: true
+        tags:
+          device_id: "$.Client_Name"
+        fields:
+          outdoor_temp:
+            path: "$.d0"
+            type: "float"
+          supplyline_temp:
+            path: "$.d5"
+            type: "float"
+          returnline_temp:
+            path: "$.d6"
+            type: "float"
+          hotwater_temp:
+            path: "$.d7"
+            type: "int"
+          brine_out_temp:
+            path: "$.d8"
+            type: "int"
+          brine_in_temp:
+            path: "$.d9"
+            type: "int"
+          integral:
+            path: "$.d25"
+            type: "int"
+          flowlinepump_speed:
+            path: "$.d30"
+            type: "int"
+          brinepump_speed:
+            path: "$.d31"
+            type: "int"
+          runtime_compressor:
+            path: "$.d104"
+            type: "int"
+          runtime_hotwater:
+            path: "$.d108"
+            type: "int"
+          runtime_3kw:
+            path: "$.d106"
+            type: "int"
+          runtime_6kw:
+            path: "$.d114"
+            type: "int"
+        bit_flags:
+          - source_path: "$.d16"
+            flags:
+              0: "brinepump_on"
+              1: "compressor_on"
+              2: "flowlinepump_on"
+              3: "hotwater_production"
+              4: "circulation_pump"
+          - source_path: "$.d13"
+            flags:
+              0: "aux_heater_3kw_on"
+              1: "aux_heater_6kw_on"
+        store_interval: "MINUTE"
+      - name: "sensors"
+        topic: "home/sensors/+/state"
+        qos: 1
+        redpanda_topic: "sensor-state"
+        timestamp:
+          use_now: true
+        tags:
+          sensor: "$.name"
+          location: "$.location"
+        fields:
+          temperature_c:
+            path: "$.temperature"
+            type: "float"
+          humidity_pct:
+            path: "$.humidity"
+            type: "float"
+      - name: "energy"
+        topic: "saveeye/telemetry"
+        qos: 1
+        redpanda_topic: "energy-realtime"
+        timestamp:
+          path: "$.timestamp"
+          format: "iso8601"
+          use_now: true
+        fields:
+          activeTotalConsumption:
+            path: "$.activeTotalConsumption"
+            type: "nested"
+            attributes:
+              total: "consumption_total_w"
+          activeActualConsumption:
+            path: "$.activeActualConsumption"
+            type: "nested"
+            attributes:
+              total: "consumption_total_actual_w"
+              L1: "consumption_L1_actual_w"
+              L2: "consumption_L2_actual_w"
+              L3: "consumption_L3_actual_w"
+        store_interval: "MINUTE"
+      - name: "heatpump-settings"
+        topic: "thermiq_heatpump/data"
+        qos: 1
+        redpanda_topic: "heatpump-settings"
+        timestamp:
+          use_now: true
+        tags:
+          device_id: "$.Client_Name"
+        fields:
+          device_id:
+            path: "$.Client_Name"
+            type: "string"
+          d50:
+            path: "$.d50"
+            type: "float"
+          d51:
+            path: "$.d51"
+            type: "int"
+          d52:
+            path: "$.d52"
+            type: "int"
+          d53:
+            path: "$.d53"
+            type: "int"
+          d54:
+            path: "$.d54"
+            type: "int"
+          d55:
+            path: "$.d55"
+            type: "int"
+          d56:
+            path: "$.d56"
+            type: "int"
+          d57:
+            path: "$.d57"
+            type: "int"
+          d58:
+            path: "$.d58"
+            type: "int"

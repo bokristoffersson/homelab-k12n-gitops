@@ -1,0 +1,193 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redpanda-sink-v2-config
+  namespace: redpanda-sink
+data:
+  config.yaml: |
+    redpanda:
+      brokers: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+      group_id: "redpanda-sink-v2"
+      auto_offset_reset: "earliest"
+
+    database:
+      url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@timescaledb.heatpump-mqtt.svc.cluster.local:5432/timescaledb"
+      write:
+        batch_size: 500
+        linger_ms: 500
+
+    api:
+      enabled: false
+
+    pipelines:
+      - name: "heatpump"
+        topic: "heatpump-telemetry"
+        table: "heatpump"
+        data_type: "timeseries"
+        timestamp:
+          path: "$.ts"
+          format: "rfc3339"
+        tags:
+          device_id: "$.tags.device_id"
+        fields:
+          device_id: {
+            path: "$.tags.device_id",
+            type: "string"
+          }
+          outdoor_temp: {
+            path: "$.fields.outdoor_temp",
+            type: "float"
+          }
+          supplyline_temp: {
+            path: "$.fields.supplyline_temp",
+            type: "float"
+          }
+          returnline_temp: {
+            path: "$.fields.returnline_temp",
+            type: "float"
+          }
+          hotwater_temp: {
+            path: "$.fields.hotwater_temp",
+            type: "int"
+          }
+          brine_out_temp: {
+            path: "$.fields.brine_out_temp",
+            type: "int"
+          }
+          brine_in_temp: {
+            path: "$.fields.brine_in_temp",
+            type: "int"
+          }
+          integral: {
+            path: "$.fields.integral",
+            type: "int"
+          }
+          flowlinepump_speed: {
+            path: "$.fields.flowlinepump_speed",
+            type: "int"
+          }
+          brinepump_speed: {
+            path: "$.fields.brinepump_speed",
+            type: "int"
+          }
+          runtime_compressor: {
+            path: "$.fields.runtime_compressor",
+            type: "int"
+          }
+          runtime_hotwater: {
+            path: "$.fields.runtime_hotwater",
+            type: "int"
+          }
+          runtime_3kw: {
+            path: "$.fields.runtime_3kw",
+            type: "int"
+          }
+          runtime_6kw: {
+            path: "$.fields.runtime_6kw",
+            type: "int"
+          }
+          brinepump_on: {
+            path: "$.fields.brinepump_on",
+            type: "bool"
+          }
+          compressor_on: {
+            path: "$.fields.compressor_on",
+            type: "bool"
+          }
+          flowlinepump_on: {
+            path: "$.fields.flowlinepump_on",
+            type: "bool"
+          }
+          hotwater_production: {
+            path: "$.fields.hotwater_production",
+            type: "bool"
+          }
+          circulation_pump: {
+            path: "$.fields.circulation_pump",
+            type: "bool"
+          }
+          aux_heater_3kw_on: {
+            path: "$.fields.aux_heater_3kw_on",
+            type: "bool"
+          }
+          aux_heater_6kw_on: {
+            path: "$.fields.aux_heater_6kw_on",
+            type: "bool"
+          }
+      - name: "sensors"
+        topic: "sensor-state"
+        table: "telemetry"
+        data_type: "timeseries"
+        timestamp:
+          use_now: true
+        tags:
+          sensor: "$.name"
+          location: "$.location"
+        fields:
+          temperature_c:
+            path: "$.temperature"
+            type: "float"
+          humidity_pct:
+            path: "$.humidity"
+            type: "float"
+      - name: "energy"
+        topic: "energy-realtime"
+        table: "energy"
+        data_type: "timeseries"
+        store_interval: "MINUTE"
+        timestamp:
+          path: "$.ts"
+          format: "rfc3339"
+        fields:
+          consumption_total_w:
+            path: "$.fields.consumption_total_w"
+            type: "float"
+          consumption_total_actual_w:
+            path: "$.fields.consumption_total_actual_w"
+            type: "float"
+          consumption_L1_actual_w:
+            path: "$.fields.consumption_L1_actual_w"
+            type: "float"
+          consumption_L2_actual_w:
+            path: "$.fields.consumption_L2_actual_w"
+            type: "float"
+          consumption_L3_actual_w:
+            path: "$.fields.consumption_L3_actual_w"
+            type: "float"
+      - name: "heatpump-settings"
+        topic: "heatpump-settings"
+        table: "heatpump_settings"
+        data_type: "static"
+        upsert_key: ["device_id"]
+        timestamp:
+          use_now: true
+        tags:
+          device_id: "$.tags.device_id"
+        fields:
+          indoor_target_temp:
+            path: "$.fields.d50"
+            type: "float"
+          mode:
+            path: "$.fields.d51"
+            type: "int"
+          curve:
+            path: "$.fields.d52"
+            type: "int"
+          curve_min:
+            path: "$.fields.d53"
+            type: "int"
+          curve_max:
+            path: "$.fields.d54"
+            type: "int"
+          curve_plus5:
+            path: "$.fields.d55"
+            type: "int"
+          curve_0:
+            path: "$.fields.d56"
+            type: "int"
+          curve_minus5:
+            path: "$.fields.d57"
+            type: "int"
+          heatstop:
+            path: "$.fields.d58"
+            type: "int"
