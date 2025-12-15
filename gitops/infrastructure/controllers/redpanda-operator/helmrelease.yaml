@@ -26,3 +26,7 @@ spec:
       requests:
         cpu: 100m
         memory: 128Mi
+
+    # Disable kube-prometheus-stack - we already have Prometheus installed
+    monitoring:
+      deployPrometheusKubeStack: false
