@@ -6,7 +6,7 @@ metadata:
 data:
   config.yaml: |
     redpanda:
-      brokers: "redpanda.redpanda.svc.cluster.local:9092"
+      brokers: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
       group_id: "redpanda-sink"
       auto_offset_reset: "earliest"
     
