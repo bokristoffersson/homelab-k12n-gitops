@@ -6,9 +6,9 @@ pub struct EnergyLatestResponse {
     pub ts: DateTime<Utc>,
     pub consumption_total_w: Option<f64>,
     pub consumption_total_actual_w: Option<i64>,
-    pub consumption_l1_w: Option<f64>,
-    pub consumption_l2_w: Option<f64>,
-    pub consumption_l3_w: Option<f64>,
+    pub consumption_l1_actual_w: Option<f64>,
+    pub consumption_l2_actual_w: Option<f64>,
+    pub consumption_l3_actual_w: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -52,14 +52,14 @@ mod tests {
             ts: Utc::now(),
             consumption_total_w: Some(1500.0),
             consumption_total_actual_w: Some(1500),
-            consumption_l1_w: Some(500.0),
-            consumption_l2_w: Some(500.0),
-            consumption_l3_w: Some(500.0),
+            consumption_l1_actual_w: Some(500.0),
+            consumption_l2_actual_w: Some(500.0),
+            consumption_l3_actual_w: Some(500.0),
         };
 
         assert!(response.consumption_total_w.is_some());
         assert_eq!(response.consumption_total_w.unwrap(), 1500.0);
-        assert_eq!(response.consumption_l1_w.unwrap(), 500.0);
+        assert_eq!(response.consumption_l1_actual_w.unwrap(), 500.0);
     }
 
     #[test]
@@ -70,9 +70,9 @@ mod tests {
                 .with_timezone(&Utc),
             consumption_total_w: Some(2000.0),
             consumption_total_actual_w: Some(2000),
-            consumption_l1_w: None,
-            consumption_l2_w: None,
-            consumption_l3_w: None,
+            consumption_l1_actual_w: None,
+            consumption_l2_actual_w: None,
+            consumption_l3_actual_w: None,
         };
 
         let json = serde_json::to_string(&response).unwrap();

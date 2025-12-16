@@ -22,9 +22,9 @@ pub async fn get_latest(
         ts: reading.ts,
         consumption_total_w: reading.consumption_total_w,
         consumption_total_actual_w: reading.consumption_total_actual_w,
-        consumption_l1_w: reading.consumption_l1_actual_w,
-        consumption_l2_w: reading.consumption_l2_actual_w,
-        consumption_l3_w: reading.consumption_l3_actual_w,
+        consumption_l1_actual_w: reading.consumption_l1_actual_w,
+        consumption_l2_actual_w: reading.consumption_l2_actual_w,
+        consumption_l3_actual_w: reading.consumption_l3_actual_w,
     }))
 }
 
