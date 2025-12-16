@@ -36,7 +36,7 @@ spec:
                   name: mosquitto-credentials
                   key: mqtt_password
             - name: REDPANDA_BROKERS
-              value: "redpanda.redpanda.svc.cluster.local:9092"
+              value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
           volumeMounts:
             - name: config
               mountPath: /config
