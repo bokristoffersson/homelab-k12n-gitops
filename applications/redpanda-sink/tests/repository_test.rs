@@ -240,9 +240,9 @@ async fn test_energy_repository_get_latest() {
 
     let latest = result.unwrap();
     assert_eq!(latest.consumption_total_w, Some(1300.0));
-    assert_eq!(latest.consumption_l1_actual_w, Some(390.0));
-    assert_eq!(latest.consumption_l2_actual_w, Some(455.0));
-    assert_eq!(latest.consumption_l3_actual_w, Some(455.0));
+    assert_eq!(latest.consumption_l1_actual_w, Some(390));
+    assert_eq!(latest.consumption_l2_actual_w, Some(455));
+    assert_eq!(latest.consumption_l3_actual_w, Some(455));
     assert_eq!(latest.consumption_total_actual_w, Some(1300));
 }
 
