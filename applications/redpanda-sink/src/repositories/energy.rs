@@ -32,9 +32,9 @@ pub struct EnergyLatest {
     pub ts: DateTime<Utc>,
     pub consumption_total_w: Option<f64>,
     pub consumption_total_actual_w: Option<i64>,
-    pub consumption_l1_w: Option<f64>,
-    pub consumption_l2_w: Option<f64>,
-    pub consumption_l3_w: Option<f64>,
+    pub consumption_l1_actual_w: Option<f64>,
+    pub consumption_l2_actual_w: Option<f64>,
+    pub consumption_l3_actual_w: Option<f64>,
 }
 
 pub struct EnergyRepository;
@@ -47,9 +47,9 @@ impl EnergyRepository {
                 ts,
                 consumption_total_w,
                 consumption_total_actual_w,
-                consumption_l1_w,
-                consumption_l2_w,
-                consumption_l3_w
+                consumption_l1_actual_w,
+                consumption_l2_actual_w,
+                consumption_l3_actual_w
             FROM energy
             ORDER BY ts DESC
             LIMIT 1
