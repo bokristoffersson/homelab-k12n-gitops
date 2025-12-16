@@ -15,7 +15,7 @@ data:
       clean_session: true
       protocol: "v5"
     redpanda:
-      brokers: "redpanda.redpanda.svc.cluster.local:9092"
+      brokers: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
     pipelines:
       - name: "heatpump"
         topic: "thermiq_heatpump/data"
