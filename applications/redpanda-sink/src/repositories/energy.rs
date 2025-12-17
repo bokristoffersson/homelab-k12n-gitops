@@ -68,7 +68,7 @@ impl EnergyRepository {
         // Use query_scalar to avoid compile-time checking (view may not exist in test DB)
         let result: Option<f64> = match sqlx::query_scalar(
             r#"
-            SELECT COALESCE(total_energy_kwh, 0.0)
+            SELECT COALESCE(CAST(total_energy_kwh AS DOUBLE PRECISION), 0.0)
             FROM energy_hourly
             WHERE hour_start = $1
             "#,
@@ -144,7 +144,7 @@ impl EnergyRepository {
                 NULL::timestamptz AS month_end,
                 NULL::timestamptz AS year_start,
                 NULL::timestamptz AS year_end,
-                (energy_consumption_w / 1000.0) AS energy_consumption_w,
+                CAST(energy_consumption_w / 1000.0 AS DOUBLE PRECISION) AS energy_consumption_w,
                 measurement_count
             FROM energy_daily_summary
             WHERE day_start >= $1 AND day_start < $2
@@ -182,7 +182,7 @@ impl EnergyRepository {
                 month_end,
                 NULL::timestamptz AS year_start,
                 NULL::timestamptz AS year_end,
-                (energy_consumption_w / 1000.0) AS energy_consumption_w,
+                CAST(energy_consumption_w / 1000.0 AS DOUBLE PRECISION) AS energy_consumption_w,
                 measurement_count
             FROM energy_monthly_summary
             WHERE month_start >= $1 AND month_start < $2
@@ -220,7 +220,7 @@ impl EnergyRepository {
                 NULL::timestamptz AS month_end,
                 year_start,
                 year_end,
-                (energy_consumption_w / 1000.0) AS energy_consumption_w,
+                CAST(energy_consumption_w / 1000.0 AS DOUBLE PRECISION) AS energy_consumption_w,
                 measurement_count
             FROM energy_yearly_summary
             WHERE year_start >= $1 AND year_start < $2
