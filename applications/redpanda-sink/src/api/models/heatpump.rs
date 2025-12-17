@@ -11,12 +11,12 @@ pub struct HeatpumpLatestResponse {
     pub brinepump_on: Option<bool>,
     pub aux_heater_3kw_on: Option<bool>,
     pub aux_heater_6kw_on: Option<bool>,
-    pub outdoor_temp: Option<f64>,
-    pub supplyline_temp: Option<f64>,
-    pub returnline_temp: Option<f64>,
-    pub hotwater_temp: Option<i64>,
-    pub brine_out_temp: Option<i64>,
-    pub brine_in_temp: Option<i64>,
+    pub outdoor_temp: Option<i16>,
+    pub supplyline_temp: Option<i16>,
+    pub returnline_temp: Option<i16>,
+    pub hotwater_temp: Option<i16>,
+    pub brine_out_temp: Option<i16>,
+    pub brine_in_temp: Option<i16>,
 }
 
 #[derive(Debug, Serialize)]
@@ -49,9 +49,9 @@ mod tests {
             brinepump_on: Some(true),
             aux_heater_3kw_on: Some(false),
             aux_heater_6kw_on: Some(false),
-            outdoor_temp: Some(5.5),
-            supplyline_temp: Some(35.0),
-            returnline_temp: Some(30.0),
+            outdoor_temp: Some(5),
+            supplyline_temp: Some(35),
+            returnline_temp: Some(30),
             hotwater_temp: Some(45),
             brine_out_temp: Some(8),
             brine_in_temp: Some(6),
@@ -59,7 +59,7 @@ mod tests {
 
         assert_eq!(response.device_id.as_ref().unwrap(), "hp-01");
         assert!(response.compressor_on.unwrap());
-        assert_eq!(response.outdoor_temp.unwrap(), 5.5);
+        assert_eq!(response.outdoor_temp.unwrap(), 5);
     }
 
     #[test]
@@ -99,9 +99,9 @@ mod tests {
             brinepump_on: Some(true),
             aux_heater_3kw_on: Some(false),
             aux_heater_6kw_on: Some(false),
-            outdoor_temp: Some(-5.0),
-            supplyline_temp: Some(40.0),
-            returnline_temp: Some(35.0),
+            outdoor_temp: Some(-5),
+            supplyline_temp: Some(40),
+            returnline_temp: Some(35),
             hotwater_temp: Some(50),
             brine_out_temp: Some(10),
             brine_in_temp: Some(8),
@@ -110,7 +110,7 @@ mod tests {
         let json = serde_json::to_string(&response).unwrap();
         assert!(json.contains("device-123"));
         assert!(json.contains("true"));
-        assert!(json.contains("-5.0"));
+        assert!(json.contains("-5"));
         assert!(json.contains("50"));
     }
 
@@ -134,9 +134,9 @@ mod tests {
                 brinepump_on: Some(brine),
                 aux_heater_3kw_on: Some(false),
                 aux_heater_6kw_on: Some(false),
-                outdoor_temp: Some(0.0),
-                supplyline_temp: Some(0.0),
-                returnline_temp: Some(0.0),
+                outdoor_temp: Some(0),
+                supplyline_temp: Some(0),
+                returnline_temp: Some(0),
                 hotwater_temp: Some(0),
                 brine_out_temp: Some(0),
                 brine_in_temp: Some(0),
