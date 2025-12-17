@@ -99,14 +99,14 @@ impl EnergyRepository {
     ) -> Result<Vec<EnergyHourly>, AppError> {
         match sqlx::query_as::<_, EnergyHourly>(
             r#"
-            SELECT 
+            SELECT
                 hour_start,
                 hour_end,
-                total_energy_kwh,
-                total_energy_L1_actual_kwh AS total_energy_l1_kwh,
-                total_energy_L2_actual_kwh AS total_energy_l2_kwh,
-                total_energy_L3_actual_kwh AS total_energy_l3_kwh,
-                total_energy_actual_kwh,
+                CAST(total_energy_kwh AS DOUBLE PRECISION) AS total_energy_kwh,
+                CAST(total_energy_L1_actual_kwh AS DOUBLE PRECISION) AS total_energy_l1_kwh,
+                CAST(total_energy_L2_actual_kwh AS DOUBLE PRECISION) AS total_energy_l2_kwh,
+                CAST(total_energy_L3_actual_kwh AS DOUBLE PRECISION) AS total_energy_l3_kwh,
+                CAST(total_energy_actual_kwh AS DOUBLE PRECISION) AS total_energy_actual_kwh,
                 measurement_count
             FROM energy_hourly
             WHERE hour_start >= $1 AND hour_start < $2
