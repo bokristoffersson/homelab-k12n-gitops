@@ -4,7 +4,7 @@ use serde::Serialize;
 #[derive(Debug, Serialize)]
 pub struct EnergyLatestResponse {
     pub ts: DateTime<Utc>,
-    pub consumption_total_w: Option<f64>,
+    pub consumption_total_w: Option<i32>,
     pub consumption_total_actual_w: Option<i64>,
     pub consumption_l1_actual_w: Option<i64>,
     pub consumption_l2_actual_w: Option<i64>,
@@ -50,7 +50,7 @@ mod tests {
     fn test_energy_latest_response_creation() {
         let response = EnergyLatestResponse {
             ts: Utc::now(),
-            consumption_total_w: Some(1500.0),
+            consumption_total_w: Some(1500),
             consumption_total_actual_w: Some(1500),
             consumption_l1_actual_w: Some(500),
             consumption_l2_actual_w: Some(500),
@@ -58,7 +58,7 @@ mod tests {
         };
 
         assert!(response.consumption_total_w.is_some());
-        assert_eq!(response.consumption_total_w.unwrap(), 1500.0);
+        assert_eq!(response.consumption_total_w.unwrap(), 1500);
         assert_eq!(response.consumption_l1_actual_w.unwrap(), 500);
     }
 
@@ -68,7 +68,7 @@ mod tests {
             ts: DateTime::parse_from_rfc3339("2025-01-01T12:00:00Z")
                 .unwrap()
                 .with_timezone(&Utc),
-            consumption_total_w: Some(2000.0),
+            consumption_total_w: Some(2000),
             consumption_total_actual_w: Some(2000),
             consumption_l1_actual_w: None,
             consumption_l2_actual_w: None,

@@ -30,7 +30,7 @@ pub struct EnergySummary {
 #[derive(Debug, Clone, FromRow)]
 pub struct EnergyLatest {
     pub ts: DateTime<Utc>,
-    pub consumption_total_w: Option<f64>,
+    pub consumption_total_w: Option<i32>,
     pub consumption_total_actual_w: Option<i64>,
     pub consumption_l1_actual_w: Option<i64>,
     pub consumption_l2_actual_w: Option<i64>,
