@@ -159,7 +159,8 @@ spec:
     name: flux-system
   path: ./gitops/apps/homelab/redpanda-sink
   prune: true
-  wait: true---
+  wait: true
+---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
