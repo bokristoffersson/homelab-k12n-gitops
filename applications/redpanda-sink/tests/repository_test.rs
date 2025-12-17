@@ -190,9 +190,9 @@ async fn insert_test_heatpump_data(
     fields.insert("brinepump_on".to_string(), FieldValue::Bool(true));
     fields.insert("aux_heater_3kw_on".to_string(), FieldValue::Bool(false));
     fields.insert("aux_heater_6kw_on".to_string(), FieldValue::Bool(false));
-    fields.insert("outdoor_temp".to_string(), FieldValue::F64(5.5));
-    fields.insert("supplyline_temp".to_string(), FieldValue::F64(35.0));
-    fields.insert("returnline_temp".to_string(), FieldValue::F64(30.0));
+    fields.insert("outdoor_temp".to_string(), FieldValue::I64(5));
+    fields.insert("supplyline_temp".to_string(), FieldValue::I64(35));
+    fields.insert("returnline_temp".to_string(), FieldValue::I64(30));
     fields.insert("hotwater_temp".to_string(), FieldValue::I64(45));
     fields.insert("brine_out_temp".to_string(), FieldValue::I64(8));
     fields.insert("brine_in_temp".to_string(), FieldValue::I64(6));
@@ -381,7 +381,7 @@ async fn test_heatpump_repository_get_latest() {
     assert_eq!(latest.device_id, Some("device-001".to_string()));
     assert_eq!(latest.compressor_on, Some(true));
     assert_eq!(latest.hotwater_production, Some(false));
-    assert_eq!(latest.outdoor_temp, Some(5.5));
+    assert_eq!(latest.outdoor_temp, Some(5));
 }
 
 #[tokio::test]
