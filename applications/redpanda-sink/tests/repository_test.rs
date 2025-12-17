@@ -132,7 +132,7 @@ async fn insert_test_energy_data(
         let mut fields = BTreeMap::new();
         fields.insert(
             "consumption_total_w".to_string(),
-            FieldValue::F64(1000.0 + (i as f64 * 100.0)),
+            FieldValue::I64(1000 + (i * 100)),
         );
         fields.insert(
             "consumption_l1_w".to_string(),
@@ -239,7 +239,7 @@ async fn test_energy_repository_get_latest() {
     assert!(result.is_ok(), "get_latest should succeed");
 
     let latest = result.unwrap();
-    assert_eq!(latest.consumption_total_w, Some(1300.0));
+    assert_eq!(latest.consumption_total_w, Some(1300));
     assert_eq!(latest.consumption_l1_actual_w, Some(390));
     assert_eq!(latest.consumption_l2_actual_w, Some(455));
     assert_eq!(latest.consumption_l3_actual_w, Some(455));
