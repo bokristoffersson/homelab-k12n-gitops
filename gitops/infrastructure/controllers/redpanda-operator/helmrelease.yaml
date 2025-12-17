@@ -21,12 +21,20 @@ spec:
     # Minimal operator config - only for Topic CRD management
     resources:
       limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
         cpu: 200m
         memory: 256Mi
-      requests:
-        cpu: 100m
-        memory: 128Mi
 
     # Disable kube-prometheus-stack - we already have Prometheus installed
     monitoring:
       deployPrometheusKubeStack: false
+    
+    # Disable helm controllers - operator is only used for Topic CRD management
+    # This prevents API version mismatch errors with FluxCD v2
+    enableHelmControllers: false
+    
+    # Disable webhook to avoid "invalid combination of scope and webhook.enabled" error
+    webhook:
+      enabled: false

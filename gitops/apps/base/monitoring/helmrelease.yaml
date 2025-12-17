@@ -5,6 +5,10 @@ metadata:
   namespace: monitoring # Create this namespace first
 spec:
   interval: 15m
+  install:
+    crds: CreateReplace  # Ensure CRDs are installed
+  upgrade:
+    crds: CreateReplace  # Ensure CRDs are updated
   chart:
     spec:
       chart: kube-prometheus-stack
