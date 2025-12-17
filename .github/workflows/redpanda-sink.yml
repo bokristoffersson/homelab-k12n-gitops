@@ -85,7 +85,7 @@ jobs:
           CREATE TABLE IF NOT EXISTS energy
           (
               ts                 TIMESTAMPTZ       NOT NULL,
-              consumption_total_w DOUBLE PRECISION,
+              consumption_total_w INTEGER,
               consumption_l1_w    DOUBLE PRECISION,
               consumption_l2_w    DOUBLE PRECISION,
               consumption_l3_w    DOUBLE PRECISION,
