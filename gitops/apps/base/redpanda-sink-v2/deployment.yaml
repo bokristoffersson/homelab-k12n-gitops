@@ -5,7 +5,7 @@ metadata:
   name: redpanda-sink-v2
   namespace: redpanda-sink
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       app: redpanda-sink-v2
