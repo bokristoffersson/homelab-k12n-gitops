@@ -56,8 +56,6 @@ spec:
     # Console configuration (no authentication, access via port-forward)
     console:
       enabled: true
-      configmap:
-        create: true
 
     # Monitoring disabled - Prometheus Operator CRDs not installed
     monitoring:
