@@ -313,7 +313,11 @@ async fn test_energy_repository_get_hourly_total() {
 
     // Test get_hourly_total
     let result = EnergyRepository::get_hourly_total(&pool, hour_start).await;
-    assert!(result.is_ok(), "get_hourly_total should succeed: {:?}", result.as_ref().err());
+    assert!(
+        result.is_ok(),
+        "get_hourly_total should succeed: {:?}",
+        result.as_ref().err()
+    );
 
     let total = result.unwrap();
     // If continuous aggregate exists, it should calculate the difference
