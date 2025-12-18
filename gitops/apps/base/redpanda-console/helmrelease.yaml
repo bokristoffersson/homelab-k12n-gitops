@@ -45,14 +45,16 @@ spec:
         enterprise:
           rbac:
             enabled: true
-            roleBindings:
-              - roleName: admin
-                metadata:
-                  name: "Administrators"
-                subjects:
-                  - kind: user
-                    provider: Plain
-                    name: admin
+
+        # Role bindings at console.config level
+        roleBindings:
+          - roleName: admin
+            metadata:
+              name: "Administrators"
+            subjects:
+              - kind: user
+                provider: Plain
+                name: admin
 
     # Secret configuration for JWT
     secret:
