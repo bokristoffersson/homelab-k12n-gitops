@@ -79,14 +79,18 @@ data:
       # Whoami service
       - hostname: whoami.k12n.com
         service: http://homelab-whoami.default.svc.cluster.local:80
-      
+
       # grafana
       - hostname: grafana.k12n.com
         service: http://grafana.grafana.svc.cluster.local:80
-      
+
       # Backend API (login and API endpoints - protected with Cloudflare Access - see README.md)
       - hostname: api.k12n.com
         service: http://redpanda-sink.redpanda-sink.svc.cluster.local:8080
-      
+
+      # Heatpump Web Frontend
+      - hostname: heatpump.k12n.com
+        service: http://heatpump-web.heatpump-web.svc.cluster.local:80
+
       # Catch-all rule (required)
       - service: http_status:404
