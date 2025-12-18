@@ -31,13 +31,9 @@ spec:
             urls:
               - http://redpanda-v2.redpanda-v2.svc.cluster.local:9644
 
-        # Authentication configuration
+        # Authentication configuration (community features)
         login:
           enabled: true
-          jwtSigningKey:
-            secretKeyRef:
-              name: redpanda-console-auth
-              key: jwt-signing-key
           useSecureCookies: false  # Set to true if using HTTPS
           plain:
             enabled: true
@@ -45,10 +41,17 @@ spec:
               - username: admin
                 password: admin123
 
-        # Enterprise features disabled (community version)
-        enterprise:
-          rbac:
-            enabled: false
+    # Secret configuration for JWT
+    secret:
+      create: false  # We manage via SealedSecret
+
+    # Pass JWT secret via environment variable
+    extraEnv:
+      - name: LOGIN_JWTSECRET
+        valueFrom:
+          secretKeyRef:
+            name: redpanda-console-auth
+            key: jwt-signing-key
 
     # Service configuration
     service:
