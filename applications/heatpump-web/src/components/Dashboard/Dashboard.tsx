@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { EnergyLatest, HourlyTotal, EnergyHourly } from '../../types/energy';
 import { HeatpumpStatus } from '../../types/heatpump';
+import { useTheme } from '../../contexts/ThemeContext';
 import CurrentPowerCard from './CurrentPowerCard';
 import HourlyTotalCard from './HourlyTotalCard';
 import HeatpumpStatusComponent from './HeatpumpStatus';
@@ -10,6 +11,8 @@ import HourlyChart from './HourlyChart';
 import './Dashboard.css';
 
 export default function Dashboard() {
+  const { theme, toggleTheme } = useTheme();
+  
   const { data: energy, error: energyError, isLoading: energyLoading } = useQuery<EnergyLatest>({
     queryKey: ['energy', 'latest'],
     queryFn: () => api.get('/api/v1/energy/latest').then((r) => r.data),
@@ -56,7 +59,12 @@ export default function Dashboard() {
     <div className="dashboard">
       <div className="dashboard-header">
         <h1>Dashboard</h1>
-        <span>Last Update: {new Date().toLocaleTimeString()}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span>Last Update: {new Date().toLocaleTimeString()}</span>
+          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+        </div>
       </div>
       {hasErrors && (
         <div className="error-banner">

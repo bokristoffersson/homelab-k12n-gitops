@@ -11,12 +11,31 @@
   margin-bottom: 2rem;
 }
 
+.theme-toggle {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--bg-primary);
+  border-color: var(--accent);
+}
+
 .dashboard-header h1 {
-  color: #333;
+  color: var(--text-primary);
 }
 
 .dashboard-header span {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -27,43 +46,44 @@
 }
 
 .card {
-  background: white;
+  background: var(--bg-secondary);
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card h3 {
   margin-bottom: 1rem;
-  color: #333;
+  color: var(--text-primary);
   font-size: 1.1rem;
 }
 
 .power-value, .energy-value {
   font-size: 2.5rem;
   font-weight: bold;
-  color: #4a90e2;
+  color: var(--accent);
   margin: 1rem 0;
 }
 
 .unit {
   font-size: 1.5rem;
   font-weight: normal;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .live-indicator {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .dot {
   width: 8px;
   height: 8px;
-  background-color: #4a90e2;
+  background-color: var(--accent);
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
@@ -78,7 +98,7 @@
 }
 
 .subtitle {
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -96,7 +116,7 @@
 }
 
 .status-label {
-  color: #333;
+  color: var(--text-primary);
 }
 
 .status-badge {
@@ -107,13 +127,13 @@
 }
 
 .status-badge.on {
-  background-color: #4caf50;
+  background-color: var(--success-bg);
   color: white;
 }
 
 .status-badge.off {
-  background-color: #e0e0e0;
-  color: #666;
+  background-color: var(--status-off-bg);
+  color: var(--status-off-text);
 }
 
 .temp-grid {
@@ -130,12 +150,12 @@
 }
 
 .temp-label {
-  color: #333;
+  color: var(--text-primary);
 }
 
 .temp-value {
   font-weight: bold;
-  color: #4a90e2;
+  color: var(--accent);
 }
 
 .chart-card {
@@ -145,23 +165,23 @@
 .no-data {
   padding: 2rem;
   text-align: center;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .loading {
   padding: 2rem;
   text-align: center;
-  color: #666;
+  color: var(--text-secondary);
   font-style: italic;
 }
 
 .error-banner {
-  background-color: #fee;
-  border: 1px solid #fcc;
+  background-color: var(--error-bg);
+  border: 1px solid var(--error-border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1.5rem;
-  color: #c33;
+  color: var(--error-text);
 }
 
 .error-banner strong {
@@ -177,27 +197,27 @@
 .error-help {
   margin-top: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid #fcc;
+  border-top: 1px solid var(--error-border);
   font-size: 0.85rem;
-  color: #999;
+  color: var(--text-tertiary);
 }
 
 .error-help code {
-  background-color: #fff;
+  background-color: var(--bg-secondary);
   padding: 0.2rem 0.4rem;
   border-radius: 3px;
   font-size: 0.85rem;
 }
 
 .card-error {
-  border: 2px solid #fcc;
-  background-color: #fee;
+  border: 2px solid var(--error-border);
+  background-color: var(--error-bg);
 }
 
 .error-message {
   padding: 1rem;
   text-align: center;
-  color: #c33;
+  color: var(--error-text);
   font-size: 0.9rem;
 }
 
