@@ -64,32 +64,33 @@ impl EnergyRepository {
         pool: &DbPool,
         hour_start: DateTime<Utc>,
     ) -> Result<f64, AppError> {
-        // Query the continuous aggregate
-        // Use query_scalar to avoid compile-time checking (view may not exist in test DB)
-        let result: Option<f64> = match sqlx::query_scalar(
+        // Calculate current hour consumption from raw meter readings
+        // Get the first reading at or after hour_start and the latest reading
+        let result: Option<(Option<i32>, Option<i32>)> = sqlx::query_as(
             r#"
-            SELECT COALESCE(CAST(total_energy_kwh AS DOUBLE PRECISION), 0.0)
-            FROM energy_hourly
-            WHERE hour_start = $1
+            SELECT
+                (SELECT consumption_total_w FROM energy
+                 WHERE ts >= $1
+                 ORDER BY ts ASC
+                 LIMIT 1) as hour_start_w,
+                (SELECT consumption_total_w FROM energy
+                 ORDER BY ts DESC
+                 LIMIT 1) as current_w
             "#,
         )
         .bind(hour_start)
         .fetch_optional(pool)
         .await
-        {
-            Ok(Some(value)) => Some(value),
-            Ok(None) => None,
-            Err(sqlx::Error::Database(db_err))
-                if db_err.code().as_deref() == Some("42P01")
-                    || db_err.message().contains("does not exist") =>
-            {
-                // View doesn't exist (TimescaleDB not available), return 0.0
-                None
-            }
-            Err(e) => return Err(AppError::Db(e)),
-        };
+        .map_err(AppError::Db)?;
 
-        Ok(result.unwrap_or(0.0))
+        // Calculate difference and convert from Wh to kWh
+        if let Some((Some(start_w), Some(current_w))) = result {
+            let diff_wh = current_w - start_w;
+            let kwh = diff_wh as f64 / 1000.0;
+            Ok(kwh.max(0.0)) // Ensure non-negative
+        } else {
+            Ok(0.0)
+        }
     }
 
     pub async fn get_hourly_history(
