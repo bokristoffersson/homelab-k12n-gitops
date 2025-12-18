@@ -41,18 +41,21 @@ spec:
               - username: admin
                 password: admin123
 
-        # RBAC configuration (required when login is enabled)
+        # Enterprise features
         enterprise:
           rbac:
             enabled: true
-            roleBindings:
-              - roleName: admin
-                metadata:
-                  name: "Administrators"
-                subjects:
-                  - kind: user
-                    provider: Plain
-                    name: admin
+
+        # Authorization configuration with role bindings
+        authorization:
+          roleBindings:
+            - roleName: admin
+              metadata:
+                name: "Administrators"
+              subjects:
+                - kind: user
+                  provider: Plain
+                  name: admin
 
     # Secret configuration for JWT
     secret:
