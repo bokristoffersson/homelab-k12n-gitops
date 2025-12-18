@@ -7,6 +7,26 @@ interface HourlyChartProps {
   isLoading?: boolean;
 }
 
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        border: '1px solid #ccc',
+        borderRadius: '4px',
+        padding: '10px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+      }}>
+        <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>{payload[0].payload.timeRange}</p>
+        <p style={{ margin: 0, color: '#4a90e2' }}>
+          Energy: {payload[0].value.toFixed(2)} kWh
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function HourlyChart({ history, error, isLoading }: HourlyChartProps) {
   if (error) {
     return (
@@ -37,10 +57,15 @@ export default function HourlyChart({ history, error, isLoading }: HourlyChartPr
     );
   }
 
-  const chartData = history.map(item => ({
-    time: new Date(item.hour_start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-    energy: item.total_energy_kwh || 0,
-  }));
+  const chartData = history.map(item => {
+    const startTime = new Date(item.hour_start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const endTime = new Date(item.hour_end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return {
+      time: `${startTime}-${endTime}`,
+      timeRange: `${startTime} - ${endTime}`,
+      energy: item.total_energy_kwh || 0,
+    };
+  });
 
   return (
     <div className="card chart-card">
@@ -48,9 +73,9 @@ export default function HourlyChart({ history, error, isLoading }: HourlyChartPr
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="time" />
+          <XAxis dataKey="time" angle={-45} textAnchor="end" height={80} />
           <YAxis label={{ value: 'kWh', angle: -90, position: 'insideLeft' }} />
-          <Tooltip />
+          <Tooltip content={<CustomTooltip />} />
           <Legend />
           <Line type="monotone" dataKey="energy" stroke="#4a90e2" strokeWidth={2} name="Energy (kWh)" />
         </LineChart>
