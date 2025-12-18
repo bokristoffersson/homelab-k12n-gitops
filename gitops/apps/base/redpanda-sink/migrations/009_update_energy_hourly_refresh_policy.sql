@@ -42,7 +42,7 @@ BEGIN
 
       -- Perform an initial refresh to populate historical data
       -- This will aggregate all data from the past 30 days
-      PERFORM refresh_continuous_aggregate(
+      CALL refresh_continuous_aggregate(
         'energy_hourly',
         NOW() - INTERVAL '30 days',
         NOW()
