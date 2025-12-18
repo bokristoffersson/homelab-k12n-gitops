@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { EnergyLatest, HourlyTotal, EnergyHourly } from '../../types/energy';
 import { HeatpumpStatus } from '../../types/heatpump';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 import CurrentPowerCard from './CurrentPowerCard';
 import HourlyTotalCard from './HourlyTotalCard';
 import HeatpumpStatusComponent from './HeatpumpStatus';

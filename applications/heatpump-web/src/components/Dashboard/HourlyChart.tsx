@@ -1,6 +1,6 @@
 import { EnergyHourly } from '../../types/energy';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../hooks/useTheme';
 
 interface HourlyChartProps {
   history: EnergyHourly[] | undefined;
