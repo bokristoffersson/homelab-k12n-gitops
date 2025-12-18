@@ -31,7 +31,7 @@ spec:
             urls:
               - http://redpanda-v2.redpanda-v2.svc.cluster.local:9644
 
-        # Authentication configuration (community features)
+        # Authentication configuration with RBAC
         login:
           enabled: true
           useSecureCookies: false  # Set to true if using HTTPS
@@ -40,6 +40,19 @@ spec:
             credentials:
               - username: admin
                 password: admin123
+
+        # RBAC configuration (required when login is enabled)
+        enterprise:
+          rbac:
+            enabled: true
+            roleBindings:
+              - roleName: admin
+                metadata:
+                  name: "Administrators"
+                subjects:
+                  - kind: user
+                    provider: Plain
+                    name: admin
 
     # Secret configuration for JWT
     secret:
