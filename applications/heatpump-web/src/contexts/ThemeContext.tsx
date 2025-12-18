@@ -1,5 +1,5 @@
 import { useState, useEffect, ReactNode } from 'react';
-import { ThemeContext } from './themeContext';
+import { ThemeContext, Theme } from './theme';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -22,7 +22,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+    setTheme((prev: Theme) => (prev === 'light' ? 'dark' : 'light'));
   };
 
   return (
