@@ -62,13 +62,13 @@ BEGIN
     WITH NO DATA;
     
     -- Add refresh policy to automatically update the continuous aggregate
-    -- Refresh every 5 minutes, keeping last 1 hour of raw data
+    -- Refresh every 5 minutes, maintaining historical data
     -- This ensures the aggregate stays up-to-date as new data arrives
-    -- start_offset: How far back to refresh (3 hours)
+    -- start_offset: How far back to refresh (30 days - maintains historical data)
     -- end_offset: How recent to keep in raw data (1 hour - allows for late-arriving data)
     -- schedule_interval: How often to run the refresh (5 minutes)
     PERFORM add_continuous_aggregate_policy('energy_hourly',
-      start_offset => INTERVAL '3 hours',
+      start_offset => INTERVAL '30 days',
       end_offset => INTERVAL '1 hour',
       schedule_interval => INTERVAL '5 minutes',
       if_not_exists => TRUE
