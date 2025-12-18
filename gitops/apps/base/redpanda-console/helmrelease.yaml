@@ -46,17 +46,6 @@ spec:
           rbac:
             enabled: true
 
-        # Authorization configuration with role bindings
-        authorization:
-          roleBindings:
-            - roleName: admin
-              metadata:
-                name: "Administrators"
-              subjects:
-                - kind: user
-                  provider: Plain
-                  name: admin
-
     # Secret configuration for JWT
     secret:
       create: false  # We manage via SealedSecret
