@@ -92,9 +92,9 @@ data:
       - hostname: heatpump.k12n.com
         service: http://heatpump-web.heatpump-web.svc.cluster.local:80
 
-      # Redpanda Console (has basic authentication)
+      # Redpanda Console (standalone chart with basic authentication)
       - hostname: redpanda.k12n.com
-        service: http://redpanda-v2-console.redpanda-v2.svc.cluster.local:8080
+        service: http://redpanda-console.redpanda-v2.svc.cluster.local:8080
 
       # Catch-all rule (required)
       - service: http_status:404
