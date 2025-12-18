@@ -11,7 +11,7 @@ export default function HourlyChart({ history, error, isLoading }: HourlyChartPr
   if (error) {
     return (
       <div className="card chart-card card-error">
-        <h3>Today - Hourly Consumption</h3>
+        <h3>Hourly Consumption - Last 24 Hours</h3>
         <div className="error-message">
           Error: {error instanceof Error ? error.message : 'Failed to load'}
         </div>
@@ -22,7 +22,7 @@ export default function HourlyChart({ history, error, isLoading }: HourlyChartPr
   if (isLoading) {
     return (
       <div className="card chart-card">
-        <h3>Today - Hourly Consumption</h3>
+        <h3>Hourly Consumption - Last 24 Hours</h3>
         <div className="loading">Loading...</div>
       </div>
     );
@@ -31,20 +31,20 @@ export default function HourlyChart({ history, error, isLoading }: HourlyChartPr
   if (!history || history.length === 0) {
     return (
       <div className="card chart-card">
-        <h3>Today - Hourly Consumption</h3>
+        <h3>Hourly Consumption - Last 24 Hours</h3>
         <div className="no-data">No data available</div>
       </div>
     );
   }
 
   const chartData = history.map(item => ({
-    time: new Date(item.hour_start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    time: new Date(item.hour_start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
     energy: item.total_energy_kwh || 0,
   }));
 
   return (
     <div className="card chart-card">
-      <h3>Today - Hourly Consumption</h3>
+      <h3>Hourly Consumption - Last 24 Hours</h3>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />

@@ -65,6 +65,23 @@ impl EnergyRepository {
         hour_start: DateTime<Utc>,
     ) -> Result<f64, AppError> {
         // Calculate current hour consumption from raw meter readings
+        // First check if we have any data at or after hour_start
+        let latest_ts: Option<DateTime<Utc>> = sqlx::query_scalar(
+            r#"
+            SELECT ts FROM energy
+            ORDER BY ts DESC
+            LIMIT 1
+            "#,
+        )
+        .fetch_optional(pool)
+        .await
+        .map_err(AppError::Db)?;
+
+        // If no data exists or latest data is before hour_start, return 0.0
+        if latest_ts.is_none() || latest_ts.unwrap() < hour_start {
+            return Ok(0.0);
+        }
+
         // Get the first reading at or after hour_start and the latest reading
         let result: Option<(Option<i32>, Option<i32>)> = sqlx::query_as(
             r#"

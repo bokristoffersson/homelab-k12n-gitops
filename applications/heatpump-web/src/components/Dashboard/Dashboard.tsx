@@ -32,15 +32,14 @@ export default function Dashboard() {
   });
 
   const { data: history, error: historyError, isLoading: historyLoading } = useQuery<EnergyHourly[]>({
-    queryKey: ['energy', 'history', 'today'],
+    queryKey: ['energy', 'history', '24h'],
     queryFn: () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
       const now = new Date();
+      const past24h = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
       return api
         .get('/api/v1/energy/history', {
           params: {
-            from: today.toISOString(),
+            from: past24h.toISOString(),
             to: now.toISOString(),
           },
         })

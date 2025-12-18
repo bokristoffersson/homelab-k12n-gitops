@@ -16,10 +16,19 @@ use std::collections::BTreeMap;
 
 /// Helper function to set up database schema
 async fn setup_schema(pool: &sqlx::PgPool) -> Result<(), sqlx::Error> {
+    // Drop existing tables to ensure schema matches current code
+    sqlx::query("DROP TABLE IF EXISTS energy CASCADE")
+        .execute(pool)
+        .await?;
+
+    sqlx::query("DROP TABLE IF EXISTS heatpump CASCADE")
+        .execute(pool)
+        .await?;
+
     // Create energy table
     sqlx::query(
         r#"
-        CREATE TABLE IF NOT EXISTS energy
+        CREATE TABLE energy
         (
             ts                 TIMESTAMPTZ       NOT NULL,
             consumption_total_w INTEGER,
@@ -39,17 +48,17 @@ async fn setup_schema(pool: &sqlx::PgPool) -> Result<(), sqlx::Error> {
     // Create heatpump table
     sqlx::query(
         r#"
-        CREATE TABLE IF NOT EXISTS heatpump
+        CREATE TABLE heatpump
         (
             ts                  TIMESTAMPTZ       NOT NULL,
             device_id           TEXT,
             room                TEXT,
-            outdoor_temp        DOUBLE PRECISION,
-            supplyline_temp     DOUBLE PRECISION,
-            returnline_temp     DOUBLE PRECISION,
-            hotwater_temp       BIGINT,
-            brine_out_temp      BIGINT,
-            brine_in_temp       BIGINT,
+            outdoor_temp        SMALLINT,
+            supplyline_temp     SMALLINT,
+            returnline_temp     SMALLINT,
+            hotwater_temp       SMALLINT,
+            brine_out_temp      SMALLINT,
+            brine_in_temp       SMALLINT,
             integral            BIGINT,
             flowlinepump_speed  BIGINT,
             brinepump_speed     BIGINT,
@@ -304,7 +313,7 @@ async fn test_energy_repository_get_hourly_total() {
 
     // Test get_hourly_total
     let result = EnergyRepository::get_hourly_total(&pool, hour_start).await;
-    assert!(result.is_ok(), "get_hourly_total should succeed");
+    assert!(result.is_ok(), "get_hourly_total should succeed: {:?}", result.as_ref().err());
 
     let total = result.unwrap();
     // If continuous aggregate exists, it should calculate the difference
@@ -471,6 +480,12 @@ async fn test_energy_repository_get_hourly_total_no_data() {
         .expect("Failed to connect to test database");
 
     setup_schema(&pool).await.expect("Failed to set up schema");
+
+    // Ensure table is empty - use CASCADE to handle any dependencies
+    sqlx::query("TRUNCATE TABLE energy RESTART IDENTITY CASCADE")
+        .execute(&pool)
+        .await
+        .expect("Failed to truncate energy table");
 
     let now = Utc::now();
     let hour_start = align_to_hour_boundary(now);
