@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: redpanda-console-auth
+  namespace: redpanda-v2
+spec:
+  encryptedData:
+    jwt-signing-key: AgAPZEA20KkICtkDgi7fl5WEHNamUT//qfWbaZsBHOGbJnaxcOCzSNFY2+ahXIQDYuAn8RrWYjuU8G6sWMAZI00xWfNDNv6RXeQhKTJjidpgzG3c3XFCZe5dZ+uHXhBN9Mbt0SiJlNe0SVF0P8hES0tn5MpeLq/yq4+n0g9o1Nb+e/lnyXn+LTK5Hc2TJClrU1t7s1kPgrkiKZ4vX4hqys9lLQlM4XC8HR4dOXmvYOIVXFgtET2lSIhjuHBTyRWCGv3T3nUuf2BXQoACsr5BXlYkwv1UXgGN4EwXVohvTGvzVf4YubSvPYlVqJ1ulA3/dfEwHNj+Ool6wTNhefVLCSPydkebzpjIhxNGz53McOn4T69cxGiI1+aCtcaCGPpl+z90MZBDK2Hshci9JlFUJ3Awh3QVnkTvXOm4GVNNuCpUMiuXRg64siNgPo0bPoaHvyX0S0uSxEeEJKc5Ww8BlrkYmwiuN8l40E9/UDY6DDLnfRW3P9f/4PK+VBCwM8hb5aw//8X1JsaIcndVrNy3yD1xYBIk0wLj4Rxj90fa3X6kCRGWOZz0AotfJcPndROT01ry4BaRiNSvAsQp/xeyeulb2top2nEd+xp4v7Dk3L3eNKpZ5qBEYoWdDCNQrOhqIjcWH/eO65LgXi/AW0jviad57gLWViB2gyZ2c0ATUfjcv4hVW+4K8sPWHP3esIG25ZuMRiCQxq0T3dzr7NGdd1IVCZnNgEICuVdpTV4wY6GBm3vJ23dYX74z34+UFBe45Sq4ev+zutPzXyFMJmoawgPf
+  template:
+    metadata:
+      name: redpanda-console-auth
+      namespace: redpanda-v2

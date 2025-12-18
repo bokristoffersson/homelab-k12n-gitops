@@ -53,9 +53,31 @@ spec:
     tls:
       enabled: false
 
-    # NEW: Console UI enabled (GitOps best practice)
+    # NEW: Console UI enabled with authentication
     console:
       enabled: true
+      secret:
+        create: false  # We manage the secret via SealedSecret
+        authentication:
+          jwtSigningKey:
+            secretKeyRef:
+              name: redpanda-console-auth
+              key: jwt-signing-key
+      config:
+        authentication:
+          enabled: true
+          useSecureCookies: false  # Set to true if using HTTPS directly to console
+          basic:
+            enabled: true
+        authorization:
+          enabled: true
+          roleBindings:
+            - roleName: admin
+              metadata:
+                name: "Administrators"
+              users:
+                - loginType: basic
+                  name: "admin"
 
     # Monitoring disabled - Prometheus Operator CRDs not installed
     monitoring:
