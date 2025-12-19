@@ -1,0 +1,50 @@
+# Simple Redpanda configuration for local development
+# No operator, no complex features, just basic Kafka-compatible broker
+
+statefulset:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+storage:
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+    storageClass: local-path
+
+# Console enabled for UI access
+console:
+  enabled: true
+  configmap:
+    create: true
+
+# No external access (use port-forward)
+external:
+  enabled: false
+
+# Listeners
+listeners:
+  kafka:
+    port: 9092
+  admin:
+    port: 9644
+  http:
+    enabled: true
+    port: 8082
+
+# No TLS for local dev
+tls:
+  enabled: false
+
+# Monitoring disabled (not needed locally)
+monitoring:
+  enabled: false
+
+# Service configuration
+service:
+  type: ClusterIP

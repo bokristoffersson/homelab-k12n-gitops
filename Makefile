@@ -123,6 +123,33 @@ port-grafana: ## Port-forward Grafana (3000)
 	@echo "Opening Grafana at http://localhost:3000"
 	kubectl port-forward -n monitoring svc/grafana 3000:80
 
+##@ Redpanda (Simple - No Operator)
+
+.PHONY: redpanda-install
+redpanda-install: ## Install Redpanda (simple, no operator)
+	cd gitops/apps/local/redpanda-v2-simple && ./install.sh
+
+.PHONY: redpanda-topics
+redpanda-topics: ## Create Redpanda topics using rpk
+	cd gitops/apps/local/redpanda-v2-simple && ./create-topics.sh
+
+.PHONY: redpanda-list
+redpanda-list: ## List Redpanda topics
+	kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk topic list
+
+.PHONY: redpanda-info
+redpanda-info: ## Show Redpanda cluster info
+	kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk cluster info
+
+.PHONY: redpanda-consume
+redpanda-consume: ## Consume from a topic (use TOPIC=name)
+	kubectl exec -it redpanda-v2-0 -n redpanda-v2 -- \
+		rpk topic consume $(TOPIC) --num 10
+
+.PHONY: redpanda-uninstall
+redpanda-uninstall: ## Uninstall Redpanda
+	helm uninstall redpanda-v2 -n redpanda-v2 || true
+
 ##@ MQTT Generator
 
 .PHONY: mqtt-build
