@@ -18,3 +18,21 @@ applications/*/*.egg-info/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local development
+.env
+.env.local
+*.local
+kubeconfig
+kubeconfig.yaml
+
+# Secrets (never commit!)
+secrets/
+*.secret
+*.key
+*.pem
+
+# Temporary files
+*.tmp
+tmp/
+temp/

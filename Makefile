@@ -1,0 +1,136 @@
+# Homelab GitOps Makefile
+# Convenience commands for local development and cluster management
+
+.PHONY: help
+help: ## Show this help message
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Available targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+##@ Local Development
+
+.PHONY: local-up
+local-up: ## Create local k3d cluster
+	./scripts/setup-local-cluster.sh
+
+.PHONY: local-down
+local-down: ## Delete local k3d cluster
+	k3d cluster delete homelab-local
+
+.PHONY: local-restart
+local-restart: local-down local-up ## Restart local cluster
+
+.PHONY: local-secrets
+local-secrets: ## Create local development secrets
+	./scripts/create-local-secrets.sh
+
+##@ Flux Commands
+
+.PHONY: flux-check
+flux-check: ## Check Flux prerequisites and status
+	flux check
+
+.PHONY: flux-reconcile
+flux-reconcile: ## Reconcile all Flux kustomizations
+	flux reconcile source git flux-system
+	flux reconcile kustomization flux-system
+
+.PHONY: flux-logs
+flux-logs: ## Watch Flux logs
+	flux logs --all-namespaces --follow
+
+.PHONY: flux-get
+flux-get: ## Get all Flux resources
+	flux get all --all-namespaces
+
+##@ Kubernetes Commands
+
+.PHONY: k-status
+k-status: ## Show cluster status
+	@echo "=== Nodes ==="
+	kubectl get nodes
+	@echo "\n=== Namespaces ==="
+	kubectl get namespaces
+	@echo "\n=== Flux Kustomizations ==="
+	flux get kustomizations
+
+.PHONY: k-pods
+k-pods: ## List all pods
+	kubectl get pods --all-namespaces
+
+.PHONY: k-events
+k-events: ## Show recent events
+	kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -20
+
+##@ Port Forwarding
+
+.PHONY: port-redpanda
+port-redpanda: ## Port-forward Redpanda Console (8080)
+	@echo "Opening Redpanda Console at http://localhost:8080"
+	kubectl port-forward -n redpanda-v2 svc/redpanda-v2-console 8080:8080
+
+.PHONY: port-traefik
+port-traefik: ## Port-forward Traefik dashboard (9000)
+	@echo "Opening Traefik dashboard at http://localhost:9000/dashboard/"
+	kubectl port-forward -n traefik svc/traefik 9000:9000
+
+.PHONY: port-prometheus
+port-prometheus: ## Port-forward Prometheus (9090)
+	@echo "Opening Prometheus at http://localhost:9090"
+	kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+
+.PHONY: port-grafana
+port-grafana: ## Port-forward Grafana (3000)
+	@echo "Opening Grafana at http://localhost:3000"
+	kubectl port-forward -n monitoring svc/grafana 3000:80
+
+##@ Development Helpers
+
+.PHONY: lint
+lint: ## Lint Kubernetes manifests (requires kubeconform)
+	@if command -v kubeconform >/dev/null 2>&1; then \
+		find gitops -name '*.yaml' -type f | xargs kubeconform -summary; \
+	else \
+		echo "kubeconform not installed. Install with: brew install kubeconform"; \
+	fi
+
+.PHONY: validate
+validate: ## Validate Flux resources
+	flux check --pre
+	find gitops/infrastructure gitops/apps -name '*.yaml' -type f | xargs -I {} flux validate {}
+
+.PHONY: diff
+diff: ## Show diff between local and cluster (requires kubectl-diff)
+	@echo "Infrastructure diff:"
+	kubectl diff -k gitops/clusters/local/
+	@echo "\nApps diff:"
+	kubectl diff -k gitops/apps/local/
+
+##@ Utilities
+
+.PHONY: clean
+clean: ## Clean up Docker resources
+	docker system prune -af --volumes
+
+.PHONY: context-local
+context-local: ## Switch kubectl context to local cluster
+	kubectl config use-context k3d-homelab-local
+
+.PHONY: context-prod
+context-prod: ## Switch kubectl context to production
+	@echo "WARNING: Switching to production cluster!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		kubectl config use-context homelab; \
+	fi
+
+.PHONY: setup-tools
+setup-tools: ## Install required development tools (macOS only)
+	@if [ "$$(uname)" = "Darwin" ]; then \
+		brew install kubectl k3d fluxcd/tap/flux helm kubeconform; \
+	else \
+		echo "This target only works on macOS. Please install tools manually."; \
+		echo "See docs/LOCAL_DEVELOPMENT.md for instructions."; \
+	fi

@@ -1,5 +1,28 @@
 # Homelab GitOps Setup with K3s and FluxCD
 
+## 🚀 Quick Start
+
+### Local Development
+
+Want to test changes locally before deploying to production? See the [Quick Start Guide](docs/QUICK_START.md)!
+
+```bash
+# One command to get started
+./scripts/setup-local-cluster.sh
+```
+
+Or use the Makefile:
+```bash
+make local-up          # Create local cluster
+make port-redpanda     # Access Redpanda Console
+make flux-reconcile    # Sync GitOps changes
+make help              # See all commands
+```
+
+📖 **Full Documentation**: [Local Development Guide](docs/LOCAL_DEVELOPMENT.md)
+
+---
+
 ## 🏗️ Infrastructure Overview
 
 - **Control Plane**: Raspberry Pi 4 (`p0.local`)
