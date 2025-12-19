@@ -25,16 +25,8 @@ git clone https://github.com/bokristoffersson/homelab-k12n-gitops.git
 cd homelab-k12n-gitops
 ```
 
-### 2. Choose Your Workflow
+### 2. Create Local Cluster
 
-**Fast Development (Recommended):**
-```bash
-./scripts/setup-local-cluster-simple.sh
-# Or
-make local-up-simple
-```
-
-**Full GitOps Testing:**
 ```bash
 ./scripts/setup-local-cluster.sh
 # Or
@@ -43,7 +35,6 @@ make local-up
 
 ### 3. Deploy Your Apps
 
-**Simple cluster (direct apply):**
 ```bash
 # Apply infrastructure
 make dev-apply-infra
@@ -53,15 +44,6 @@ make dev-apply-redpanda
 
 # Watch deployment
 make dev-watch
-```
-
-**GitOps cluster (Flux auto-sync):**
-```bash
-# Check Flux status
-flux get kustomizations
-
-# Watch reconciliation
-flux logs --all-namespaces --follow
 ```
 
 ## Access Your Services
@@ -89,8 +71,6 @@ kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 909
 
 ## Development Workflow
 
-### Fast Iteration (Simple Cluster)
-
 1. **Edit** your GitOps files locally
 2. **Apply** directly:
    ```bash
@@ -103,21 +83,14 @@ kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 909
    make dev-watch
    ```
 
-**No git commits needed!** Perfect for experimenting.
+**No git commits needed!** Secrets stay local. Fast iteration.
 
-### GitOps Testing (Full Cluster)
+### Deploying to Production
 
-1. **Edit** your GitOps files
-2. **Commit & Push**:
-   ```bash
-   git add .
-   git commit -m "feat: your changes"
-   git push
-   ```
-3. **Reconcile** (or wait for auto-sync):
-   ```bash
-   make flux-reconcile
-   ```
+1. Test locally with `kubectl apply -k`
+2. Commit manifests (never secrets!)
+3. Push to GitHub
+4. Flux syncs automatically on production cluster
 
 ## Useful Commands
 

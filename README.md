@@ -4,20 +4,20 @@
 
 ### Local Development
 
-Want to test changes locally before deploying to production? See the [Quick Start Guide](docs/QUICK_START.md)!
+Test changes safely on your machine before pushing to production. See the [Quick Start Guide](docs/QUICK_START.md)!
 
 ```bash
-# One command to get started
+# Create local k3d cluster (no Flux, no git commits needed)
 ./scripts/setup-local-cluster.sh
+
+# Apply your changes directly
+make dev-apply-redpanda
+
+# Access services
+make port-redpanda
 ```
 
-Or use the Makefile:
-```bash
-make local-up          # Create local cluster
-make port-redpanda     # Access Redpanda Console
-make flux-reconcile    # Sync GitOps changes
-make help              # See all commands
-```
+**Safe**: Secrets never leave your machine. No risk of committing secrets to git.
 
 📖 **Full Documentation**: [Local Development Guide](docs/LOCAL_DEVELOPMENT.md)
 

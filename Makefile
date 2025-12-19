@@ -11,12 +11,8 @@ help: ## Show this help message
 ##@ Local Development
 
 .PHONY: local-up
-local-up: ## Create local k3d cluster with Flux
+local-up: ## Create local k3d cluster (no Flux)
 	./scripts/setup-local-cluster.sh
-
-.PHONY: local-up-simple
-local-up-simple: ## Create local k3d cluster without Flux (faster)
-	./scripts/setup-local-cluster-simple.sh
 
 .PHONY: local-down
 local-down: ## Delete local k3d cluster
@@ -56,23 +52,29 @@ dev-delete-redpanda: ## Delete Redpanda resources
 dev-watch: ## Watch all pods in all namespaces
 	kubectl get pods -A --watch
 
-##@ Flux Commands
+##@ Production Flux Commands (not for local dev)
 
 .PHONY: flux-check
-flux-check: ## Check Flux prerequisites and status
+flux-check: ## Check Flux prerequisites and status (production)
+	@echo "⚠️  This is for production cluster only!"
 	flux check
 
 .PHONY: flux-reconcile
-flux-reconcile: ## Reconcile all Flux kustomizations
-	flux reconcile source git flux-system
-	flux reconcile kustomization flux-system
+flux-reconcile: ## Reconcile Flux kustomizations (production)
+	@echo "⚠️  This is for production cluster only!"
+	@read -p "Are you sure you're on the production cluster? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		flux reconcile source git flux-system; \
+		flux reconcile kustomization flux-system; \
+	fi
 
 .PHONY: flux-logs
-flux-logs: ## Watch Flux logs
+flux-logs: ## Watch Flux logs (production)
 	flux logs --all-namespaces --follow
 
 .PHONY: flux-get
-flux-get: ## Get all Flux resources
+flux-get: ## Get all Flux resources (production)
 	flux get all --all-namespaces
 
 ##@ Kubernetes Commands

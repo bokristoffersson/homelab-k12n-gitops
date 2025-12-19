@@ -100,41 +100,31 @@ flux version
 
 ## Quick Start
 
-You have two options for local development:
-
-### Option 1: Simple Cluster (Recommended for Development)
-
-**Fastest iteration** - Use `kubectl apply -k` directly on local files:
-
-```bash
-./scripts/setup-local-cluster-simple.sh
-```
-
-This creates:
-- k3d cluster with basic setup
-- Namespaces and secrets
-- **No Flux** - you apply manifests directly
-
-Then apply your changes:
-```bash
-kubectl apply -k gitops/infrastructure/controllers-local
-kubectl apply -k gitops/apps/local/redpanda-v2
-```
-
-### Option 2: Full GitOps Cluster (Test Full Pipeline)
-
-**Test the complete GitOps flow** - Includes Flux syncing from GitHub:
+### Create Local Cluster
 
 ```bash
 ./scripts/setup-local-cluster.sh
 ```
 
 This creates:
-- k3d cluster with Flux CD
-- Auto-sync from GitHub repository
-- Full GitOps pipeline testing
+- k3d cluster with basic Kubernetes setup
+- Namespaces and local development secrets
+- **No Flux** - you apply manifests directly with kubectl
+- **No git commits required** - work on local files only
 
-### 2. Verify the Cluster
+**Security**: Local secrets never leave your machine. No risk of committing secrets to git.
+
+### Apply Your Manifests
+
+```bash
+# Apply infrastructure
+kubectl apply -k gitops/infrastructure/controllers-local
+
+# Apply applications
+kubectl apply -k gitops/apps/local/redpanda-v2
+```
+
+### Verify the Cluster
 
 ```bash
 # Check cluster nodes
@@ -175,9 +165,9 @@ Open http://localhost:9090
 
 ## Development Workflow
 
-### Fast Iteration Workflow (Simple Cluster)
+### Local Development (Safe & Fast)
 
-**Best for rapid development** - No git commits needed:
+**No git commits, no secrets in git, instant feedback**:
 
 1. **Make changes** to your GitOps files locally
 
@@ -202,47 +192,16 @@ Open http://localhost:9090
 
 4. **Iterate** - Edit, apply, watch, repeat!
 
-### GitOps Testing Workflow (Full Cluster)
+### Deploying to Production
 
-**Best for testing the complete GitOps pipeline**:
+**Never test GitOps from localhost** - this would require committing secrets!
 
-1. **Make changes** to your GitOps files locally
+1. **Test locally first** using `kubectl apply -k`
+2. **Commit your changes** (manifests only, never secrets)
+3. **Push to GitHub**
+4. **Let Flux sync on the production cluster**
 
-2. **Commit and push** to your branch:
-   ```bash
-   git add .
-   git commit -m "feat: test new configuration"
-   git push
-   ```
-
-3. **Trigger reconciliation** (or wait for auto-sync):
-   ```bash
-   flux reconcile source git flux-system
-   flux reconcile kustomization infrastructure-controllers
-   # Or
-   make flux-reconcile
-   ```
-
-4. **Watch Flux logs**:
-   ```bash
-   flux logs --all-namespaces --follow
-   # Or
-   make flux-logs
-   ```
-
-### Recommended Approach
-
-**Use both!**
-
-1. **During active development**: Use simple cluster + `kubectl apply -k`
-   - Fastest feedback loop
-   - No git commits for experiments
-   - Easy to iterate
-
-2. **Before merging to main**: Test with GitOps cluster
-   - Verify Flux can sync your changes
-   - Catch any GitOps-specific issues
-   - Ensure production pipeline works
+Production uses sealed secrets (not plain secrets), so Flux can safely sync from GitHub.
 
 ### Working with Helm Releases
 
