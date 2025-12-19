@@ -19,7 +19,10 @@ make port-redpanda
 
 **Safe**: Secrets never leave your machine. No risk of committing secrets to git.
 
-📖 **Full Documentation**: [Local Development Guide](docs/LOCAL_DEVELOPMENT.md)
+📖 **Documentation**:
+- [Local Development Guide](docs/LOCAL_DEVELOPMENT.md)
+- [Architecture & Principles](docs/ARCHITECTURE.md)
+- [Flux Setup (Production)](docs/FLUX_SETUP.md)
 
 ---
 
