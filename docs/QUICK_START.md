@@ -25,29 +25,43 @@ git clone https://github.com/bokristoffersson/homelab-k12n-gitops.git
 cd homelab-k12n-gitops
 ```
 
-### 2. Run the Setup Script
+### 2. Choose Your Workflow
 
+**Fast Development (Recommended):**
 ```bash
-./scripts/setup-local-cluster.sh
+./scripts/setup-local-cluster-simple.sh
+# Or
+make local-up-simple
 ```
 
-This takes ~3-5 minutes and creates:
-- k3d cluster with Traefik ingress
-- Flux GitOps controllers
-- Local development secrets
-- Your apps (Redpanda, Monitoring, etc.)
-
-### 3. Verify Everything Works
-
+**Full GitOps Testing:**
 ```bash
-# Check nodes
-kubectl get nodes
+./scripts/setup-local-cluster.sh
+# Or
+make local-up
+```
 
+### 3. Deploy Your Apps
+
+**Simple cluster (direct apply):**
+```bash
+# Apply infrastructure
+make dev-apply-infra
+
+# Apply apps
+make dev-apply-redpanda
+
+# Watch deployment
+make dev-watch
+```
+
+**GitOps cluster (Flux auto-sync):**
+```bash
 # Check Flux status
 flux get kustomizations
 
-# Check running pods
-kubectl get pods --all-namespaces
+# Watch reconciliation
+flux logs --all-namespaces --follow
 ```
 
 ## Access Your Services
@@ -75,6 +89,24 @@ kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 909
 
 ## Development Workflow
 
+### Fast Iteration (Simple Cluster)
+
+1. **Edit** your GitOps files locally
+2. **Apply** directly:
+   ```bash
+   make dev-apply-redpanda
+   # Or
+   kubectl apply -k gitops/apps/local/redpanda-v2
+   ```
+3. **Watch** the changes:
+   ```bash
+   make dev-watch
+   ```
+
+**No git commits needed!** Perfect for experimenting.
+
+### GitOps Testing (Full Cluster)
+
 1. **Edit** your GitOps files
 2. **Commit & Push**:
    ```bash
@@ -82,10 +114,9 @@ kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 909
    git commit -m "feat: your changes"
    git push
    ```
-3. **Reconcile** (don't wait for auto-sync):
+3. **Reconcile** (or wait for auto-sync):
    ```bash
-   flux reconcile source git flux-system
-   flux reconcile kustomization <name>
+   make flux-reconcile
    ```
 
 ## Useful Commands

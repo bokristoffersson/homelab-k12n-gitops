@@ -11,8 +11,12 @@ help: ## Show this help message
 ##@ Local Development
 
 .PHONY: local-up
-local-up: ## Create local k3d cluster
+local-up: ## Create local k3d cluster with Flux
 	./scripts/setup-local-cluster.sh
+
+.PHONY: local-up-simple
+local-up-simple: ## Create local k3d cluster without Flux (faster)
+	./scripts/setup-local-cluster-simple.sh
 
 .PHONY: local-down
 local-down: ## Delete local k3d cluster
@@ -24,6 +28,33 @@ local-restart: local-down local-up ## Restart local cluster
 .PHONY: local-secrets
 local-secrets: ## Create local development secrets
 	./scripts/create-local-secrets.sh
+
+##@ Direct Development (kubectl apply)
+
+.PHONY: dev-apply-infra
+dev-apply-infra: ## Apply infrastructure directly (no Flux)
+	kubectl apply -k gitops/infrastructure/controllers-local
+
+.PHONY: dev-apply-apps
+dev-apply-apps: ## Apply all apps directly (no Flux)
+	kubectl apply -k gitops/apps/local/redpanda-v2
+	kubectl apply -k gitops/apps/local/monitoring
+
+.PHONY: dev-apply-redpanda
+dev-apply-redpanda: ## Apply just Redpanda directly
+	kubectl apply -k gitops/apps/local/redpanda-v2
+
+.PHONY: dev-apply-monitoring
+dev-apply-monitoring: ## Apply just monitoring directly
+	kubectl apply -k gitops/apps/local/monitoring
+
+.PHONY: dev-delete-redpanda
+dev-delete-redpanda: ## Delete Redpanda resources
+	kubectl delete -k gitops/apps/local/redpanda-v2
+
+.PHONY: dev-watch
+dev-watch: ## Watch all pods in all namespaces
+	kubectl get pods -A --watch
 
 ##@ Flux Commands
 
