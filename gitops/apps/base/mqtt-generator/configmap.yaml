@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mqtt-generator-config
+  namespace: mqtt-generator
+data:
+  MQTT_BROKER: "mosquitto.mosquitto.svc.cluster.local"
+  MQTT_PORT: "1883"
+  GENERATOR_CONFIG: |
+    {
+      "streams": [
+        {
+          "topic": "homelab/energy/realtime",
+          "interval": 1.0,
+          "values": [
+            {"name": "power_w", "min": 0, "max": 5000, "decimals": 2},
+            {"name": "voltage_v", "min": 220, "max": 240, "decimals": 1},
+            {"name": "current_a", "min": 0, "max": 25, "decimals": 2}
+          ]
+        },
+        {
+          "topic": "homelab/temperature/indoor",
+          "interval": 30.0,
+          "values": [
+            {"name": "living_room", "min": 19, "max": 23, "decimals": 1},
+            {"name": "bedroom", "min": 17, "max": 21, "decimals": 1},
+            {"name": "kitchen", "min": 18, "max": 24, "decimals": 1}
+          ]
+        },
+        {
+          "topic": "homelab/temperature/outdoor",
+          "interval": 60.0,
+          "values": [
+            {"name": "temperature", "min": -10, "max": 30, "decimals": 1},
+            {"name": "humidity", "min": 30, "max": 90, "decimals": 0}
+          ]
+        },
+        {
+          "topic": "homelab/heatpump/status",
+          "interval": 5.0,
+          "values": [
+            {"name": "supply_temp", "min": 35, "max": 55, "decimals": 1},
+            {"name": "return_temp", "min": 25, "max": 45, "decimals": 1},
+            {"name": "flow_rate", "min": 10, "max": 30, "decimals": 1}
+          ]
+        }
+      ]
+    }

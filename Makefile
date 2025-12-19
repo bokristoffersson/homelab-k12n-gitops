@@ -103,6 +103,11 @@ port-redpanda: ## Port-forward Redpanda Console (8080)
 	@echo "Opening Redpanda Console at http://localhost:8080"
 	kubectl port-forward -n redpanda-v2 svc/redpanda-v2-console 8080:8080
 
+.PHONY: port-mosquitto
+port-mosquitto: ## Port-forward Mosquitto MQTT (1883)
+	@echo "Port-forwarding Mosquitto MQTT at localhost:1883"
+	kubectl port-forward -n mosquitto svc/mosquitto 1883:1883
+
 .PHONY: port-traefik
 port-traefik: ## Port-forward Traefik dashboard (9000)
 	@echo "Opening Traefik dashboard at http://localhost:9000/dashboard/"
@@ -117,6 +122,30 @@ port-prometheus: ## Port-forward Prometheus (9090)
 port-grafana: ## Port-forward Grafana (3000)
 	@echo "Opening Grafana at http://localhost:3000"
 	kubectl port-forward -n monitoring svc/grafana 3000:80
+
+##@ MQTT Generator
+
+.PHONY: mqtt-build
+mqtt-build: ## Build mqtt-generator Docker image
+	cd applications/mqtt-generator && docker build -t mqtt-generator:latest .
+
+.PHONY: mqtt-import
+mqtt-import: mqtt-build ## Build and import mqtt-generator to k3d
+	k3d image import mqtt-generator:latest --cluster homelab-local
+
+.PHONY: mqtt-deploy
+mqtt-deploy: ## Deploy mqtt-generator
+	kubectl apply -k gitops/apps/local/mqtt-generator
+
+.PHONY: mqtt-logs
+mqtt-logs: ## Watch mqtt-generator logs
+	kubectl logs -f deployment/mqtt-generator -n mqtt-generator
+
+.PHONY: mqtt-subscribe
+mqtt-subscribe: ## Subscribe to MQTT topics (requires mosquitto_sub and port-forward)
+	@echo "Subscribing to homelab/# topics..."
+	@echo "Make sure to run 'make port-mosquitto' in another terminal first"
+	mosquitto_sub -h localhost -t 'homelab/#' -v
 
 ##@ Development Helpers
 

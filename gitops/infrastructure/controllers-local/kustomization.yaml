@@ -8,5 +8,8 @@ resources:
   # Traefik ingress controller
   - traefik
 
+  # Mosquitto MQTT broker for local testing
+  - mosquitto
+
 # Skip sealed-secrets for local development
 # Skip cloudflare-tunnel for local development

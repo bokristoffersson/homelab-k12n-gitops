@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-generator
+  namespace: mqtt-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mqtt-generator
+  template:
+    metadata:
+      labels:
+        app: mqtt-generator
+    spec:
+      containers:
+      - name: generator
+        image: mqtt-generator:latest
+        imagePullPolicy: Never  # For local development
+        envFrom:
+        - configMapRef:
+            name: mqtt-generator-config
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
