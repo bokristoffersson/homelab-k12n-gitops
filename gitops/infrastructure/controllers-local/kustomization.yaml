@@ -1,14 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  # Traefik ingress controller (local development)
-  - traefik
-
   # Mosquitto MQTT broker for local testing
   - mosquitto
 
-# Note: Local development doesn't need:
+# Note: Local development uses minimal infrastructure
+# We access services via kubectl port-forward, so no ingress needed
+#
+# Not included (not needed locally):
+# - Traefik (no ingress needed, use port-forward)
 # - Flux (we use kubectl apply directly)
-# - cert-manager (no TLS needed locally)
-# - sealed-secrets (we use plain secrets locally)
-# - cloudflare-tunnel (no external access needed)
+# - cert-manager (no TLS needed)
+# - sealed-secrets (plain secrets only)
+# - cloudflare-tunnel (no external access)
