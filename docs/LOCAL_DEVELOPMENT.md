@@ -11,6 +11,8 @@ This guide will help you set up a local Kubernetes cluster for faster developmen
 
 ## Prerequisites
 
+> **Windows Users**: Use WSL 2 (Windows Subsystem for Linux) and follow the Linux installation instructions throughout this guide.
+
 ### Required Tools
 
 #### 1. Docker
@@ -48,10 +50,7 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 ```
 
-**Windows:**
-```powershell
-choco install kubernetes-cli
-```
+> **Note for Windows users**: Use WSL 2 (Windows Subsystem for Linux) and follow the Linux instructions.
 
 #### 3. Helm (optional but recommended)
 
@@ -63,11 +62,6 @@ brew install helm
 **Linux:**
 ```bash
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-```
-
-**Windows:**
-```powershell
-choco install kubernetes-helm
 ```
 
 #### 4. k3d
@@ -82,11 +76,6 @@ brew install k3d
 curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 ```
 
-**Windows:**
-```powershell
-choco install k3d
-```
-
 #### 5. Flux CLI
 
 **macOS:**
@@ -97,11 +86,6 @@ brew install fluxcd/tap/flux
 **Linux:**
 ```bash
 curl -s https://fluxcd.io/install.sh | bash
-```
-
-**Windows:**
-```powershell
-choco install flux
 ```
 
 ### Verify Installation
