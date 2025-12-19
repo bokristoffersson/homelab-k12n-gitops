@@ -1,33 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: redpanda-v2
-resources:
-  - ../../base/redpanda-v2
 
-# Patches for local development
-patches:
-  # Reduce resources for local
-  - target:
-      kind: HelmRelease
-      name: redpanda-v2
-    patch: |-
-      - op: replace
-        path: /spec/values/statefulset/resources/requests/cpu
-        value: 200m
-      - op: replace
-        path: /spec/values/statefulset/resources/requests/memory
-        value: 512Mi
-      - op: replace
-        path: /spec/values/statefulset/resources/limits/cpu
-        value: 500m
-      - op: replace
-        path: /spec/values/statefulset/resources/limits/memory
-        value: 1Gi
-      # Use local-path storage instead of longhorn
-      - op: replace
-        path: /spec/values/storage/persistentVolume/storageClass
-        value: local-path
-      # Reduce storage size
-      - op: replace
-        path: /spec/values/storage/persistentVolume/size
-        value: 10Gi
+# For local development, we need to be selective about what we include
+# HelmRelease requires Flux controllers to actually work
+# For now, skip Redpanda in local development - use Mosquitto for MQTT testing
+
+resources:
+  - ../../base/redpanda-v2/namespace.yaml
+  # Skip HelmRelease - requires Flux controllers
+  # Skip topics - requires Redpanda operator CRDs
+
+# Note: To run Redpanda locally, either:
+# 1. Install Flux controllers (defeats the purpose of local dev)
+# 2. Deploy Redpanda using helm CLI directly
+# 3. Just use Mosquitto for MQTT testing (recommended)
+#
+# For MQTT testing: MQTT Generator → Mosquitto → mqtt-subscribe
+# You don't need Redpanda to test the MQTT generator!
