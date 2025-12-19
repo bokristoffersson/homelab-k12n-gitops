@@ -28,16 +28,31 @@ logger = logging.getLogger(__name__)
 class ValueGenerator:
     """Generates random values within a specified range."""
 
-    def __init__(self, name: str, min_val: float, max_val: float, decimals: int = 2):
+    def __init__(self, name: str, min_val: float, max_val: float, decimals: int = 2, accumulator: bool = False, increment_min: float = 0, increment_max: float = 0, string_value: str = None):
         self.name = name
         self.min_val = min_val
         self.max_val = max_val
         self.decimals = decimals
+        self.accumulator = accumulator
+        self.increment_min = increment_min
+        self.increment_max = increment_max
+        self.string_value = string_value
+        self.current_value = min_val if accumulator else 0
 
-    def generate(self) -> float:
+    def generate(self):
         """Generate a random value within the range."""
-        value = random.uniform(self.min_val, self.max_val)
-        return round(value, self.decimals)
+        if self.string_value is not None:
+            # Return static string value
+            return self.string_value
+        elif self.accumulator:
+            # For accumulators, increment the current value
+            increment = random.uniform(self.increment_min, self.increment_max)
+            self.current_value += increment
+            return round(self.current_value, self.decimals)
+        else:
+            # For regular values, generate random within range
+            value = random.uniform(self.min_val, self.max_val)
+            return round(value, self.decimals)
 
 
 class DataStream:
@@ -53,7 +68,11 @@ class DataStream:
                 name=gen_config['name'],
                 min_val=gen_config['min'],
                 max_val=gen_config['max'],
-                decimals=gen_config.get('decimals', 2)
+                decimals=gen_config.get('decimals', 2),
+                accumulator=gen_config.get('accumulator', False),
+                increment_min=gen_config.get('increment_min', 0),
+                increment_max=gen_config.get('increment_max', 0),
+                string_value=gen_config.get('string_value', None)
             ))
 
         self.last_publish = 0
@@ -69,7 +88,18 @@ class DataStream:
         }
 
         for generator in self.generators:
-            data[generator.name] = generator.generate()
+            value = generator.generate()
+            # Support nested fields using dot notation (e.g., "activeActualConsumption.total")
+            if '.' in generator.name:
+                parts = generator.name.split('.')
+                current = data
+                for part in parts[:-1]:
+                    if part not in current:
+                        current[part] = {}
+                    current = current[part]
+                current[parts[-1]] = value
+            else:
+                data[generator.name] = value
 
         return data
 

@@ -1,0 +1,73 @@
+input:
+  kafka:
+    addresses:
+      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+    topics:
+      - homelab-temperature-indoor
+      - homelab-temperature-outdoor
+    consumer_group: timescaledb-temperature
+    start_from_oldest: false
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        let ts = this.ts.parse_timestamp("2006-01-02T15:04:05.999999999Z07:00")
+        let device_id = this.tags.device_id | ""
+        let mac_address = this.tags.mac_address | null
+        let location = this.tags.location | ""
+        root.time = $ts
+        root.device_id = $device_id
+        root.mac_address = $mac_address
+        root.location = $location
+        root.temperature_c = this.fields.temperature_c.number()
+        root.temperature_f = this.fields.temperature_f.number() | null
+        root.humidity = this.fields.humidity.number() | null
+        root.wifi_rssi = this.fields.wifi_rssi.number() | null
+        root.battery_voltage = this.fields.battery_voltage.number() | null
+        root.battery_percent = this.fields.battery_percent.number() | null
+        root.external_power = this.fields.external_power.number() | null
+        root.uptime = this.fields.uptime.number() | null
+        root.ram_free = this.fields.ram_free.number() | null
+        root.wind_speed_ms = this.fields.wind_speed_ms.number() | null
+        root.pressure_hpa = this.fields.pressure_hpa.number() | null
+
+output:
+  sql_insert:
+    driver: postgres
+    dsn: postgres://postgres:postgres@timescaledb.timescaledb.svc.cluster.local:5432/telemetry?sslmode=disable
+    table: temperature_sensors
+    columns:
+      - time
+      - device_id
+      - mac_address
+      - location
+      - temperature_c
+      - temperature_f
+      - humidity
+      - wifi_rssi
+      - battery_voltage
+      - battery_percent
+      - external_power
+      - uptime
+      - ram_free
+      - wind_speed_ms
+      - pressure_hpa
+    args_mapping: |
+      root = [
+        this.time,
+        this.device_id,
+        this.mac_address,
+        this.location,
+        this.temperature_c,
+        this.temperature_f,
+        this.humidity,
+        this.wifi_rssi,
+        this.battery_voltage,
+        this.battery_percent,
+        this.external_power,
+        this.uptime,
+        this.ram_free,
+        this.wind_speed_ms,
+        this.pressure_hpa
+      ]

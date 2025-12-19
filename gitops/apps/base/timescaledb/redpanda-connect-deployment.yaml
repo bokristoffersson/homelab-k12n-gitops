@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redpanda-connect
+  namespace: timescaledb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda-connect
+  template:
+    metadata:
+      labels:
+        app: redpanda-connect
+    spec:
+      containers:
+        - name: redpanda-connect
+          image: redpandadata/connect:latest
+          args:
+            - streams
+            - /config/*.yaml
+          ports:
+            - containerPort: 4195
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 4195
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 4195
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: redpanda-connect-config

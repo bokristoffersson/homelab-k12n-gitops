@@ -1,0 +1,80 @@
+input:
+  kafka:
+    addresses:
+      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+    topics:
+      - homelab-energy-realtime
+    consumer_group: timescaledb-energy
+    start_from_oldest: false
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        let ts = this.ts.parse_timestamp("2006-01-02T15:04:05.999999999Z07:00")
+        let device_serial = this.tags.device_serial | ""
+        let meter_type = this.tags.meter_type | ""
+        root.time = $ts
+        root.device_serial = $device_serial
+        root.meter_type = $meter_type
+        root.wifi_rssi = this.fields.wifi_rssi.number()
+        root.active_power_total = this.fields.active_power_total.number()
+        root.active_power_l1 = this.fields.active_power_l1.number()
+        root.active_power_l2 = this.fields.active_power_l2.number()
+        root.active_power_l3 = this.fields.active_power_l3.number()
+        root.active_production_total = this.fields.active_production_total.number()
+        root.active_energy_total = this.fields.active_energy_total.number()
+        root.active_energy_production = this.fields.active_energy_production.number()
+        root.voltage_l1 = this.fields.voltage_l1.number()
+        root.voltage_l2 = this.fields.voltage_l2.number()
+        root.voltage_l3 = this.fields.voltage_l3.number()
+        root.current_l1 = this.fields.current_l1.number()
+        root.current_l2 = this.fields.current_l2.number()
+        root.current_l3 = this.fields.current_l3.number()
+        root.power_factor = this.fields.power_factor.number()
+
+output:
+  sql_insert:
+    driver: postgres
+    dsn: postgres://postgres:postgres@timescaledb.timescaledb.svc.cluster.local:5432/telemetry?sslmode=disable
+    table: energy_consumption
+    columns:
+      - time
+      - device_serial
+      - meter_type
+      - wifi_rssi
+      - active_power_total
+      - active_power_l1
+      - active_power_l2
+      - active_power_l3
+      - active_production_total
+      - active_energy_total
+      - active_energy_production
+      - voltage_l1
+      - voltage_l2
+      - voltage_l3
+      - current_l1
+      - current_l2
+      - current_l3
+      - power_factor
+    args_mapping: |
+      root = [
+        this.time,
+        this.device_serial,
+        this.meter_type,
+        this.wifi_rssi,
+        this.active_power_total,
+        this.active_power_l1,
+        this.active_power_l2,
+        this.active_power_l3,
+        this.active_production_total,
+        this.active_energy_total,
+        this.active_energy_production,
+        this.voltage_l1,
+        this.voltage_l2,
+        this.voltage_l3,
+        this.current_l1,
+        this.current_l2,
+        this.current_l3,
+        this.power_factor
+      ]
