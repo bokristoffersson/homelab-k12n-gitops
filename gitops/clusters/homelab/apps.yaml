@@ -202,3 +202,52 @@ spec:
   path: ./gitops/apps/homelab/heatpump-web
   prune: true
   wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: mqtt-redpanda-bridge
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/mqtt-redpanda-bridge
+  prune: true
+  wait: true
+  dependsOn:
+    - name: mosquitto
+    - name: redpanda-v2
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: timescaledb
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/timescaledb
+  prune: true
+  wait: true
+  dependsOn:
+    - name: mqtt-redpanda-bridge
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: heatpump-settings
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/heatpump-settings
+  prune: true
+  wait: true
+  dependsOn:
+    - name: mqtt-redpanda-bridge
