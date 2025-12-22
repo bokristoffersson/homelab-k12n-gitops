@@ -1,0 +1,57 @@
+input:
+  mqtt:
+    urls:
+      - tcp://mosquitto.mosquitto.svc.cluster.local:1883
+    topics:
+      - thermiq_heatpump/data
+    client_id: mqtt-redpanda-bridge-heatpump
+    clean_session: true
+    qos: 1
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        root.ts = now().ts_format("2006-01-02T15:04:05.999999999Z07:00")
+        root.tags.device_id = this.Client_Name | ""
+        root.fields.outdoor_temp = this.d0
+        root.fields.supplyline_temp = this.d5
+        root.fields.returnline_temp = this.d6
+        root.fields.hotwater_temp = this.d7
+        root.fields.brine_out_temp = this.d8
+        root.fields.brine_in_temp = this.d9
+        root.fields.flowlinepump_speed = this.d30
+        root.fields.runtime_compressor = this.d104
+        root.fields.runtime_hotwater = this.d108
+        root.fields.runtime_3kw = this.d106
+        root.fields.runtime_6kw = this.d114
+        root.fields.indoor_temp = this.INDR_T
+        # Settings fields
+        root.fields.indoor_target_temp = this.d50
+        root.fields.mode = this.d51
+        root.fields.curve = this.d52
+        root.fields.curve_min = this.d53
+        root.fields.curve_max = this.d54
+        root.fields.curve_plus_5 = this.d55
+        root.fields.curve_zero = this.d56 | null
+        root.fields.curve_minus_5 = this.d57 | null
+        root.fields.heatstop = this.d58 | null
+        # Extract bit flags from d16
+        let d16 = this.d16 | 0
+        root.fields.brinepump_on = $d16.bitwise_and(1) > 0
+        root.fields.compressor_on = $d16.bitwise_and(2) > 0
+        root.fields.flowlinepump_on = $d16.bitwise_and(4) > 0
+        root.fields.hotwater_production = $d16.bitwise_and(8) > 0
+        # Extract bit flags from d13
+        let d13 = this.d13 | 0
+        root.fields.aux_heater_3kw_on = $d13.bitwise_and(1) > 0
+        root.fields.aux_heater_6kw_on = $d13.bitwise_and(2) > 0
+
+output:
+  kafka:
+    addresses:
+      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+    topic: homelab-heatpump-telemetry
+    client_id: mqtt-redpanda-bridge-heatpump
+    compression: snappy
+    max_in_flight: 10
