@@ -1,7 +1,7 @@
 input:
   kafka:
     addresses:
-      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+      - redpanda-v2.redpanda-v2.svc.cluster.local:9092
     topics:
       - homelab-heatpump-telemetry
     consumer_group: heatpump-settings
