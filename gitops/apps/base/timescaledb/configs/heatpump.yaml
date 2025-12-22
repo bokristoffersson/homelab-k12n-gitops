@@ -1,0 +1,85 @@
+input:
+  kafka:
+    addresses:
+      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+    topics:
+      - homelab-heatpump-telemetry
+    consumer_group: timescaledb-heatpump
+    start_from_oldest: false
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        let ts = this.ts.parse_timestamp("2006-01-02T15:04:05.999999999Z07:00")
+        let device_id = this.tags.device_id | ""
+        root.time = $ts
+        root.device_id = $device_id
+        root.outdoor_temp = this.fields.outdoor_temp.number()
+        root.supplyline_temp = this.fields.supplyline_temp.number()
+        root.returnline_temp = this.fields.returnline_temp.number()
+        root.hotwater_temp = this.fields.hotwater_temp.number()
+        root.brine_out_temp = this.fields.brine_out_temp.number()
+        root.brine_in_temp = this.fields.brine_in_temp.number()
+        root.flowlinepump_speed = this.fields.flowlinepump_speed.number()
+        root.runtime_compressor = this.fields.runtime_compressor.number()
+        root.runtime_hotwater = this.fields.runtime_hotwater.number()
+        root.runtime_3kw = this.fields.runtime_3kw.number()
+        root.runtime_6kw = this.fields.runtime_6kw.number()
+        root.indoor_temp = this.fields.indoor_temp.number()
+        root.brinepump_on = this.fields.brinepump_on.bool() | null
+        root.compressor_on = this.fields.compressor_on.bool() | null
+        root.flowlinepump_on = this.fields.flowlinepump_on.bool() | null
+        root.hotwater_production = this.fields.hotwater_production.bool() | null
+        root.aux_heater_3kw_on = this.fields.aux_heater_3kw_on.bool() | null
+        root.aux_heater_6kw_on = this.fields.aux_heater_6kw_on.bool() | null
+
+output:
+  sql_insert:
+    driver: postgres
+    dsn: postgres://postgres:postgres@timescaledb.timescaledb.svc.cluster.local:5432/telemetry?sslmode=disable
+    table: heatpump_status
+    columns:
+      - time
+      - device_id
+      - outdoor_temp
+      - supplyline_temp
+      - returnline_temp
+      - hotwater_temp
+      - brine_out_temp
+      - brine_in_temp
+      - flowlinepump_speed
+      - runtime_compressor
+      - runtime_hotwater
+      - runtime_3kw
+      - runtime_6kw
+      - indoor_temp
+      - brinepump_on
+      - compressor_on
+      - flowlinepump_on
+      - hotwater_production
+      - aux_heater_3kw_on
+      - aux_heater_6kw_on
+    args_mapping: |
+      root = [
+        this.time,
+        this.device_id,
+        this.outdoor_temp,
+        this.supplyline_temp,
+        this.returnline_temp,
+        this.hotwater_temp,
+        this.brine_out_temp,
+        this.brine_in_temp,
+        this.flowlinepump_speed,
+        this.runtime_compressor,
+        this.runtime_hotwater,
+        this.runtime_3kw,
+        this.runtime_6kw,
+        this.indoor_temp,
+        this.brinepump_on,
+        this.compressor_on,
+        this.flowlinepump_on,
+        this.hotwater_production,
+        this.aux_heater_3kw_on,
+        this.aux_heater_6kw_on
+      ]

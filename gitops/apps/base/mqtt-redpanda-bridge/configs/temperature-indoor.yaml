@@ -1,0 +1,38 @@
+input:
+  mqtt:
+    urls:
+      - tcp://mosquitto.mosquitto.svc.cluster.local:1883
+    topics:
+      - homelab/temperature/indoor
+    client_id: mqtt-redpanda-bridge-temperature-indoor
+    clean_session: true
+    qos: 1
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        root.ts = now().ts_format("2006-01-02T15:04:05.999999999Z07:00")
+        root.tags.device_id = this.src | ""
+        root.tags.mac_address = this.params.sys.mac | null
+        root.tags.location = "indoor"
+        root.fields.temperature_c = this.params.get("temperature:0").tC
+        root.fields.temperature_f = this.params.get("temperature:0").tF | null
+        root.fields.humidity = this.params.get("humidity:0").rh | null
+        root.fields.wifi_rssi = this.params.wifi.rssi | null
+        root.fields.battery_voltage = this.params.get("devicepower:0").battery.V | null
+        root.fields.battery_percent = this.params.get("devicepower:0").battery.percent | null
+        root.fields.external_power = this.params.get("devicepower:0").external.present | null
+        root.fields.uptime = this.params.sys.uptime | null
+        root.fields.ram_free = this.params.sys.ram_free | null
+        root.fields.wind_speed_ms = null
+        root.fields.pressure_hpa = null
+
+output:
+  kafka:
+    addresses:
+      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+    topic: homelab-temperature-indoor
+    client_id: mqtt-redpanda-bridge-temperature-indoor
+    compression: snappy
+    max_in_flight: 10

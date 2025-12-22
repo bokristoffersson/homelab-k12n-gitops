@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: heatpump-settings
+resources:
+  - namespace.yaml
+  - persistentvolumeclaim.yaml
+  - deployment.yaml
+  - service.yaml
+  - migration-job.yaml
+  - redpanda-connect-deployment.yaml
+
+configMapGenerator:
+  - name: heatpump-settings-config
+    files:
+      - configs/heatpump-settings.yaml
+  - name: postgres-migrations
+    files:
+      - migrations/001_initial_schema.sql
+      - migrations/run_migrations.sh

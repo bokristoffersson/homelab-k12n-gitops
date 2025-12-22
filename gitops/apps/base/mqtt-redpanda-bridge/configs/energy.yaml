@@ -1,0 +1,41 @@
+input:
+  mqtt:
+    urls:
+      - tcp://mosquitto.mosquitto.svc.cluster.local:1883
+    topics:
+      - homelab/energy/realtime
+    client_id: mqtt-redpanda-bridge-energy
+    clean_session: true
+    qos: 1
+
+pipeline:
+  processors:
+    - mapping: |
+        root = this
+        root.ts = now().ts_format("2006-01-02T15:04:05.999999999Z07:00")
+        root.tags.device_serial = this.saveeyeDeviceSerialNumber | ""
+        root.tags.meter_type = this.meterType | ""
+        root.fields.wifi_rssi = this.wifiRssi
+        root.fields.active_power_total = this.activeActualConsumption.total
+        root.fields.active_power_l1 = this.activeActualConsumption.L1
+        root.fields.active_power_l2 = this.activeActualConsumption.L2
+        root.fields.active_power_l3 = this.activeActualConsumption.L3
+        root.fields.active_production_total = this.activeActualProduction.total
+        root.fields.active_energy_total = this.activeTotalConsumption.total
+        root.fields.active_energy_production = this.activeTotalProduction.total
+        root.fields.voltage_l1 = this.rmsVoltage.L1
+        root.fields.voltage_l2 = this.rmsVoltage.L2
+        root.fields.voltage_l3 = this.rmsVoltage.L3
+        root.fields.current_l1 = this.rmsCurrent.L1
+        root.fields.current_l2 = this.rmsCurrent.L2
+        root.fields.current_l3 = this.rmsCurrent.L3
+        root.fields.power_factor = this.powerFactor.total
+
+output:
+  kafka:
+    addresses:
+      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+    topic: homelab-energy-realtime
+    client_id: mqtt-redpanda-bridge-energy
+    compression: snappy
+    max_in_flight: 10

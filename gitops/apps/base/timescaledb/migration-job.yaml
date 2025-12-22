@@ -1,0 +1,46 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: timescaledb-migration
+  namespace: timescaledb
+  annotations:
+    # Force job to recreate on each apply to run migrations
+    kustomize.toolkit.fluxcd.io/force: "true"
+spec:
+  ttlSecondsAfterFinished: 86400  # Clean up after 24 hours
+  template:
+    metadata:
+      labels:
+        app: timescaledb-migration
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: timescale/timescaledb:latest-pg16
+          command:
+            - /bin/sh
+            - -c
+            - |
+              chmod +x /migrations/run_migrations.sh
+              /migrations/run_migrations.sh
+          env:
+            - name: PGHOST
+              value: timescaledb
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              value: postgres
+            - name: PGDATABASE
+              value: postgres
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+              readOnly: true
+      volumes:
+        - name: migrations
+          configMap:
+            name: timescaledb-migrations
+            defaultMode: 0755
