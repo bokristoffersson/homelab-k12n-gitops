@@ -34,9 +34,6 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-            - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d
-              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -66,6 +63,3 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: timescaledb-data
-        - name: init-scripts
-          configMap:
-            name: timescaledb-init

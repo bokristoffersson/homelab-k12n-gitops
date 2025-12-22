@@ -3,10 +3,10 @@ kind: Kustomization
 namespace: timescaledb
 resources:
   - namespace.yaml
-  - configmap.yaml
   - persistentvolumeclaim.yaml
   - deployment.yaml
   - service.yaml
+  - migration-job.yaml
   - redpanda-connect-deployment.yaml
 
 configMapGenerator:
@@ -15,3 +15,7 @@ configMapGenerator:
       - configs/energy.yaml
       - configs/temperature.yaml
       - configs/heatpump.yaml
+  - name: timescaledb-migrations
+    files:
+      - migrations/001_initial_schema.sql
+      - migrations/run_migrations.sh

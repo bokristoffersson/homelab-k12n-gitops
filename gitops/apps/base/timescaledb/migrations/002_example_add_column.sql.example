@@ -1,0 +1,31 @@
+-- Migration: 002_example_add_column
+-- Description: Example migration showing how to add a new column
+--
+-- INSTRUCTIONS:
+-- 1. Copy this file and remove the .example extension
+-- 2. Update the version number and description
+-- 3. Modify the SQL statements for your actual changes
+-- 4. Add the migration file to kustomization.yaml configMapGenerator
+-- 5. Apply the kustomization to run the migration
+
+\c telemetry
+
+-- Example: Add a new column to energy_consumption table
+-- ALTER TABLE energy_consumption ADD COLUMN IF NOT EXISTS new_field INTEGER;
+
+-- Example: Create a new index
+-- CREATE INDEX IF NOT EXISTS idx_energy_new_field ON energy_consumption (new_field);
+
+-- Example: Add a continuous aggregate for hourly averages
+-- CREATE MATERIALIZED VIEW IF NOT EXISTS energy_hourly
+-- WITH (timescaledb.continuous) AS
+-- SELECT
+--   time_bucket('1 hour', time) AS bucket,
+--   device_serial,
+--   AVG(active_power_total) AS avg_power
+-- FROM energy_consumption
+-- GROUP BY bucket, device_serial;
+
+-- Record migration (update version and name)
+INSERT INTO schema_migrations (version, name) VALUES (2, 'example_add_column')
+ON CONFLICT (version) DO NOTHING;
