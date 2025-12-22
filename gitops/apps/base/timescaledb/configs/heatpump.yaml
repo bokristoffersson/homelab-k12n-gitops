@@ -26,7 +26,7 @@ pipeline:
         root.runtime_hotwater = this.fields.runtime_hotwater.number()
         root.runtime_3kw = this.fields.runtime_3kw.number()
         root.runtime_6kw = this.fields.runtime_6kw.number()
-        root.indoor_temp = this.fields.indoor_temp.number()
+        root.indoor_temp = this.fields.indoor_temp.number().round()
         root.brinepump_on = this.fields.brinepump_on.bool() | null
         root.compressor_on = this.fields.compressor_on.bool() | null
         root.flowlinepump_on = this.fields.flowlinepump_on.bool() | null
