@@ -4,6 +4,7 @@ namespace: mqtt-redpanda-bridge
 resources:
   - namespace.yaml
   - deployment.yaml
+  - mosquitto-credentials-sealed.yaml
 
 configMapGenerator:
   - name: mqtt-redpanda-bridge-config

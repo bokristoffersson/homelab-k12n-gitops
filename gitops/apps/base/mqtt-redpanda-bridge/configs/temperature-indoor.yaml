@@ -5,6 +5,8 @@ input:
     topics:
       - homelab/temperature/indoor
     client_id: mqtt-redpanda-bridge-temperature-indoor
+    user: ${MQTT_USER}
+    password: ${MQTT_PASSWORD}
     clean_session: true
     qos: 1
 
@@ -31,7 +33,7 @@ pipeline:
 output:
   kafka:
     addresses:
-      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+      - ${REDPANDA_BROKERS}
     topic: homelab-temperature-indoor
     client_id: mqtt-redpanda-bridge-temperature-indoor
     compression: snappy

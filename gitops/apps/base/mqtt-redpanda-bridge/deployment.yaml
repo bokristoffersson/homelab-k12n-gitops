@@ -20,6 +20,19 @@ spec:
           args:
             - streams
             - /config/*.yaml
+          env:
+            - name: MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: mosquitto-credentials
+                  key: mqtt_user
+            - name: MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mosquitto-credentials
+                  key: mqtt_password
+            - name: REDPANDA_BROKERS
+              value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
           ports:
             - containerPort: 4195
               name: http

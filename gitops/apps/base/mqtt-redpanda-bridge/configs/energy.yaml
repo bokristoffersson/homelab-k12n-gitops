@@ -5,6 +5,8 @@ input:
     topics:
       - homelab/energy/realtime
     client_id: mqtt-redpanda-bridge-energy
+    user: ${MQTT_USER}
+    password: ${MQTT_PASSWORD}
     clean_session: true
     qos: 1
 
@@ -34,7 +36,7 @@ pipeline:
 output:
   kafka:
     addresses:
-      - redpanda-v2-0.redpanda-v2.redpanda-v2.svc.cluster.local:9093
+      - ${REDPANDA_BROKERS}
     topic: homelab-energy-realtime
     client_id: mqtt-redpanda-bridge-energy
     compression: snappy
