@@ -8,6 +8,8 @@ resources:
   - service.yaml
   - migration-job.yaml
   - redpanda-connect-deployment.yaml
+  - backup-cronjob.yaml
+  - backup-aws-credentials-sealed.yaml
 
 configMapGenerator:
   - name: redpanda-connect-config
