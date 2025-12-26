@@ -2,8 +2,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mqtt-redpanda-bridge
-  namespace: mqtt-redpanda-bridge
+  name: mqtt-kafka-bridge
+  namespace: mqtt-kafka-bridge
 spec:
   template:
     spec:

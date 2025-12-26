@@ -1,13 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: mqtt-redpanda-bridge
+namespace: mqtt-kafka-bridge
 resources:
   - namespace.yaml
   - deployment.yaml
   - mosquitto-credentials-sealed.yaml
 
 configMapGenerator:
-  - name: mqtt-redpanda-bridge-config
+  - name: mqtt-kafka-bridge-config
     files:
       - configs/energy.yaml
       - configs/temperature-indoor.yaml

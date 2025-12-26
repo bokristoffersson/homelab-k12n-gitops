@@ -2,17 +2,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mqtt-redpanda-bridge
-  namespace: mqtt-redpanda-bridge
+  name: mqtt-kafka-bridge
+  namespace: mqtt-kafka-bridge
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mqtt-redpanda-bridge
+      app: mqtt-kafka-bridge
   template:
     metadata:
       labels:
-        app: mqtt-redpanda-bridge
+        app: mqtt-kafka-bridge
     spec:
       containers:
         - name: redpanda-connect
@@ -62,4 +62,4 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: mqtt-redpanda-bridge-config
+            name: mqtt-kafka-bridge-config
