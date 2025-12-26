@@ -23,6 +23,7 @@ make port-redpanda
 - [Local Development Guide](docs/LOCAL_DEVELOPMENT.md)
 - [Architecture & Principles](docs/ARCHITECTURE.md)
 - [Flux Setup (Production)](docs/FLUX_SETUP.md)
+- [Database Backup Setup](docs/BACKUP_SETUP.md)
 
 ---
 
