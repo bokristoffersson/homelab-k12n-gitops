@@ -1,0 +1,117 @@
+use crate::error::{AppError, Result};
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Config {
+    pub kafka: KafkaConfig,
+    pub server: ServerConfig,
+    pub auth: AuthConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KafkaConfig {
+    pub brokers: String,
+    pub topic: String,
+    pub group_id: String,
+    pub auto_offset_reset: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerConfig {
+    pub host: String,
+    pub port: u16,
+    pub max_connections: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthConfig {
+    pub jwt_secret: String,
+}
+
+impl Config {
+    /// Load configuration from a YAML file with environment variable substitution
+    pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+
+        // Expand environment variables in the format $(VAR_NAME)
+        let expanded = expand_env_vars(&content);
+
+        let config: Config = serde_yaml::from_str(&expanded)?;
+
+        // Validate configuration
+        config.validate()?;
+
+        Ok(config)
+    }
+
+    /// Validate configuration values
+    fn validate(&self) -> Result<()> {
+        if self.kafka.brokers.is_empty() {
+            return Err(AppError::Config("Kafka brokers cannot be empty".to_string()));
+        }
+
+        if self.kafka.topic.is_empty() {
+            return Err(AppError::Config("Kafka topic cannot be empty".to_string()));
+        }
+
+        if self.kafka.group_id.is_empty() {
+            return Err(AppError::Config("Kafka group_id cannot be empty".to_string()));
+        }
+
+        if self.server.port == 0 {
+            return Err(AppError::Config("Server port cannot be 0".to_string()));
+        }
+
+        if self.auth.jwt_secret.is_empty() {
+            return Err(AppError::Config("JWT secret cannot be empty".to_string()));
+        }
+
+        Ok(())
+    }
+}
+
+/// Expand environment variables in the format $(VAR_NAME)
+fn expand_env_vars(content: &str) -> String {
+    let mut result = content.to_string();
+
+    // Find all $(VAR_NAME) patterns
+    let re = regex::Regex::new(r"\$\(([A-Z_][A-Z0-9_]*)\)").unwrap();
+
+    for cap in re.captures_iter(content) {
+        let full_match = &cap[0];
+        let var_name = &cap[1];
+
+        if let Ok(value) = std::env::var(var_name) {
+            result = result.replace(full_match, &value);
+        }
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_expand_env_vars() {
+        std::env::set_var("TEST_VAR", "test_value");
+
+        let input = "secret: $(TEST_VAR)";
+        let output = expand_env_vars(input);
+
+        assert_eq!(output, "secret: test_value");
+
+        std::env::remove_var("TEST_VAR");
+    }
+
+    #[test]
+    fn test_expand_env_vars_not_found() {
+        let input = "secret: $(NONEXISTENT_VAR)";
+        let output = expand_env_vars(input);
+
+        // Should leave it unchanged if not found
+        assert_eq!(output, "secret: $(NONEXISTENT_VAR)");
+    }
+}

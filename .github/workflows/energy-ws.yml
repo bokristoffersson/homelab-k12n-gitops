@@ -1,0 +1,205 @@
+name: energy-ws CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "applications/energy-ws/**"
+      - ".github/workflows/energy-ws.yml"
+    tags:
+      - "energy-ws-v*"
+  pull_request:
+    branches: [main]
+    paths:
+      - "applications/energy-ws/**"
+      - ".github/workflows/energy-ws.yml"
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./applications/energy-ws
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          cache: true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run unit tests
+        run: cargo test --lib
+
+      - name: Run integration tests
+        run: cargo test --test integration_test
+
+  e2e-test:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: test
+    defaults:
+      run:
+        working-directory: ./applications/energy-ws
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Start Redpanda with Docker
+        run: |
+          docker run -d \
+            --name redpanda-test \
+            -p 9092:9092 \
+            docker.redpanda.com/redpandadata/redpanda:v24.2.19 \
+            redpanda start \
+            --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:9092 \
+            --advertise-kafka-addr internal://localhost:9092,external://localhost:9092 \
+            --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082 \
+            --advertise-pandaproxy-addr internal://localhost:8082,external://localhost:18082 \
+            --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081 \
+            --rpc-addr 0.0.0.0:33145 \
+            --advertise-rpc-addr localhost:33145 \
+            --mode dev-container \
+            --smp 1 \
+            --default-log-level=info
+
+      - name: Wait for Redpanda to be ready
+        run: |
+          echo "Waiting for Redpanda to start..."
+          for i in {1..30}; do
+            if docker exec redpanda-test rpk cluster health --api-urls localhost:9644 2>/dev/null | grep -q "Healthy"; then
+              echo "Redpanda is healthy!"
+              break
+            fi
+            echo "Attempt $i: Redpanda not ready yet..."
+            sleep 2
+          done
+          docker exec redpanda-test rpk cluster health --api-urls localhost:9644
+
+      - name: Create test topic
+        run: |
+          docker exec redpanda-test rpk topic create homelab-energy-realtime \
+            --brokers localhost:9092 \
+            --partitions 1 \
+            --replicas 1
+
+      - name: Run end-to-end tests
+        run: cargo test --test end_to_end_test -- --ignored
+        env:
+          REDPANDA_BROKERS: localhost:9092
+          JWT_SECRET: test-secret-for-e2e-testing
+
+      - name: Show Redpanda logs on failure
+        if: failure()
+        run: docker logs redpanda-test
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f redpanda-test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    defaults:
+      run:
+        working-directory: ./applications/energy-ws
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: energy-ws-binary
+          path: applications/energy-ws/target/release/energy-ws
+          retention-days: 7
+
+  docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/energy-ws-v')
+    defaults:
+      run:
+        working-directory: ./applications/energy-ws
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/energy-ws
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}},prefix=energy-ws-v
+            type=semver,pattern={{major}}.{{minor}},prefix=energy-ws-v
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./applications/energy-ws
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
