@@ -17,7 +17,7 @@ spec:
       containers:
         - name: server
           image: ghcr.io/goauthentik/server:2024.12.1
-          command:
+          args:
             - server
           env:
             - name: AUTHENTIK_SECRET_KEY
