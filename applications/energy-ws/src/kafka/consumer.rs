@@ -92,8 +92,8 @@ pub async fn run_consumer(
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_create_consumer() {
+    #[tokio::test]
+    async fn test_create_consumer() {
         // This test will fail if Kafka is not available, which is expected
         // In CI, this will be tested in the e2e tests with Docker
         let result = create_consumer("localhost:9092", "test-group", "latest");
