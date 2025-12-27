@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: authentik
+resources:
+  - namespace.yaml
+  # PostgreSQL
+  - postgres-pvc.yaml
+  - postgres-deployment.yaml
+  - postgres-service.yaml
+  # Redis
+  - redis-deployment.yaml
+  - redis-service.yaml
+  # Authentik Server
+  - server-deployment.yaml
+  - server-service.yaml
+  # Authentik Worker
+  - worker-deployment.yaml
+  # TODO: Uncomment after creating sealed secrets on control node
+  # - postgres-secret-sealed.yaml
+  # - authentik-secret-sealed.yaml

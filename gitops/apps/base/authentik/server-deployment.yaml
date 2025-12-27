@@ -1,0 +1,93 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik-server
+  namespace: authentik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authentik-server
+  template:
+    metadata:
+      labels:
+        app: authentik-server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/goauthentik/server:2024.12.1
+          command:
+            - server
+          env:
+            - name: AUTHENTIK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secret
+                  key: AUTHENTIK_SECRET_KEY
+            - name: AUTHENTIK_POSTGRESQL__HOST
+              value: "authentik-postgres"
+            - name: AUTHENTIK_POSTGRESQL__PORT
+              value: "5432"
+            - name: AUTHENTIK_POSTGRESQL__NAME
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-postgres-secret
+                  key: POSTGRES_DB
+            - name: AUTHENTIK_POSTGRESQL__USER
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-postgres-secret
+                  key: POSTGRES_USER
+            - name: AUTHENTIK_POSTGRESQL__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: AUTHENTIK_REDIS__HOST
+              value: "authentik-redis"
+            - name: AUTHENTIK_REDIS__PORT
+              value: "6379"
+            - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+              value: "false"
+            - name: AUTHENTIK_LOG_LEVEL
+              value: "info"
+            # Bootstrap admin credentials
+            - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secret
+                  key: AUTHENTIK_BOOTSTRAP_PASSWORD
+            - name: AUTHENTIK_BOOTSTRAP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secret
+                  key: AUTHENTIK_BOOTSTRAP_TOKEN
+          ports:
+            - containerPort: 9000
+              name: http
+            - containerPort: 9443
+              name: https
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /-/health/live/
+              port: 9000
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /-/health/ready/
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
