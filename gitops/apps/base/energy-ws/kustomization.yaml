@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: energy-ws
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - deployment.yaml
+  - service.yaml
+  # TODO: Uncomment after creating sealed secrets on control node
+  # - auth-secret-sealed.yaml
+  # - ghcr-secret-sealed.yaml

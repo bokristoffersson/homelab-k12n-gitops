@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: energy-ws-config
+  namespace: energy-ws
+data:
+  config.yaml: |
+    kafka:
+      brokers: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+      topic: "homelab-energy-realtime"
+      group_id: "energy-ws"
+      auto_offset_reset: "latest"  # Only new messages for real-time
+
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      max_connections: 1000
+
+    auth:
+      jwt_secret: "$(JWT_SECRET)"  # From environment variable
