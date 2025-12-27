@@ -79,8 +79,6 @@ auth:
 
 #[cfg(test)]
 mod auth_tests {
-    use super::*;
-
     #[tokio::test]
     async fn test_jwt_validation_valid_token() {
         // TODO: Implement when JWT auth module is ready
@@ -110,8 +108,6 @@ mod auth_tests {
 
 #[cfg(test)]
 mod protocol_tests {
-    use super::*;
-
     #[test]
     fn test_subscribe_message_deserialization() {
         // TODO: Implement when protocol types are ready
