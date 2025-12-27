@@ -1,6 +1,11 @@
 # Build stage
 FROM rust:1.83 AS builder
 
+# Install build dependencies for rdkafka
+RUN apt-get update && \
+    apt-get install -y cmake g++ libssl-dev pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy entire project
