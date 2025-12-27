@@ -3,25 +3,11 @@ FROM rust:1.75 as builder
 
 WORKDIR /app
 
-# Copy manifests
-COPY Cargo.toml Cargo.lock ./
-
-# Create a dummy main.rs to build dependencies
-RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
-    echo "pub fn dummy() {}" > src/lib.rs
-
-# Build dependencies (this layer will be cached)
-RUN cargo build --release && \
-    rm -rf src
-
-# Copy the actual source code
-COPY src ./src
-COPY config ./config
+# Copy entire project
+COPY . .
 
 # Build the application
-RUN touch src/main.rs && \
-    cargo build --release
+RUN cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim

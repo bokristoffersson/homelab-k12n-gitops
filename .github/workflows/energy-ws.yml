@@ -63,7 +63,8 @@ jobs:
   e2e-test:
     name: End-to-End Tests
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Disabled until E2E tests are implemented (currently all TODOs)
+    if: false
     needs: test
     defaults:
       run:
