@@ -1,6 +1,5 @@
 /// Integration tests for energy-ws service
 /// These tests verify individual components without requiring external services
-
 use serial_test::serial;
 
 #[cfg(test)]
@@ -26,10 +25,8 @@ auth:
   jwt_secret: "test-secret"
 "#;
 
-        let temp_file = std::env::temp_dir().join(format!(
-            "test-config-energy-ws-{}.yaml",
-            std::process::id()
-        ));
+        let temp_file =
+            std::env::temp_dir().join(format!("test-config-energy-ws-{}.yaml", std::process::id()));
         std::fs::write(&temp_file, config_str).unwrap();
 
         // TODO: Uncomment when Config is implemented
@@ -66,10 +63,8 @@ auth:
   jwt_secret: "$(JWT_SECRET)"
 "#;
 
-        let temp_file = std::env::temp_dir().join(format!(
-            "test-config-env-{}.yaml",
-            std::process::id()
-        ));
+        let temp_file =
+            std::env::temp_dir().join(format!("test-config-env-{}.yaml", std::process::id()));
         std::fs::write(&temp_file, config_str).unwrap();
 
         // TODO: Uncomment when Config with env var substitution is implemented

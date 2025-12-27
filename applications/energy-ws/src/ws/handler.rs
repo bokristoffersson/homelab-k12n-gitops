@@ -44,16 +44,13 @@ pub async fn ws_handler(
     State(state): State<Arc<AppState>>,
 ) -> Result<Response, StatusCode> {
     // Extract JWT token from query parameter
-    let token = params
-        .get("token")
-        .ok_or(StatusCode::UNAUTHORIZED)?;
+    let token = params.get("token").ok_or(StatusCode::UNAUTHORIZED)?;
 
     // Validate JWT token
-    let claims = auth::validate_token(token, &state.jwt_secret)
-        .map_err(|e| {
-            error!("JWT validation failed: {}", e);
-            StatusCode::UNAUTHORIZED
-        })?;
+    let claims = auth::validate_token(token, &state.jwt_secret).map_err(|e| {
+        error!("JWT validation failed: {}", e);
+        StatusCode::UNAUTHORIZED
+    })?;
 
     info!("WebSocket upgrade authorized for user: {}", claims.sub);
 
@@ -64,9 +61,7 @@ pub async fn ws_handler(
     let broadcast_rx = state.broadcast_tx.subscribe();
 
     // Upgrade to WebSocket
-    Ok(ws.on_upgrade(move |socket: WebSocket| {
-        handle_connection(socket, broadcast_rx, client_id)
-    }))
+    Ok(ws.on_upgrade(move |socket: WebSocket| handle_connection(socket, broadcast_rx, client_id)))
 }
 
 /// Health check endpoint

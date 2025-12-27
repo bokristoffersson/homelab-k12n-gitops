@@ -1,7 +1,6 @@
 /// End-to-end tests for energy-ws service
 /// These tests require Docker to run Redpanda locally
 /// Run with: cargo test --test end_to_end_test -- --ignored
-
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -11,11 +10,13 @@ async fn test_websocket_broadcast_from_kafka() {
     // Configuration from environment
     let redpanda_brokers =
         std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
-    let jwt_secret =
-        std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
 
     println!("Testing with Redpanda brokers: {}", redpanda_brokers);
-    println!("JWT secret configured: {}", if jwt_secret.is_empty() { "NO" } else { "YES" });
+    println!(
+        "JWT secret configured: {}",
+        if jwt_secret.is_empty() { "NO" } else { "YES" }
+    );
 
     // TODO: Implement when service is ready
     // 1. Create Kafka producer to send test messages
@@ -65,10 +66,12 @@ async fn test_websocket_broadcast_from_kafka() {
 async fn test_multiple_websocket_clients() {
     let redpanda_brokers =
         std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
-    let jwt_secret =
-        std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
 
-    println!("Testing multiple clients with Redpanda: {}", redpanda_brokers);
+    println!(
+        "Testing multiple clients with Redpanda: {}",
+        redpanda_brokers
+    );
 
     // TODO: Implement when service is ready
     // 1. Start service
@@ -109,8 +112,7 @@ async fn test_multiple_websocket_clients() {
 async fn test_websocket_reconnection() {
     let redpanda_brokers =
         std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
-    let jwt_secret =
-        std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
 
     println!("Testing reconnection with Redpanda: {}", redpanda_brokers);
 
@@ -153,8 +155,7 @@ async fn test_websocket_reconnection() {
 #[tokio::test]
 #[ignore] // Requires Docker with Redpanda running
 async fn test_unauthorized_connection_rejected() {
-    let jwt_secret =
-        std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
 
     println!("Testing unauthorized connection rejection");
 
@@ -187,10 +188,12 @@ async fn test_unauthorized_connection_rejected() {
 async fn test_ping_pong_keepalive() {
     let redpanda_brokers =
         std::env::var("REDPANDA_BROKERS").unwrap_or_else(|_| "localhost:9092".to_string());
-    let jwt_secret =
-        std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "test-secret".to_string());
 
-    println!("Testing ping/pong keepalive with Redpanda: {}", redpanda_brokers);
+    println!(
+        "Testing ping/pong keepalive with Redpanda: {}",
+        redpanda_brokers
+    );
 
     // TODO: Implement when service is ready
     // 1. Start service

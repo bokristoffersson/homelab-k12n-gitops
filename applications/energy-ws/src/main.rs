@@ -1,7 +1,4 @@
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use energy_ws::{
     config::Config,
     kafka::{create_consumer, run_consumer},
@@ -26,8 +23,8 @@ async fn main() -> anyhow::Result<()> {
     info!("Starting energy-ws service");
 
     // Load configuration
-    let config_path = std::env::var("CONFIG_PATH")
-        .unwrap_or_else(|_| "config/config.yaml".to_string());
+    let config_path =
+        std::env::var("CONFIG_PATH").unwrap_or_else(|_| "config/config.yaml".to_string());
 
     let config = Config::load(&config_path)?;
     info!("Configuration loaded from: {}", config_path);

@@ -48,7 +48,9 @@ impl Config {
     /// Validate configuration values
     fn validate(&self) -> Result<()> {
         if self.kafka.brokers.is_empty() {
-            return Err(AppError::Config("Kafka brokers cannot be empty".to_string()));
+            return Err(AppError::Config(
+                "Kafka brokers cannot be empty".to_string(),
+            ));
         }
 
         if self.kafka.topic.is_empty() {
@@ -56,7 +58,9 @@ impl Config {
         }
 
         if self.kafka.group_id.is_empty() {
-            return Err(AppError::Config("Kafka group_id cannot be empty".to_string()));
+            return Err(AppError::Config(
+                "Kafka group_id cannot be empty".to_string(),
+            ));
         }
 
         if self.server.port == 0 {

@@ -74,7 +74,10 @@ pub async fn handle_connection(
                                 debug!("Subscribed to streams: {:?}", subscribed_streams);
                             }
                             ClientMessage::Unsubscribe { streams } => {
-                                info!("Client {} unsubscribing from: {:?}", recv_client_id, streams);
+                                info!(
+                                    "Client {} unsubscribing from: {:?}",
+                                    recv_client_id, streams
+                                );
                                 for stream in &streams {
                                     subscribed_streams.remove(stream);
                                 }
@@ -98,7 +101,10 @@ pub async fn handle_connection(
                     // Axum handles ping/pong automatically
                 }
                 Message::Binary(_) => {
-                    warn!("Received unexpected binary message from client {}", recv_client_id);
+                    warn!(
+                        "Received unexpected binary message from client {}",
+                        recv_client_id
+                    );
                 }
             }
         }
