@@ -15,6 +15,6 @@ resources:
   - server-service.yaml
   # Authentik Worker
   - worker-deployment.yaml
-  # TODO: Uncomment after creating sealed secrets on control node
-  # - postgres-secret-sealed.yaml
-  # - authentik-secret-sealed.yaml
+
+  - postgres-secret-sealed.yaml
+  - authentik-secret-sealed.yaml
