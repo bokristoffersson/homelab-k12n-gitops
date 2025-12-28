@@ -4,31 +4,35 @@ USER root
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y git wget && \
+    apt-get install -y git curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Install lua-resty-openidc and its dependencies manually
 # This avoids luarocks dependency resolution issues
 
 # Install lua-resty-http
-RUN wget -qO- https://github.com/pintsized/lua-resty-http/archive/refs/tags/v0.17.1.tar.gz | tar -xz -C /tmp && \
+RUN curl -fsSL https://github.com/pintsized/lua-resty-http/archive/refs/tags/v0.17.1.tar.gz -o /tmp/lua-resty-http.tar.gz && \
+    tar -xzf /tmp/lua-resty-http.tar.gz -C /tmp && \
     cp -r /tmp/lua-resty-http-0.17.1/lib/resty/* /usr/local/share/lua/5.1/resty/ && \
-    rm -rf /tmp/lua-resty-http-0.17.1
+    rm -rf /tmp/lua-resty-http*
 
 # Install lua-resty-session
-RUN wget -qO- https://github.com/bungle/lua-resty-session/archive/refs/tags/v4.0.5.tar.gz | tar -xz -C /tmp && \
+RUN curl -fsSL https://github.com/bungle/lua-resty-session/archive/refs/tags/v4.0.5.tar.gz -o /tmp/lua-resty-session.tar.gz && \
+    tar -xzf /tmp/lua-resty-session.tar.gz -C /tmp && \
     cp -r /tmp/lua-resty-session-4.0.5/lib/resty/* /usr/local/share/lua/5.1/resty/ && \
-    rm -rf /tmp/lua-resty-session-4.0.5
+    rm -rf /tmp/lua-resty-session*
 
 # Install lua-resty-jwt
-RUN wget -qO- https://github.com/SkyLothar/lua-resty-jwt/archive/refs/tags/v0.2.3.tar.gz | tar -xz -C /tmp && \
+RUN curl -fsSL https://github.com/SkyLothar/lua-resty-jwt/archive/refs/tags/v0.2.3.tar.gz -o /tmp/lua-resty-jwt.tar.gz && \
+    tar -xzf /tmp/lua-resty-jwt.tar.gz -C /tmp && \
     cp -r /tmp/lua-resty-jwt-0.2.3/lib/resty/* /usr/local/share/lua/5.1/resty/ && \
-    rm -rf /tmp/lua-resty-jwt-0.2.3
+    rm -rf /tmp/lua-resty-jwt*
 
 # Install lua-resty-openidc
-RUN wget -qO- https://github.com/zmartzone/lua-resty-openidc/archive/refs/tags/v1.7.6.tar.gz | tar -xz -C /tmp && \
+RUN curl -fsSL https://github.com/zmartzone/lua-resty-openidc/archive/refs/tags/v1.7.6.tar.gz -o /tmp/lua-resty-openidc.tar.gz && \
+    tar -xzf /tmp/lua-resty-openidc.tar.gz -C /tmp && \
     cp -r /tmp/lua-resty-openidc-1.7.6/lib/resty/* /usr/local/share/lua/5.1/resty/ && \
-    rm -rf /tmp/lua-resty-openidc-1.7.6
+    rm -rf /tmp/lua-resty-openidc*
 
 # Install kong-oidc plugin
 RUN git clone --branch v1.3.0 --depth 1 https://github.com/revomatico/kong-oidc.git /tmp/kong-oidc && \
