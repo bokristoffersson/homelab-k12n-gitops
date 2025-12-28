@@ -35,7 +35,8 @@ RUN curl -fsSL https://github.com/zmartzone/lua-resty-openidc/archive/refs/tags/
     rm -rf /tmp/lua-resty-openidc*
 
 # Install kong-oidc plugin
-RUN git clone --branch v1.3.0 --depth 1 https://github.com/revomatico/kong-oidc.git /tmp/kong-oidc && \
+# Note: kong-oidc repo doesn't have version tags, using master branch
+RUN git clone --depth 1 https://github.com/revomatico/kong-oidc.git /tmp/kong-oidc && \
     mkdir -p /usr/local/share/lua/5.1/kong/plugins/oidc && \
     cp -r /tmp/kong-oidc/kong/plugins/oidc/* /usr/local/share/lua/5.1/kong/plugins/oidc/ && \
     rm -rf /tmp/kong-oidc
