@@ -4,8 +4,14 @@ USER root
 
 # Install git and dependencies for building Lua rocks
 RUN apt-get update && \
-    apt-get install -y git unzip && \
+    apt-get install -y git unzip build-essential && \
     rm -rf /var/lib/apt/lists/*
+
+# Install lua-resty dependencies in correct order
+# These are needed for lua-resty-openidc
+RUN luarocks install lua-resty-http && \
+    luarocks install lua-resty-session && \
+    luarocks install lua-resty-jwt
 
 # Install lua-resty-openidc (dependency for kong-oidc)
 RUN luarocks install lua-resty-openidc
