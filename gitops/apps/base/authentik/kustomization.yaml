@@ -18,6 +18,7 @@ resources:
 
   # Blueprints
   - blueprint-heatpump-web.yaml
+  - blueprint-kong-api-gateway.yaml
 
   - postgres-secret-sealed.yaml
   - authentik-secret-sealed.yaml
