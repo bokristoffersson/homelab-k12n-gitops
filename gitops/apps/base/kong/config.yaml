@@ -1,0 +1,68 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-config
+  namespace: kong
+data:
+  kong.yml: |
+    _format_version: "3.0"
+    _transform: true
+
+    # Backend Services
+    services:
+      # Redpanda Sink API
+      - name: redpanda-sink
+        url: http://redpanda-sink.redpanda-sink.svc.cluster.local:8080
+        routes:
+          - name: api-route
+            paths:
+              - /api/v1
+            strip_path: false
+        plugins:
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - X-Authenticated-User-Id:$(X-Userinfo-Sub)
+                  - X-Authenticated-User-Email:$(X-Userinfo-Email)
+                  - X-Authenticated-Scope:$(X-Userinfo-Scope)
+
+      # Energy WebSocket Service
+      - name: energy-ws
+        url: http://energy-ws.energy-ws.svc.cluster.local:8080
+        routes:
+          - name: ws-route
+            paths:
+              - /ws
+            strip_path: false
+        plugins:
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - X-Authenticated-User-Id:$(X-Userinfo-Sub)
+                  - X-Authenticated-User-Email:$(X-Userinfo-Email)
+                  - X-Authenticated-Scope:$(X-Userinfo-Scope)
+
+    # Global Plugins
+    plugins:
+      # OIDC Authentication with Authentik
+      - name: openid-connect
+        config:
+          issuer: http://authentik-server.authentik.svc.cluster.local:9000/application/o/api-gateway/
+          client_id: $(KONG_OIDC_CLIENT_ID)
+          client_secret: $(KONG_OIDC_CLIENT_SECRET)
+          bearer_only: yes
+          introspection_endpoint: http://authentik-server.authentik.svc.cluster.local:9000/application/o/introspect/
+          ssl_verify: false
+          cache_introspection: true
+          introspection_cache_ttl: 60
+          scopes:
+            - openid
+            - profile
+            - email
+            - read:energy
+            - read:heatpump
+            - read:settings
+            - write:settings
