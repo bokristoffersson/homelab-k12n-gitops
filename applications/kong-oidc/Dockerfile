@@ -23,9 +23,9 @@ RUN curl -fsSL https://github.com/bungle/lua-resty-session/archive/refs/tags/v4.
     rm -rf /tmp/lua-resty-session*
 
 # Install lua-resty-jwt
-RUN curl -fsSL https://github.com/SkyLothar/lua-resty-jwt/archive/refs/tags/v0.2.3.tar.gz -o /tmp/lua-resty-jwt.tar.gz && \
+RUN curl -fsSL https://github.com/SkyLothar/lua-resty-jwt/archive/refs/tags/v0.1.11.tar.gz -o /tmp/lua-resty-jwt.tar.gz && \
     tar -xzf /tmp/lua-resty-jwt.tar.gz -C /tmp && \
-    cp -r /tmp/lua-resty-jwt-0.2.3/lib/resty/* /usr/local/share/lua/5.1/resty/ && \
+    cp -r /tmp/lua-resty-jwt-0.1.11/lib/resty/* /usr/local/share/lua/5.1/resty/ && \
     rm -rf /tmp/lua-resty-jwt*
 
 # Install lua-resty-openidc
