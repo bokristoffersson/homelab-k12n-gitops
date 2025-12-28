@@ -56,7 +56,7 @@ spec:
 
             # Plugins
             - name: KONG_PLUGINS
-              value: "bundled,openid-connect"
+              value: "bundled"
 
           ports:
             - name: proxy

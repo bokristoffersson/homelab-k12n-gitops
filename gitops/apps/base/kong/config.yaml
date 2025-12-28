@@ -46,23 +46,8 @@ data:
                   - X-Authenticated-Scope:$(X-Userinfo-Scope)
 
     # Global Plugins
-    plugins:
-      # OIDC Authentication with Authentik
-      - name: openid-connect
-        config:
-          issuer: http://authentik-server.authentik.svc.cluster.local:9000/application/o/api-gateway/
-          client_id: $(KONG_OIDC_CLIENT_ID)
-          client_secret: $(KONG_OIDC_CLIENT_SECRET)
-          bearer_only: yes
-          introspection_endpoint: http://authentik-server.authentik.svc.cluster.local:9000/application/o/introspect/
-          ssl_verify: false
-          cache_introspection: true
-          introspection_cache_ttl: 60
-          scopes:
-            - openid
-            - profile
-            - email
-            - read:energy
-            - read:heatpump
-            - read:settings
-            - write:settings
+    # NOTE: openid-connect plugin requires Kong Enterprise Edition
+    # For now, Kong acts as a reverse proxy without authentication
+    # TODO: Either use Kong Enterprise, build custom image with kong-oidc plugin,
+    #       or implement authentication in backend services
+    plugins: []
