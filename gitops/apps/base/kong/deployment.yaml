@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: kong
-          image: kong:3.8
+          image: ghcr.io/bokristoffersson/kong-oidc:latest
           env:
             # DB-less mode
             - name: KONG_DATABASE
@@ -56,7 +56,7 @@ spec:
 
             # Plugins
             - name: KONG_PLUGINS
-              value: "bundled"
+              value: "bundled,oidc"
 
           ports:
             - name: proxy
