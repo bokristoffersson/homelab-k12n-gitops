@@ -1,17 +1,22 @@
 import axios from 'axios';
-import { authService } from './auth';
+import { oauthService } from './oauth';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.k12n.com';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
 
-// Add request interceptor to add JWT token from localStorage
+// Add request interceptor to add OAuth access token from localStorage
 api.interceptors.request.use(
-  (config) => {
-    const token = authService.getToken();
+  async (config) => {
+    // Check if token needs refresh before making request
+    if (oauthService.needsRefresh()) {
+      await oauthService.refreshToken();
+    }
+
+    const token = oauthService.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,16 +30,28 @@ api.interceptors.request.use(
 // Add response interceptor to handle 401
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      authService.logout();
-      window.location.href = '/login';
+      // Try to refresh token once
+      const refreshed = await oauthService.refreshToken();
+
+      if (refreshed && error.config) {
+        // Retry the original request with new token
+        const token = oauthService.getToken();
+        if (token) {
+          error.config.headers.Authorization = `Bearer ${token}`;
+        }
+        return axios.request(error.config);
+      }
+
+      // Refresh failed or no config, logout
+      oauthService.logout();
     }
     return Promise.reject(error);
   }
 );
 
-// Auth initialization is handled in App.tsx to avoid circular dependency
+// OAuth initialization is handled in App.tsx
 
 
 
