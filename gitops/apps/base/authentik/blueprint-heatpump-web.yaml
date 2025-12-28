@@ -23,12 +23,15 @@ data:
         attrs:
           name: Heatpump Web
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
           client_type: public
           client_id: heatpump-web
           # No client_secret needed for public clients (SPAs)
-          redirect_uris: |
-            https://heatpump.k12n.com/auth/callback
-            http://localhost:5173/auth/callback
+          redirect_uris:
+            - matching_mode: strict
+              url: "https://heatpump.k12n.com/auth/callback"
+            - matching_mode: strict
+              url: "http://localhost:5173/auth/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
           property_mappings:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]

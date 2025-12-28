@@ -92,5 +92,9 @@ data:
       - hostname: heatpump.k12n.com
         service: http://heatpump-web.heatpump-web.svc.cluster.local:80
 
+      # Authentik SSO/Identity Provider
+      - hostname: authentik.k12n.com
+        service: http://authentik-server.authentik.svc.cluster.local:9000
+
       # Catch-all rule (required)
       - service: http_status:404
