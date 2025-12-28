@@ -68,6 +68,10 @@ spec:
               name: http
             - containerPort: 9443
               name: https
+          volumeMounts:
+            - name: blueprints
+              mountPath: /blueprints/custom
+              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -91,3 +95,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
+      volumes:
+        - name: blueprints
+          configMap:
+            name: authentik-blueprint-heatpump-web

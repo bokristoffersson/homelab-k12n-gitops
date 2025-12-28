@@ -1,0 +1,126 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprint-heatpump-web
+  namespace: authentik
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+data:
+  heatpump-web.yaml: |
+    version: 1
+    metadata:
+      name: Heatpump Web OAuth2 Application
+      labels:
+        application: heatpump-web
+
+    entries:
+      # OAuth2/OpenID Provider for heatpump-web
+      - model: authentik_providers_oauth2.oauth2provider
+        id: heatpump-web-provider
+        identifiers:
+          name: heatpump-web
+        attrs:
+          name: Heatpump Web
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          client_type: public
+          client_id: heatpump-web
+          # No client_secret needed for public clients (SPAs)
+          redirect_uris: |
+            https://heatpump.k12n.com/auth/callback
+            http://localhost:5173/auth/callback
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          issuer_mode: per_provider
+          access_code_validity: minutes=1
+          access_token_validity: hours=24
+          refresh_token_validity: days=30
+
+      # Application for heatpump-web
+      - model: authentik_core.application
+        id: heatpump-web-app
+        identifiers:
+          slug: heatpump-web
+        attrs:
+          name: Heatpump Dashboard
+          slug: heatpump-web
+          provider: !KeyOf heatpump-web-provider
+          policy_engine_mode: any
+          meta_launch_url: https://heatpump.k12n.com
+          meta_icon: https://heatpump.k12n.com/favicon.ico
+          meta_description: Real-time heatpump monitoring and energy dashboard
+          open_in_new_tab: false
+
+      # Custom OAuth2 scopes for API access
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-read-energy
+        identifiers:
+          scope_name: read:energy
+        attrs:
+          name: Read Energy Data
+          scope_name: read:energy
+          description: Read energy consumption and production data
+          expression: |
+            return {
+              "read:energy": True
+            }
+
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-read-heatpump
+        identifiers:
+          scope_name: read:heatpump
+        attrs:
+          name: Read Heatpump Data
+          scope_name: read:heatpump
+          description: Read heatpump telemetry and status
+          expression: |
+            return {
+              "read:heatpump": True
+            }
+
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-read-settings
+        identifiers:
+          scope_name: read:settings
+        attrs:
+          name: Read Settings
+          scope_name: read:settings
+          description: Read user settings and preferences
+          expression: |
+            return {
+              "read:settings": True
+            }
+
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-write-settings
+        identifiers:
+          scope_name: write:settings
+        attrs:
+          name: Write Settings
+          scope_name: write:settings
+          description: Modify user settings and preferences
+          expression: |
+            return {
+              "write:settings": True
+            }
+
+      # Add custom scopes to the provider
+      - model: authentik_providers_oauth2.oauth2provider
+        id: heatpump-web-provider-scopes
+        identifiers:
+          name: heatpump-web
+        state: present
+        attrs:
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+            - !KeyOf scope-read-energy
+            - !KeyOf scope-read-heatpump
+            - !KeyOf scope-read-settings
+            - !KeyOf scope-write-settings

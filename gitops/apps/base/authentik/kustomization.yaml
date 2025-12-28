@@ -16,5 +16,8 @@ resources:
   # Authentik Worker
   - worker-deployment.yaml
 
+  # Blueprints
+  - blueprint-heatpump-web.yaml
+
   - postgres-secret-sealed.yaml
   - authentik-secret-sealed.yaml
