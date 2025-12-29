@@ -4,7 +4,3 @@ kind: Kustomization
 resources:
   - ../../base/traefik-routes
 
-namePrefix: homelab-
-
-commonLabels:
-  environment: homelab
