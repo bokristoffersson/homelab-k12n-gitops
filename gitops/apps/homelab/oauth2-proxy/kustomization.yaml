@@ -4,17 +4,3 @@ kind: Kustomization
 resources:
   - ../../base/oauth2-proxy
 
-namePrefix: homelab-
-
-commonLabels:
-  environment: homelab
-
-patches:
-  # SealedSecret names must not be prefixed - they were encrypted for the original name
-  - patch: |-
-      - op: replace
-        path: /metadata/name
-        value: oauth2-proxy-secrets
-    target:
-      kind: SealedSecret
-      name: homelab-oauth2-proxy-secrets
