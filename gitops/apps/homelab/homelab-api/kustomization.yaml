@@ -4,5 +4,3 @@ kind: Kustomization
 resources:
   - ../../base/homelab-api
 
-nameSuffix: ""
-namePrefix: homelab-
