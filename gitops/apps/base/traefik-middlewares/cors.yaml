@@ -1,0 +1,26 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: cors
+  namespace: traefik
+spec:
+  headers:
+    accessControlAllowOriginList:
+      - https://heatpump.k12n.com
+      - http://localhost:5173
+    accessControlAllowMethods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    accessControlAllowHeaders:
+      - Authorization
+      - Content-Type
+      - Accept
+    accessControlExposeHeaders:
+      - Authorization
+    accessControlAllowCredentials: true
+    accessControlMaxAge: 3600

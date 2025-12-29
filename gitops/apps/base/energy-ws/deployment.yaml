@@ -29,11 +29,12 @@ spec:
               value: /config/config.yaml
             - name: RUST_LOG
               value: "energy_ws=info,tower_http=info"
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secret
-                  key: JWT_SECRET
+            # Legacy HS256 authentication (commented out for JWKS migration)
+            # - name: JWT_SECRET
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: auth-secret
+            #       key: JWT_SECRET
           volumeMounts:
             - name: config
               mountPath: /config

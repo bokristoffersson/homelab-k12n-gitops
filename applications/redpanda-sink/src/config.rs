@@ -141,11 +141,19 @@ fn default_api_port() -> u16 {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthConfig {
-    pub jwt_secret: String,
+    // Legacy HS256 configuration (for local auth)
+    #[serde(default)]
+    pub jwt_secret: Option<String>,
     #[serde(default = "default_jwt_expiry_hours")]
     pub jwt_expiry_hours: u64,
     #[serde(default)]
     pub users: Vec<User>,
+
+    // JWKS configuration (for RS256 validation from Authentik)
+    #[serde(default)]
+    pub jwks_url: Option<String>,
+    #[serde(default)]
+    pub issuer: Option<String>,
 }
 
 fn default_jwt_expiry_hours() -> u64 {
@@ -180,7 +188,7 @@ impl Config {
         // Optional: allow JWT_SECRET env to override auth.jwt_secret
         if let Ok(jwt_secret) = std::env::var("JWT_SECRET") {
             if let Some(ref mut auth) = cfg.auth {
-                auth.jwt_secret = jwt_secret;
+                auth.jwt_secret = Some(jwt_secret);
             }
         }
 
@@ -422,7 +430,7 @@ pipelines:
         // Verify Auth config
         assert!(config.auth.is_some());
         let auth = config.auth.as_ref().unwrap();
-        assert_eq!(auth.jwt_secret, "test-secret-key");
+        assert_eq!(auth.jwt_secret, Some("test-secret-key".to_string()));
         assert_eq!(auth.jwt_expiry_hours, 24);
         assert_eq!(auth.users.len(), 1);
         assert_eq!(auth.users[0].username, "admin");
@@ -514,7 +522,7 @@ pipelines:
         // Verify JWT_SECRET was overridden
         assert!(config.auth.is_some());
         let auth = config.auth.as_ref().unwrap();
-        assert_eq!(auth.jwt_secret, "env-override-secret");
+        assert_eq!(auth.jwt_secret, Some("env-override-secret".to_string()));
         assert_eq!(auth.jwt_expiry_hours, 12); // Should remain unchanged
 
         if let Some(val) = original_jwt {

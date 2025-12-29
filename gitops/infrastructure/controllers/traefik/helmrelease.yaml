@@ -1,0 +1,59 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: traefik
+      version: "33.4.0"  # Latest stable
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+        namespace: flux-system
+      interval: 12h
+  values:
+    # ClusterIP service (Cloudflare Tunnel will route to it)
+    service:
+      type: ClusterIP
+
+    # Ports
+    ports:
+      web:
+        port: 8000
+        exposedPort: 80
+      websecure:
+        port: 8443
+        exposedPort: 443
+
+    # Disable dashboard in production
+    ingressRoute:
+      dashboard:
+        enabled: false
+
+    # Enable CRDs
+    providers:
+      kubernetesCRD:
+        enabled: true
+        allowCrossNamespace: true
+      kubernetesIngress:
+        enabled: false  # Use IngressRoute CRD only
+
+    # Logs
+    logs:
+      general:
+        level: INFO
+      access:
+        enabled: true
+
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi

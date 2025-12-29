@@ -9,6 +9,25 @@ database:
     batch_size: 500
     linger_ms: 500
 
+# Optional API configuration
+api:
+  enabled: true
+  host: "0.0.0.0"
+  port: 8080
+
+# Authentication configuration
+auth:
+  # JWKS-based validation (RS256) for Authentik tokens
+  jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
+  issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+
+  # Legacy HS256 configuration (optional, for local auth)
+  # jwt_secret: "your-secret-key"
+  # jwt_expiry_hours: 24
+  # users:
+  #   - username: "admin"
+  #     password_hash: "$2b$12$..."
+
 pipelines:
   # Timeseries pipeline example
   - name: "telemetry"

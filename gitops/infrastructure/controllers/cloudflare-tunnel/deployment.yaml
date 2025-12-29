@@ -74,27 +74,27 @@ data:
     # Metrics for monitoring
     metrics: 0.0.0.0:2000
     
-    # Ingress rules
+    # Ingress rules - All traffic routed through Traefik
     ingress:
-      # Whoami service
-      - hostname: whoami.k12n.com
-        service: http://homelab-whoami.default.svc.cluster.local:80
-
-      # grafana
-      - hostname: grafana.k12n.com
-        service: http://grafana.grafana.svc.cluster.local:80
-
-      # Backend API (protected with Kong + Authentik OIDC)
+      # Backend API (via Traefik)
       - hostname: api.k12n.com
-        service: http://kong-proxy.kong.svc.cluster.local:8000
+        service: http://traefik.traefik.svc.cluster.local:8000
 
-      # Heatpump Web Frontend
+      # Heatpump Web Frontend (via Traefik)
       - hostname: heatpump.k12n.com
-        service: http://heatpump-web.heatpump-web.svc.cluster.local:80
+        service: http://traefik.traefik.svc.cluster.local:8000
 
-      # Authentik SSO/Identity Provider
+      # Authentik SSO (via Traefik)
       - hostname: authentik.k12n.com
-        service: http://authentik-server.authentik.svc.cluster.local:9000
+        service: http://traefik.traefik.svc.cluster.local:8000
+
+      # Grafana (via Traefik)
+      - hostname: grafana.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:8000
+
+      # Whoami (via Traefik)
+      - hostname: whoami.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:8000
 
       # Catch-all rule (required)
       - service: http_status:404

@@ -25,11 +25,16 @@ data:
       detailed_errors: true
     
     auth:
-      jwt_secret: "$(JWT_SECRET)"
-      jwt_expiry_hours: 24
-      users:
-        - username: "admin"
-          password_hash: "$(ADMIN_PASSWORD_HASH)"
+      # JWKS-based validation (RS256) for Authentik tokens
+      jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
+      issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+
+      # Legacy HS256 configuration (for local auth, optional)
+      # jwt_secret: "$(JWT_SECRET)"
+      # jwt_expiry_hours: 24
+      # users:
+      #   - username: "admin"
+      #     password_hash: "$(ADMIN_PASSWORD_HASH)"
     
     pipelines:
       - name: "heatpump"

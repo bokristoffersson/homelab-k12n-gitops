@@ -26,7 +26,15 @@ pub struct ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthConfig {
-    pub jwt_secret: String,
+    // Legacy HS256 configuration (optional)
+    #[serde(default)]
+    pub jwt_secret: Option<String>,
+
+    // JWKS configuration for RS256 validation from Authentik
+    #[serde(default)]
+    pub jwks_url: Option<String>,
+    #[serde(default)]
+    pub issuer: Option<String>,
 }
 
 impl Config {
@@ -67,8 +75,14 @@ impl Config {
             return Err(AppError::Config("Server port cannot be 0".to_string()));
         }
 
-        if self.auth.jwt_secret.is_empty() {
-            return Err(AppError::Config("JWT secret cannot be empty".to_string()));
+        // Validate that either legacy HS256 or JWKS configuration is provided
+        let has_legacy = self.auth.jwt_secret.is_some();
+        let has_jwks = self.auth.jwks_url.is_some() && self.auth.issuer.is_some();
+
+        if !has_legacy && !has_jwks {
+            return Err(AppError::Config(
+                "Either jwt_secret or (jwks_url and issuer) must be provided".to_string(),
+            ));
         }
 
         Ok(())

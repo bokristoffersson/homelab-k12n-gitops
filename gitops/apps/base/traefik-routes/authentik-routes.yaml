@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authentik-routes
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    # Authentik SSO (public)
+    - match: Host(`authentik.k12n.com`)
+      kind: Rule
+      services:
+        - name: authentik-server
+          namespace: authentik
+          port: 9000

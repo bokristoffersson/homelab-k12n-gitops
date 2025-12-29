@@ -1,0 +1,17 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frontend-routes
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    # Heatpump Web Frontend (public)
+    - match: Host(`heatpump.k12n.com`)
+      kind: Rule
+      services:
+        - name: heatpump-web
+          namespace: heatpump-web
+          port: 80
