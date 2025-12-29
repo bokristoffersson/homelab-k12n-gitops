@@ -8,7 +8,7 @@ spec:
   entryPoints:
     - web  # Port 8000
   routes:
-    # Redpanda Sink API (protected)
+    # Homelab API (protected)
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
       kind: Rule
       middlewares:
@@ -19,8 +19,8 @@ spec:
         - name: security-headers
           namespace: traefik
       services:
-        - name: redpanda-sink
-          namespace: redpanda-sink
+        - name: homelab-api
+          namespace: homelab-api
           port: 8080
 
     # Energy WebSocket (protected)

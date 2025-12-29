@@ -1,0 +1,14 @@
+database:
+  url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@timescaledb.heatpump-mqtt.svc.cluster.local:5432/timescaledb"
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+
+auth:
+  # JWKS-based validation (RS256) for Authentik tokens
+  jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
+  issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+
+  # Placeholder for legacy HS256 - not used when JWKS is configured
+  jwt_secret: "placeholder"
