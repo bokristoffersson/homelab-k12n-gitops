@@ -17,21 +17,21 @@ pipeline:
         root.time = $ts
         root.device_serial = $device_serial
         root.meter_type = $meter_type
-        root.wifi_rssi = this.fields.wifi_rssi.number()
-        root.active_power_total = this.fields.active_power_total.number()
-        root.active_power_l1 = this.fields.active_power_l1.number()
-        root.active_power_l2 = this.fields.active_power_l2.number()
-        root.active_power_l3 = this.fields.active_power_l3.number()
-        root.active_production_total = this.fields.active_production_total.number()
-        root.active_energy_total = this.fields.active_energy_total.number()
-        root.active_energy_production = this.fields.active_energy_production.number()
-        root.voltage_l1 = this.fields.voltage_l1.number()
-        root.voltage_l2 = this.fields.voltage_l2.number()
-        root.voltage_l3 = this.fields.voltage_l3.number()
-        root.current_l1 = this.fields.current_l1.number()
-        root.current_l2 = this.fields.current_l2.number()
-        root.current_l3 = this.fields.current_l3.number()
-        root.power_factor = this.fields.power_factor.number()
+        root.wifi_rssi = this.fields.wifi_rssi.number().floor()
+        root.active_power_total = this.fields.active_power_total.number().floor()
+        root.active_power_l1 = this.fields.active_power_l1.number().floor()
+        root.active_power_l2 = this.fields.active_power_l2.number().floor()
+        root.active_power_l3 = this.fields.active_power_l3.number().floor()
+        root.active_production_total = this.fields.active_production_total.number().floor()
+        root.active_energy_total = this.fields.active_energy_total.number().floor()
+        root.active_energy_production = this.fields.active_energy_production.number().floor()
+        root.voltage_l1 = this.fields.voltage_l1.number().floor()
+        root.voltage_l2 = this.fields.voltage_l2.number().floor()
+        root.voltage_l3 = this.fields.voltage_l3.number().floor()
+        root.current_l1 = this.fields.current_l1.number().floor()
+        root.current_l2 = this.fields.current_l2.number().floor()
+        root.current_l3 = this.fields.current_l3.number().floor()
+        root.power_factor = this.fields.power_factor.number().floor()
 
 output:
   sql_insert:
