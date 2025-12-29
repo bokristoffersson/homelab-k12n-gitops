@@ -43,12 +43,17 @@ spec:
                   key: POSTGRES_PASSWORD
             - name: REDPANDA_BROKERS
               value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
-            # JWT_SECRET provided for config parsing compatibility
+            # Auth secrets provided for config parsing compatibility
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: auth-secret
                   key: JWT_SECRET
+            - name: ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secret
+                  key: ADMIN_PASSWORD_HASH
           volumeMounts:
             - name: config
               mountPath: /config
