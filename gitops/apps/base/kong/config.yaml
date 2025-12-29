@@ -76,6 +76,7 @@ data:
       - name: oidc
         config:
           client_id: heatpump-web
+          client_secret: dummy_not_used_for_jwt_validation
           discovery: http://authentik-server.authentik.svc.cluster.local:9000/application/o/heatpump-web/.well-known/openid-configuration
           bearer_only: "yes"
           realm: kong
