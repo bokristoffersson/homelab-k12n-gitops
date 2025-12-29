@@ -19,14 +19,14 @@ data:
             paths:
               - /api/v1
             strip_path: false
-        plugins:
-          - name: request-transformer
-            config:
-              add:
-                headers:
-                  - X-Authenticated-User-Id:$(X-Userinfo-Sub)
-                  - X-Authenticated-User-Email:$(X-Userinfo-Email)
-                  - X-Authenticated-Scope:$(X-Userinfo-Scope)
+        # plugins:
+        #   - name: request-transformer
+        #     config:
+        #       add:
+        #         headers:
+        #           - X-Authenticated-User-Id:$(X-Userinfo-Sub)
+        #           - X-Authenticated-User-Email:$(X-Userinfo-Email)
+        #           - X-Authenticated-Scope:$(X-Userinfo-Scope)
 
       # Energy WebSocket Service
       - name: energy-ws
@@ -36,14 +36,14 @@ data:
             paths:
               - /ws
             strip_path: false
-        plugins:
-          - name: request-transformer
-            config:
-              add:
-                headers:
-                  - X-Authenticated-User-Id:$(X-Userinfo-Sub)
-                  - X-Authenticated-User-Email:$(X-Userinfo-Email)
-                  - X-Authenticated-Scope:$(X-Userinfo-Scope)
+        # plugins:
+        #   - name: request-transformer
+        #     config:
+        #       add:
+        #         headers:
+        #           - X-Authenticated-User-Id:$(X-Userinfo-Sub)
+        #           - X-Authenticated-User-Email:$(X-Userinfo-Email)
+        #           - X-Authenticated-Scope:$(X-Userinfo-Scope)
 
     # Global Plugins
     plugins:
@@ -71,14 +71,14 @@ data:
           preflight_continue: false
 
       # OIDC Authentication with Authentik
-      # Using kong-oidc plugin (third-party, installed in custom image)
-      # Validates JWT tokens issued by the heatpump-web OAuth2 provider
+      # Using kong-oidc plugin in bearer-only mode for API validation
       - name: oidc
         config:
           client_id: heatpump-web
-          client_secret: dummy_not_used_for_jwt_validation
+          client_secret: dummy_not_used
           discovery: http://authentik-server.authentik.svc.cluster.local:9000/application/o/heatpump-web/.well-known/openid-configuration
           bearer_only: "yes"
           realm: kong
           ssl_verify: "no"
           scope: "openid profile email"
+          ignore_auth_filters: ".*"
