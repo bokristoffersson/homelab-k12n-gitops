@@ -34,10 +34,10 @@ pub async fn get_latest(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    tracing::debug!(ts = ?reading.ts, "successfully fetched heatpump reading");
+    tracing::debug!(time = ?reading.time, "successfully fetched heatpump reading");
 
     Ok(Json(HeatpumpLatestResponse {
-        ts: reading.ts,
+        ts: reading.time,
         device_id: reading.device_id,
         compressor_on: reading.compressor_on,
         hotwater_production: reading.hotwater_production,
