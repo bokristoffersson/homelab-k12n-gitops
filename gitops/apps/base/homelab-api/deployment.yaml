@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: ghcr.io/bokristoffersson/homelab-api:latest
+          image: ghcr.io/bokristoffersson/homelab-api:main
           imagePullPolicy: Always
           ports:
             - name: http
