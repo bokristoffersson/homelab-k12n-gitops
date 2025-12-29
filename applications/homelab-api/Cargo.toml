@@ -28,3 +28,6 @@ bcrypt = "0.15"
 pretty_assertions = "1.4"
 tokio-test = "0.4"
 axum-test = "18.0"
+
+[patch.crates-io]
+home = "0.5.11"  # Pin to version without edition2024 requirement
