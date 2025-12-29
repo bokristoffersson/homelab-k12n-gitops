@@ -24,7 +24,7 @@ axum = { version = "0.8", features = ["macros", "query"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 jsonwebtoken = "9.2"
-alcoholic_jwt = "4.1"  # For JWKS validation
+alcoholic_jwt = "4091.0"  # For JWKS validation
 reqwest = { version = "0.12", features = ["json"] }
 bcrypt = "0.15"
 
