@@ -1,18 +1,13 @@
 use crate::api::handlers::{energy, health, heatpump};
 use crate::config::Config;
 use crate::db::DbPool;
-use axum::{
-    extract::Request,
-    routing::get,
-    Router,
-};
+use axum::{extract::Request, routing::get, Router};
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 
 pub fn create_router(pool: DbPool, config: Config) -> Router {
     // Public routes (no authentication required)
-    let public_routes = Router::new()
-        .route("/health", get(health::health));
+    let public_routes = Router::new().route("/health", get(health::health));
 
     // API routes (authentication handled by oauth2-proxy/Authentik at ingress level)
     let api_routes = Router::new()

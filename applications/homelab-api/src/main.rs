@@ -20,8 +20,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     info!("Starting homelab-api");
 
-    let cfg_path =
-        std::env::var("APP_CONFIG").unwrap_or_else(|_| "config/config.yaml".into());
+    let cfg_path = std::env::var("APP_CONFIG").unwrap_or_else(|_| "config/config.yaml".into());
     let cfg = Config::load(&cfg_path)?;
     info!("Configuration loaded");
 

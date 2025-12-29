@@ -1,4 +1,4 @@
-use alcoholic_jwt::{JWKS, Validation as JwksValidation, ValidationError, validate};
+use alcoholic_jwt::{validate, Validation as JwksValidation, ValidationError, JWKS};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -7,10 +7,10 @@ use tokio::sync::RwLock;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,    // username/subject
-    pub exp: usize,     // expiration time (changed to usize for JWKS compatibility)
-    pub iat: Option<usize>,  // issued at (optional)
-    pub iss: Option<String>, // issuer (for JWKS validation)
+    pub sub: String,           // username/subject
+    pub exp: usize,            // expiration time (changed to usize for JWKS compatibility)
+    pub iat: Option<usize>,    // issued at (optional)
+    pub iss: Option<String>,   // issuer (for JWKS validation)
     pub email: Option<String>, // email (from Authentik)
 }
 
@@ -45,8 +45,7 @@ impl JwtValidator {
 
         let valid_jwt = validate(token, jwk, validations)?;
 
-        serde_json::from_value(valid_jwt.claims)
-            .map_err(|_| ValidationError::InvalidSignature)
+        serde_json::from_value(valid_jwt.claims).map_err(|_| ValidationError::InvalidSignature)
     }
 }
 
