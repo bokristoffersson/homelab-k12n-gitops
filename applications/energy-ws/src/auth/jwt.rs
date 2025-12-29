@@ -1,5 +1,5 @@
 use crate::error::{AppError, Result};
-use alcoholic_jwt::{JWKS, Validation as JwksValidation, ValidationError, validate};
+use alcoholic_jwt::{validate, Validation as JwksValidation, ValidationError, JWKS};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -22,7 +22,10 @@ pub struct JwtValidator {
 }
 
 impl JwtValidator {
-    pub async fn new(jwks_url: &str, issuer: String) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(
+        jwks_url: &str,
+        issuer: String,
+    ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
         let jwks = fetch_jwks(jwks_url).await?;
         Ok(Self {
             jwks: Arc::new(RwLock::new(jwks)),
@@ -30,7 +33,10 @@ impl JwtValidator {
         })
     }
 
-    pub async fn validate_token(&self, token: &str) -> std::result::Result<Claims, ValidationError> {
+    pub async fn validate_token(
+        &self,
+        token: &str,
+    ) -> std::result::Result<Claims, ValidationError> {
         let jwks = self.jwks.read().await;
         let validations = vec![
             JwksValidation::Issuer(self.issuer.clone()),
@@ -45,8 +51,7 @@ impl JwtValidator {
 
         let valid_jwt = validate(token, jwk, validations)?;
 
-        serde_json::from_value(valid_jwt.claims)
-            .map_err(|_| ValidationError::InvalidSignature)
+        serde_json::from_value(valid_jwt.claims).map_err(|_| ValidationError::InvalidSignature)
     }
 }
 
