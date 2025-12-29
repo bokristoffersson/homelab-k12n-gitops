@@ -10,3 +10,5 @@ spec:
     contentTypeNosniff: true
     frameDeny: true
     sslRedirect: false  # Cloudflare Tunnel handles TLS
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"  # Tell backends original request was HTTPS

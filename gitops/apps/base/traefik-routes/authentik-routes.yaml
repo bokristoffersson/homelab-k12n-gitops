@@ -11,6 +11,9 @@ spec:
     # Authentik SSO (public)
     - match: Host(`authentik.k12n.com`)
       kind: Rule
+      middlewares:
+        - name: security-headers
+          namespace: traefik
       services:
         - name: authentik-server
           namespace: authentik
