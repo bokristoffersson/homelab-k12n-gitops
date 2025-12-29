@@ -21,5 +21,5 @@ data:
       jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
       issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
 
-      # Legacy HS256 configuration (commented out for JWKS migration)
-      # jwt_secret: "$(JWT_SECRET)"
+      # Placeholder for legacy HS256 - not used when JWKS is configured
+      jwt_secret: "placeholder"
