@@ -93,3 +93,5 @@ spec:
                   name: authentik-blueprint-heatpump-web
               - configMap:
                   name: authentik-blueprint-kong-api-gateway
+              - configMap:
+                  name: blueprint-oauth2-proxy
