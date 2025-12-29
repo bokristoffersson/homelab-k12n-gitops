@@ -1,4 +1,4 @@
-FROM rust:1.84-slim AS builder
+FROM rustlang/rust:nightly-slim AS builder
 
 WORKDIR /usr/src/app
 
