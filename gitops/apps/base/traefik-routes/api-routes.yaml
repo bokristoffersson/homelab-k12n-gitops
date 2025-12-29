@@ -8,13 +8,11 @@ spec:
   entryPoints:
     - web  # Port 8000
   routes:
-    # Homelab API (protected)
+    # Homelab API (protected by JWT tokens from Authentik)
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
       kind: Rule
       middlewares:
         - name: cors
-          namespace: traefik
-        - name: oauth2-proxy-auth
           namespace: traefik
         - name: security-headers
           namespace: traefik
@@ -23,13 +21,11 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Energy WebSocket (protected)
+    # Energy WebSocket (protected by JWT tokens from Authentik)
     - match: Host(`api.k12n.com`) && PathPrefix(`/ws`)
       kind: Rule
       middlewares:
         - name: cors
-          namespace: traefik
-        - name: oauth2-proxy-auth
           namespace: traefik
       services:
         - name: energy-ws
