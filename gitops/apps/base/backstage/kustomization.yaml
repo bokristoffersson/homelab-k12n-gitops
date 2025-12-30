@@ -15,8 +15,7 @@ resources:
   - backstage-deployment.yaml
   - backstage-service.yaml
 
-  # Sealed secrets (to be created manually with kubeseal)
-  # Uncomment these after creating the sealed secrets:
-  # - postgres-secret-sealed.yaml
-  # - backstage-backup-aws-secret-sealed.yaml
-  # - backstage-config-secret-sealed.yaml
+  # Sealed secrets
+  - postgres-secret-sealed.yaml
+  - postgres-backup-aws-secret-sealed.yaml
+  - backstage-config-secret-sealed.yaml
