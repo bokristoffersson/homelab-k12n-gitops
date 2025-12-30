@@ -12,9 +12,7 @@ pub async fn get_latest(
     State((pool, _config)): State<(DbPool, crate::config::Config)>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Option<TemperatureLatest>>, StatusCode> {
-    let location = params
-        .get("location")
-        .ok_or(StatusCode::BAD_REQUEST)?;
+    let location = params.get("location").ok_or(StatusCode::BAD_REQUEST)?;
 
     let reading = TemperatureRepository::get_latest_by_location(&pool, location)
         .await
@@ -37,9 +35,7 @@ pub async fn get_history(
     State((pool, _config)): State<(DbPool, crate::config::Config)>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<TemperatureReading>>, StatusCode> {
-    let location = params
-        .get("location")
-        .ok_or(StatusCode::BAD_REQUEST)?;
+    let location = params.get("location").ok_or(StatusCode::BAD_REQUEST)?;
 
     let hours: i32 = params
         .get("hours")

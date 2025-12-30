@@ -54,7 +54,7 @@ export default function Dashboard() {
     retry: 1,
   });
 
-  const { data: indoorTemp, error: indoorTempError, isLoading: indoorTempLoading } = useQuery<TemperatureLatest>({
+  const { data: indoorTemp, error: indoorTempError } = useQuery<TemperatureLatest>({
     queryKey: ['temperature', 'latest', 'indoor'],
     queryFn: () => api.get('/api/v1/temperature/latest', {
       params: { location: 'indoor' },

@@ -36,10 +36,7 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
             "/api/v1/temperature/all-latest",
             get(temperature::get_all_latest),
         )
-        .route(
-            "/api/v1/temperature/history",
-            get(temperature::get_history),
-        );
+        .route("/api/v1/temperature/history", get(temperature::get_history));
 
     // Merge public and API routes
     Router::new()
