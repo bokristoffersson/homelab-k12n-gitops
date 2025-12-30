@@ -58,7 +58,12 @@ spec:
                 secretKeyRef:
                   name: backstage-config-secret
                   key: AUTH_OIDC_CLIENT_SECRET
-            
+            - name: AUTH_SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-config-secret
+                  key: AUTH_SESSION_SECRET
+
             # Node.js configuration
             - name: NODE_ENV
               value: production

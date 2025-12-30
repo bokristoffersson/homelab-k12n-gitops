@@ -39,6 +39,8 @@ backend:
 
 auth:
   environment: production
+  session:
+    secret: ${AUTH_SESSION_SECRET}
   providers:
     oidc:
       production:
