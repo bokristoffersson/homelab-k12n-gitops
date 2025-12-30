@@ -30,7 +30,6 @@ import {
   OAuthRequestDialog,
   SignInPage,
 } from '@backstage/core-components';
-import { oidcAuthApiRef } from '@backstage/core-plugin-api';
 import { createApp } from '@backstage/app-defaults';
 import { AppRouter, FlatRoutes } from '@backstage/core-app-api';
 import { CatalogGraphPage } from '@backstage/plugin-catalog-graph';
@@ -64,12 +63,13 @@ const app = createApp({
         {...props}
         providers={[
           {
-            id: 'oidc-auth-provider',
-            title: 'Authentik',
-            message: 'Sign in using Authentik SSO',
-            apiRef: oidcAuthApiRef,
+            id: 'oidc',
+            title: 'Authentik SSO',
+            message: 'Sign in using Authentik',
           },
         ]}
+        title="Select a sign-in method"
+        align="center"
       />
     ),
   },
