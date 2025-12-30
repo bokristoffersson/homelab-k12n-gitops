@@ -109,8 +109,8 @@ CREATE INDEX IF NOT EXISTS idx_heatpump_device_time ON heatpump_status (device_i
 CREATE OR REPLACE VIEW energy AS
 SELECT
     time AS ts,
-    CAST(active_power_total AS INTEGER) AS consumption_total_w,
-    CAST(active_energy_total AS BIGINT) AS consumption_total_actual_w,
+    CAST(active_energy_total AS INTEGER) AS consumption_total_w,
+    CAST(active_power_total AS BIGINT) AS consumption_total_actual_w,
     CAST(active_power_l1 AS BIGINT) AS consumption_l1_actual_w,
     CAST(active_power_l2 AS BIGINT) AS consumption_l2_actual_w,
     CAST(active_power_l3 AS BIGINT) AS consumption_l3_actual_w
