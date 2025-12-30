@@ -3,8 +3,3 @@ kind: Kustomization
 
 resources:
   - ../../base/energy-ws
-
-namePrefix: homelab-
-
-commonLabels:
-  environment: homelab
