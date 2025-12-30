@@ -105,6 +105,35 @@ kubeseal \
 - Check pod status with `-l app=<name>` labels
 - Always specify namespace explicitly
 
+### Deployment Workflow
+**IMPORTANT**: After certain changes, deployments must be manually restarted:
+
+1. **After GitHub Actions builds**: When a new application image is built and pushed, k3d doesn't automatically detect it. You must:
+   ```bash
+   kubectl rollout restart deployment/<app-name> -n <namespace>
+   ```
+
+2. **After ConfigMap updates**: When ConfigMaps are modified via GitOps, pods don't automatically reload. You must:
+   ```bash
+   kubectl rollout restart deployment/<app-name> -n <namespace>
+   ```
+
+**Example workflow**:
+```bash
+# 1. Wait for GitHub Actions to complete
+gh run watch
+
+# 2. Import new image to k3d (if needed)
+k3d image import <image-name>:<tag> -c <cluster-name>
+
+# 3. Restart deployment to pick up changes
+kubectl rollout restart deployment/homelab-api -n homelab-api
+kubectl rollout restart deployment/heatpump-web -n heatpump-web
+
+# 4. Verify rollout
+kubectl rollout status deployment/homelab-api -n homelab-api
+```
+
 ### Rust/Backend (homelab-api)
 - Run `cargo fmt` before committing
 - Use Axum for REST APIs
