@@ -27,5 +27,5 @@ resources:
   - oauth2-proxy-client-secret-sealed.yaml
 
   # Backup
-  # - backup-aws-credentials-sealed.yaml  # TODO: Create this sealed secret first
-  # - backup-cronjob.yaml
+  - backup-aws-credentials-sealed.yaml
+  - backup-cronjob.yaml
