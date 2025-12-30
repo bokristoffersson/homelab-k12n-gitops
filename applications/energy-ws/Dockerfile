@@ -11,8 +11,9 @@ WORKDIR /app
 # Copy manifests first to cache dependencies
 COPY Cargo.toml Cargo.lock ./
 
-# Create a dummy main.rs to build dependencies
+# Create dummy source files to build dependencies
 RUN mkdir src && \
+    echo "pub fn lib_dummy() {}" > src/lib.rs && \
     echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
     cargo build --release && \
     rm -rf src
