@@ -35,7 +35,7 @@ pipeline:
 output:
   sql_insert:
     driver: postgres
-    dsn: postgres://postgres:postgres@timescaledb.timescaledb.svc.cluster.local:5432/telemetry?sslmode=disable
+    dsn: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb.timescaledb.svc.cluster.local:5432/${POSTGRES_DB}?sslmode=disable
     table: temperature_sensors
     columns:
       - time

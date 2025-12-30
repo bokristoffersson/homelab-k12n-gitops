@@ -20,6 +20,22 @@ spec:
           args:
             - streams
             - /config/*.yaml
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_DB
           ports:
             - containerPort: 4195
               name: http

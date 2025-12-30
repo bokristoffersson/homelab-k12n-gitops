@@ -10,6 +10,7 @@ resources:
   - redpanda-connect-deployment.yaml
   - backup-cronjob.yaml
   - backup-aws-credentials-sealed.yaml
+  - timescaledb-credentials-sealed.yaml
 
 configMapGenerator:
   - name: redpanda-connect-config
