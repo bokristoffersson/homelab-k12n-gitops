@@ -153,8 +153,10 @@ WORKDIR /app
 # Copy manifests first to cache dependencies
 COPY Cargo.toml Cargo.lock ./
 
-# Build dependencies with dummy main.rs
+# Build dependencies with dummy source files
+# IMPORTANT: For lib+bin crates, create both lib.rs and main.rs
 RUN mkdir src && \
+    echo "pub fn lib_dummy() {}" > src/lib.rs && \
     echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
     cargo build --release && \
     rm -rf src
@@ -165,6 +167,11 @@ COPY src ./src
 # Build the actual application (dependencies already cached)
 RUN touch src/main.rs && cargo build --release
 ```
+
+**Notes**:
+- Always create both `lib.rs` and `main.rs` dummies for Rust projects (handles both lib+bin and bin-only crates)
+- Binary-only crates will ignore lib.rs, but lib+bin crates will fail without it
+- The `touch` command forces rebuild of the actual code while reusing cached dependencies
 
 **Example - Node.js/TypeScript applications**:
 ```dockerfile
