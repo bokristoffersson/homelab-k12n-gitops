@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - timescaledb-secret-sealed.yaml
+  - timescaledb-credentials-sealed.yaml
   - configmap.yaml
   - deployment.yaml
   - service.yaml
