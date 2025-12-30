@@ -6,7 +6,7 @@ import {
 import { oidcAuthenticator } from '@backstage/plugin-auth-backend-module-oidc-provider';
 import { stringifyEntityRef, DEFAULT_NAMESPACE } from '@backstage/catalog-model';
 
-export const authentikAuthModule = createBackendModule({
+export default createBackendModule({
   pluginId: 'auth',
   moduleId: 'authentik-auth-provider',
   register(reg) {
