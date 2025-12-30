@@ -30,6 +30,7 @@ backend:
       ssl: false
 
 auth:
+  environment: production
   providers:
     oidc:
       production:
@@ -41,6 +42,8 @@ auth:
           resolvers:
             # Use email as the unique identifier
             - resolver: emailMatchingUserEntityProfileEmail
+
+signInPage: oidc
 
 kubernetes:
   serviceLocatorMethod:
