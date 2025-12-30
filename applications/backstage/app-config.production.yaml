@@ -48,10 +48,6 @@ auth:
         clientId: ${AUTH_OIDC_CLIENT_ID}
         clientSecret: ${AUTH_OIDC_CLIENT_SECRET}
         prompt: auto
-        signIn:
-          resolvers:
-            # Use email as the unique identifier
-            - resolver: emailMatchingUserEntityProfileEmail
 
 signInPage: oidc
 
