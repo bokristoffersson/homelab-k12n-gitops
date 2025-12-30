@@ -8,11 +8,22 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy entire project
-COPY . .
+# Copy manifests first to cache dependencies
+COPY Cargo.toml Cargo.lock ./
 
-# Build the application
-RUN cargo build --release
+# Create a dummy main.rs to build dependencies
+RUN mkdir src && \
+    echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
+    cargo build --release && \
+    rm -rf src
+
+# Copy actual source code and config
+COPY src ./src
+COPY config ./config
+
+# Build the actual application
+# Touch src/main.rs to force rebuild (dependencies are already cached)
+RUN touch src/main.rs && cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim
