@@ -1,7 +1,0 @@
-dist
-dist-types
-coverage
-.vscode
-# Configuration files
-app-config*.yaml
-*.local.yaml
