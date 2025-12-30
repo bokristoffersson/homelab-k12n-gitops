@@ -72,7 +72,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Build backend bundle
-        run: yarn build:backend --config ../../app-config.yaml
+        run: yarn build:backend --config ../../app-config.yaml --config ../../app-config.production.yaml
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
