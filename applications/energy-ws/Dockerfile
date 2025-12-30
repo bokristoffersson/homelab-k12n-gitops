@@ -28,8 +28,9 @@ COPY src ./src
 COPY config ./config
 
 # Build the actual application
-# Touch src/main.rs to force rebuild (dependencies are already cached)
-RUN touch src/main.rs && cargo build --release
+# Touch both lib.rs and main.rs to force full recompilation
+# (dependencies are already cached from dummy build)
+RUN touch src/lib.rs src/main.rs && cargo build --release
 
 # Runtime stage
 FROM debian:bookworm-slim
