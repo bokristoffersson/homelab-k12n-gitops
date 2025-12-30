@@ -3,7 +3,7 @@ input:
     urls:
       - tcp://mosquitto.mosquitto.svc.cluster.local:1883
     topics:
-      - homelab/temperature/indoor
+      - shellyhtg3-e4b32322a0f4/events/rpc
     client_id: mqtt-redpanda-bridge-temperature-indoor
     user: ${MQTT_USER}
     password: ${MQTT_PASSWORD}
