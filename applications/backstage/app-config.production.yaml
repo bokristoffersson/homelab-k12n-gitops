@@ -1,6 +1,14 @@
 app:
   title: Homelab Developer Portal
   baseUrl: https://backstage.k12n.com
+  support:
+    url: https://github.com/bokristoffersson/homelab-k12n-gitops/issues
+    items:
+      - title: Issues
+        icon: github
+        links:
+          - url: https://github.com/bokristoffersson/homelab-k12n-gitops/issues
+            title: GitHub Issues
 
 organization:
   name: Homelab
