@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import { oauthService } from '../../services/oauth';
 
 interface PowerData {
   consumption_total_actual_w?: number;
@@ -25,23 +24,14 @@ export default function PowerGauge() {
   useEffect(() => {
     const connectWebSocket = () => {
       try {
-        // Get JWT token from localStorage
-        const token = oauthService.getToken();
-        if (!token) {
-          console.error('No JWT token available for WebSocket connection');
-          setError('Not authenticated');
-          return;
-        }
-
-        // Determine WebSocket URL based on environment and add token
+        // Determine WebSocket URL based on environment
+        // Authentication is handled by Traefik + oauth2-proxy ForwardAuth
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const baseUrl = import.meta.env.DEV
+        const wsUrl = import.meta.env.DEV
           ? 'ws://localhost:8080/ws/energy'  // Development
           : `${protocol}//api.k12n.com/ws/energy`;  // Production
 
-        const wsUrl = `${baseUrl}?token=${encodeURIComponent(token)}`;
-
-        console.log('Connecting to WebSocket:', baseUrl);  // Don't log token
+        console.log('Connecting to WebSocket:', wsUrl);
         const ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
