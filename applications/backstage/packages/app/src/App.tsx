@@ -57,22 +57,9 @@ const app = createApp({
       catalogIndex: catalogPlugin.routes.catalogIndex,
     });
   },
-  components: {
-    SignInPage: props => (
-      <SignInPage
-        {...props}
-        providers={[
-          {
-            id: 'oidc',
-            title: 'Authentik SSO',
-            message: 'Sign in using Authentik',
-          },
-        ]}
-        title="Select a sign-in method"
-        align="center"
-      />
-    ),
-  },
+  // components: {
+  //   SignInPage: props => <SignInPage {...props} />,
+  // },
 });
 
 const routes = (
