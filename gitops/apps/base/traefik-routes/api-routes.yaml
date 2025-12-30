@@ -28,7 +28,7 @@ spec:
         - name: cors
           namespace: traefik
       services:
-        - name: energy-ws
+        - name: homelab-energy-ws
           namespace: energy-ws
           port: 8080
 
