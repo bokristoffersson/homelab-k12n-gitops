@@ -135,6 +135,62 @@ kubectl rollout restart deployment/heatpump-web -n heatpump-web
 kubectl rollout status deployment/homelab-api -n homelab-api
 ```
 
+### Docker
+**REQUIRED**: All Dockerfiles must implement layered builds with dependency caching.
+
+**Multi-stage builds**:
+- Separate dependency installation from source code compilation
+- Cache dependency layers to speed up rebuilds
+- Only rebuild when dependencies change (Cargo.toml, package.json, etc.)
+
+**Example - Rust applications**:
+```dockerfile
+# Build stage
+FROM rust:1.83 AS builder
+
+WORKDIR /app
+
+# Copy manifests first to cache dependencies
+COPY Cargo.toml Cargo.lock ./
+
+# Build dependencies with dummy main.rs
+RUN mkdir src && \
+    echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
+    cargo build --release && \
+    rm -rf src
+
+# Copy actual source code
+COPY src ./src
+
+# Build the actual application (dependencies already cached)
+RUN touch src/main.rs && cargo build --release
+```
+
+**Example - Node.js/TypeScript applications**:
+```dockerfile
+# Build stage
+FROM node:20 AS builder
+
+WORKDIR /app
+
+# Copy package files first to cache npm install
+COPY package.json package-lock.json ./
+
+# Install dependencies (cached layer)
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Build application
+RUN npm run build
+```
+
+**Benefits**:
+- First build: ~30 minutes (builds everything)
+- Subsequent code-only changes: ~5 minutes (reuses dependency cache)
+- Reduces CI/CD time and costs
+
 ### Rust/Backend (homelab-api)
 **ARCHITECTURAL RULE - READ ONLY**:
 - homelab-api is a **read-only REST API** for serving data from TimescaleDB
