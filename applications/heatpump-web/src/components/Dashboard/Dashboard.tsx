@@ -10,6 +10,7 @@ import HeatpumpStatusComponent from './HeatpumpStatus';
 import Temperatures from './Temperatures';
 import HourlyChart from './HourlyChart';
 import TemperatureChart from './TemperatureChart';
+import PowerGauge from './PowerGauge';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -132,6 +133,7 @@ export default function Dashboard() {
         </div>
       )}
       <div className="dashboard-grid">
+        <PowerGauge />
         <CurrentPowerCard energy={energy} error={energyError} isLoading={energyLoading} />
         <HourlyTotalCard hourlyTotal={hourlyTotal} error={hourlyError} isLoading={hourlyLoading} />
         <HeatpumpStatusComponent heatpump={heatpump} error={heatpumpError} isLoading={heatpumpLoading} />

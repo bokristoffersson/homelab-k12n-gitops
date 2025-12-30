@@ -1,0 +1,240 @@
+import { useEffect, useState, useRef } from 'react';
+
+interface PowerData {
+  consumption_total_actual_w?: number;
+  consumption_total_w?: number;
+  timestamp?: string;
+}
+
+interface WebSocketMessage {
+  type: string;
+  stream?: string;
+  timestamp?: string;
+  data?: PowerData;
+  message?: string;
+}
+
+export default function PowerGauge() {
+  const [power, setPower] = useState<number>(0);
+  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const connectWebSocket = () => {
+      try {
+        // Determine WebSocket URL based on environment
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = import.meta.env.DEV
+          ? 'ws://localhost:8080/ws/energy'  // Development
+          : `${protocol}//api.k12n.com/ws/energy`;  // Production
+
+        console.log('Connecting to WebSocket:', wsUrl);
+        const ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          console.log('WebSocket connected');
+          setConnected(true);
+          setError(null);
+
+          // Subscribe to energy stream
+          const subscribeMessage = {
+            type: 'subscribe',
+            streams: ['energy']
+          };
+          ws.send(JSON.stringify(subscribeMessage));
+          console.log('Subscribed to energy stream');
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message: WebSocketMessage = JSON.parse(event.data);
+
+            if (message.type === 'data' && message.stream === 'energy' && message.data) {
+              const powerW = message.data.consumption_total_actual_w
+                || message.data.consumption_total_w
+                || 0;
+              setPower(powerW);
+            } else if (message.type === 'error') {
+              console.error('WebSocket error message:', message.message);
+              setError(message.message || 'Unknown error');
+            }
+          } catch (err) {
+            console.error('Failed to parse WebSocket message:', err);
+          }
+        };
+
+        ws.onerror = (event) => {
+          console.error('WebSocket error:', event);
+          setError('Connection error');
+        };
+
+        ws.onclose = () => {
+          console.log('WebSocket closed, attempting to reconnect...');
+          setConnected(false);
+
+          // Attempt to reconnect after 5 seconds
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectWebSocket();
+          }, 5000);
+        };
+
+      } catch (err) {
+        console.error('Failed to create WebSocket:', err);
+        setError('Failed to connect');
+      }
+    };
+
+    connectWebSocket();
+
+    // Cleanup on unmount
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
+
+  const powerKw = power / 1000;
+  const maxPower = 10; // Maximum power for gauge (10 kW)
+  const percentage = Math.min((powerKw / maxPower) * 100, 100);
+  const rotation = (percentage / 100) * 270 - 135; // -135 to 135 degrees
+
+  // Color based on power level
+  const getColor = () => {
+    if (powerKw < 2) return '#4ade80'; // Green
+    if (powerKw < 5) return '#facc15'; // Yellow
+    if (powerKw < 8) return '#fb923c'; // Orange
+    return '#ef4444'; // Red
+  };
+
+  if (error) {
+    return (
+      <div className="card card-error">
+        <h3>Live Power Monitor</h3>
+        <div className="error-message">
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card">
+      <h3>Live Power Monitor</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem' }}>
+        {/* Circular Gauge */}
+        <div style={{ position: 'relative', width: '200px', height: '200px' }}>
+          {/* Background arc */}
+          <svg width="200" height="200" style={{ position: 'absolute' }}>
+            <circle
+              cx="100"
+              cy="100"
+              r="80"
+              fill="none"
+              stroke="#e5e7eb"
+              strokeWidth="20"
+              strokeDasharray="377"
+              strokeDashoffset="94.25"
+              transform="rotate(-135 100 100)"
+            />
+            {/* Foreground arc */}
+            <circle
+              cx="100"
+              cy="100"
+              r="80"
+              fill="none"
+              stroke={getColor()}
+              strokeWidth="20"
+              strokeDasharray="377"
+              strokeDashoffset={377 - (377 * 0.75 * percentage / 100)}
+              transform="rotate(-135 100 100)"
+              style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+            />
+          </svg>
+
+          {/* Center value */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: getColor() }}>
+              {powerKw.toFixed(2)}
+            </div>
+            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+              kW
+            </div>
+          </div>
+
+          {/* Needle */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '3px',
+            height: '70px',
+            background: '#374151',
+            transformOrigin: 'bottom center',
+            transform: `translate(-50%, -100%) rotate(${rotation}deg)`,
+            transition: 'transform 0.3s ease',
+            borderRadius: '3px'
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: '-6px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '10px',
+              height: '10px',
+              background: '#374151',
+              borderRadius: '50%'
+            }}></div>
+          </div>
+
+          {/* Center dot */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: '15px',
+            height: '15px',
+            background: '#1f2937',
+            borderRadius: '50%',
+            transform: 'translate(-50%, -50%)',
+            border: '2px solid white'
+          }}></div>
+        </div>
+
+        {/* Range labels */}
+        <div style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginTop: '0.5rem',
+          padding: '0 1rem',
+          fontSize: '0.75rem',
+          color: '#6b7280'
+        }}>
+          <span>0 kW</span>
+          <span>{maxPower} kW</span>
+        </div>
+
+        {/* Connection status */}
+        <div className="live-indicator" style={{ marginTop: '1rem' }}>
+          <span className="dot" style={{
+            background: connected ? '#22c55e' : '#ef4444'
+          }}></span>
+          {connected ? 'Live' : 'Connecting...'}
+        </div>
+      </div>
+    </div>
+  );
+}
