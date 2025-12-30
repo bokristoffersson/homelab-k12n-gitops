@@ -7,7 +7,7 @@ metadata:
 data:
   config.yaml: |
     database:
-      url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@timescaledb.heatpump-mqtt.svc.cluster.local:5432/timescaledb"
+      url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@timescaledb.timescaledb.svc.cluster.local:5432/telemetry"
 
     api:
       host: "0.0.0.0"
