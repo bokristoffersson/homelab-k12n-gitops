@@ -30,11 +30,20 @@ spec:
             - name: PGPORT
               value: "5432"
             - name: PGUSER
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_USER
             - name: PGPASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_PASSWORD
             - name: PGDATABASE
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_DB
           volumeMounts:
             - name: migrations
               mountPath: /migrations
