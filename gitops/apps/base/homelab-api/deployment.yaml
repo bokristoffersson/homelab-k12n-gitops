@@ -32,12 +32,12 @@ spec:
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
-                  name: timescaledb-secret
+                  name: timescaledb-credentials
                   key: POSTGRES_USER
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: timescaledb-secret
+                  name: timescaledb-credentials
                   key: POSTGRES_PASSWORD
           volumeMounts:
             - name: config
