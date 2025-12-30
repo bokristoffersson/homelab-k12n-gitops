@@ -24,4 +24,8 @@ resources:
 
   - postgres-secret-sealed.yaml
   - authentik-secret-sealed.yaml
-  - oauth2-proxy-client-secret-sealed.yaml  # TODO: Create this sealed secret
+  - oauth2-proxy-client-secret-sealed.yaml
+
+  # Backup
+  # - backup-aws-credentials-sealed.yaml  # TODO: Create this sealed secret first
+  # - backup-cronjob.yaml
