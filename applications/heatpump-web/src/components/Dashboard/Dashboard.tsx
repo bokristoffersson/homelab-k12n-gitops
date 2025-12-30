@@ -2,12 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { EnergyLatest, HourlyTotal, EnergyHourly } from '../../types/energy';
 import { HeatpumpStatus } from '../../types/heatpump';
+import { TemperatureLatest, TemperatureReading } from '../../types/temperature';
 import { useTheme } from '../../hooks/useTheme';
 import CurrentPowerCard from './CurrentPowerCard';
 import HourlyTotalCard from './HourlyTotalCard';
 import HeatpumpStatusComponent from './HeatpumpStatus';
 import Temperatures from './Temperatures';
 import HourlyChart from './HourlyChart';
+import TemperatureChart from './TemperatureChart';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -52,8 +54,29 @@ export default function Dashboard() {
     retry: 1,
   });
 
+  const { data: indoorTemp, error: indoorTempError, isLoading: indoorTempLoading } = useQuery<TemperatureLatest>({
+    queryKey: ['temperature', 'latest', 'indoor'],
+    queryFn: () => api.get('/api/v1/temperature/latest', {
+      params: { location: 'indoor' },
+    }).then((r) => r.data),
+    refetchInterval: 60000, // Check every minute
+    retry: 1,
+  });
+
+  const { data: tempHistory, error: tempHistoryError, isLoading: tempHistoryLoading } = useQuery<TemperatureReading[]>({
+    queryKey: ['temperature', 'history', 'indoor', '24h'],
+    queryFn: () => api.get('/api/v1/temperature/history', {
+      params: {
+        location: 'indoor',
+        hours: 24,
+      },
+    }).then((r) => r.data),
+    refetchInterval: 300000, // 5 minutes
+    retry: 1,
+  });
+
   // Show error banner if any query failed
-  const hasErrors = energyError || hourlyError || heatpumpError || historyError;
+  const hasErrors = energyError || hourlyError || heatpumpError || historyError || indoorTempError || tempHistoryError;
 
   return (
     <div className="dashboard">
@@ -112,8 +135,9 @@ export default function Dashboard() {
         <CurrentPowerCard energy={energy} error={energyError} isLoading={energyLoading} />
         <HourlyTotalCard hourlyTotal={hourlyTotal} error={hourlyError} isLoading={hourlyLoading} />
         <HeatpumpStatusComponent heatpump={heatpump} error={heatpumpError} isLoading={heatpumpLoading} />
-        <Temperatures heatpump={heatpump} error={heatpumpError} isLoading={heatpumpLoading} />
+        <Temperatures heatpump={heatpump} indoorTemp={indoorTemp} error={heatpumpError} isLoading={heatpumpLoading} />
         <HourlyChart history={history} error={historyError} isLoading={historyLoading} />
+        <TemperatureChart history={tempHistory} error={tempHistoryError} isLoading={tempHistoryLoading} />
       </div>
     </div>
   );

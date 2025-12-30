@@ -1,12 +1,14 @@
 import { HeatpumpStatus } from '../../types/heatpump';
+import { TemperatureLatest } from '../../types/temperature';
 
 interface TemperaturesProps {
   heatpump: HeatpumpStatus | undefined;
+  indoorTemp: TemperatureLatest | undefined;
   error?: Error | null;
   isLoading?: boolean;
 }
 
-export default function Temperatures({ heatpump, error, isLoading }: TemperaturesProps) {
+export default function Temperatures({ heatpump, indoorTemp, error, isLoading }: TemperaturesProps) {
   const TempItem = ({ label, value }: { label: string; value: number | null | undefined }) => (
     <div className="temp-item">
       <span className="temp-label">{label}:</span>
@@ -40,6 +42,7 @@ export default function Temperatures({ heatpump, error, isLoading }: Temperature
     <div className="card">
       <h3>Temperatures</h3>
       <div className="temp-grid">
+        <TempItem label="Indoor" value={indoorTemp?.temperature_c} />
         <TempItem label="Outdoor" value={heatpump.outdoor_temp} />
         <TempItem label="Supply" value={heatpump.supplyline_temp} />
         <TempItem label="Return" value={heatpump.returnline_temp} />
@@ -47,6 +50,11 @@ export default function Temperatures({ heatpump, error, isLoading }: Temperature
         <TempItem label="Brine Out" value={heatpump.brine_out_temp} />
         <TempItem label="Brine In" value={heatpump.brine_in_temp} />
       </div>
+      {indoorTemp?.humidity && (
+        <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#888' }}>
+          Indoor Humidity: {indoorTemp.humidity.toFixed(1)}%
+        </div>
+      )}
     </div>
   );
 }
