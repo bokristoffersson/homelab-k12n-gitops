@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: homelab
+  description: Homelab Kubernetes infrastructure and applications
+spec:
+  owner: homelab-admins
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: homelab-admins
+  description: Homelab administrators
+spec:
+  type: team
+  children: []
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: akadmin
+spec:
+  profile:
+    displayName: Admin
+    email: akadmin@k12n.com
+  memberOf: [homelab-admins]
