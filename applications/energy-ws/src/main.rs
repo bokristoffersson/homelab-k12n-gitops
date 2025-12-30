@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Create application state
     let state = Arc::new(AppState::new(
-        config.auth.jwt_secret.clone(),
+        config.auth.jwt_secret.clone().unwrap_or_default(),
         broadcast_tx,
         config.server.max_connections,
     ));
