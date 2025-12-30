@@ -4,5 +4,6 @@ kind: Kustomization
 namespace: traefik
 resources:
   - api-routes.yaml
-  - frontend-routes.yaml
   - authentik-routes.yaml
+  - backstage-routes.yaml
+  - frontend-routes.yaml

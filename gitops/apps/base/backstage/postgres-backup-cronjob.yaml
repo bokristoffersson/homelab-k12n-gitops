@@ -1,0 +1,115 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backstage-postgres-backup
+  namespace: backstage
+spec:
+  # Run daily at 2 AM
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: backstage-postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+
+                  # Install AWS CLI
+                  echo "Installing AWS CLI..."
+                  apk add --no-cache aws-cli
+
+                  # Create backup filename
+                  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+                  BACKUP_FILE="/tmp/backstage-${TIMESTAMP}.sql.gz"
+                  S3_KEY="${S3_PREFIX}/backstage-${TIMESTAMP}.sql.gz"
+
+                  echo "Starting backup..."
+                  echo "Database: ${PGDATABASE}"
+                  echo "S3 Destination: s3://${S3_BUCKET}/${S3_KEY}"
+
+                  # Create and compress backup
+                  pg_dump -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE -F p -b | gzip > "$BACKUP_FILE"
+
+                  # Show backup info
+                  echo "Backup created: $BACKUP_FILE"
+                  ls -lh "$BACKUP_FILE"
+
+                  # Upload to S3
+                  echo "Uploading to S3..."
+                  aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/${S3_KEY}" --region $AWS_REGION
+
+                  # Verify upload
+                  if aws s3 ls "s3://${S3_BUCKET}/${S3_KEY}" --region $AWS_REGION > /dev/null 2>&1; then
+                    echo "Backup successfully uploaded to S3"
+                    rm "$BACKUP_FILE"
+                  else
+                    echo "ERROR: Failed to verify backup in S3"
+                    exit 1
+                  fi
+
+                  echo "Backup complete"
+              env:
+                - name: PGHOST
+                  value: backstage-postgres
+                - name: PGPORT
+                  value: "5432"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-postgres-secret
+                      key: POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-postgres-secret
+                      key: POSTGRES_PASSWORD
+                - name: PGDATABASE
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-postgres-secret
+                      key: POSTGRES_DB
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-backup-aws
+                      key: AWS_ACCESS_KEY_ID
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-backup-aws
+                      key: AWS_SECRET_ACCESS_KEY
+                - name: AWS_REGION
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-backup-aws
+                      key: AWS_REGION
+                - name: S3_BUCKET
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-backup-aws
+                      key: S3_BUCKET
+                - name: S3_PREFIX
+                  valueFrom:
+                    secretKeyRef:
+                      name: backstage-backup-aws
+                      key: S3_PREFIX
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 1Gi

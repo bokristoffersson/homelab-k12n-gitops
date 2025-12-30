@@ -1,0 +1,20 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: backstage-routes
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    # Backstage Developer Portal
+    - match: Host(`backstage.k12n.com`)
+      kind: Rule
+      middlewares:
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: backstage
+          namespace: backstage
+          port: 7007

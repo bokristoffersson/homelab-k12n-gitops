@@ -88,6 +88,10 @@ data:
       - hostname: authentik.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80
 
+      # Backstage Developer Portal (via Traefik)
+      - hostname: backstage.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:80
+
       # Grafana (via Traefik)
       - hostname: grafana.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80

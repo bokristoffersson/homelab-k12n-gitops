@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backstage
+  namespace: backstage
+  labels:
+    app: backstage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backstage
+  template:
+    metadata:
+      labels:
+        app: backstage
+    spec:
+      serviceAccountName: backstage
+      containers:
+        - name: backstage
+          image: ghcr.io/bokristoffersson/backstage:main
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 7007
+              name: http
+          env:
+            # PostgreSQL configuration
+            - name: POSTGRES_HOST
+              value: backstage-postgres
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-postgres-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-postgres-secret
+                  key: POSTGRES_DB
+            
+            # OIDC Authentication (Authentik)
+            - name: AUTH_OIDC_METADATA_URL
+              value: https://authentik.k12n.com/application/o/backstage/.well-known/openid-configuration
+            - name: AUTH_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-config-secret
+                  key: AUTH_OIDC_CLIENT_ID
+            - name: AUTH_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-config-secret
+                  key: AUTH_OIDC_CLIENT_SECRET
+            
+            # Node.js configuration
+            - name: NODE_ENV
+              value: production
+            - name: NODE_OPTIONS
+              value: "--no-node-snapshot"
+          
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
