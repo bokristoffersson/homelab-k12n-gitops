@@ -57,12 +57,10 @@ pub async fn ws_handler(
         })?;
 
         // Extract token from "Bearer <token>" format
-        auth_str
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| {
-                error!("Authorization header missing Bearer prefix");
-                StatusCode::UNAUTHORIZED
-            })?
+        auth_str.strip_prefix("Bearer ").ok_or_else(|| {
+            error!("Authorization header missing Bearer prefix");
+            StatusCode::UNAUTHORIZED
+        })?
     } else {
         error!("No authentication token found in headers");
         return Err(StatusCode::UNAUTHORIZED);
