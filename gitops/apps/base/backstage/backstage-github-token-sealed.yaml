@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: backstage-github-token
+  namespace: backstage
+spec:
+  encryptedData:
+    GITHUB_TOKEN: AgA/PIqkVGtxc8lHYg52VmIrXt89wqOvBgJN/gB4aou66csgS7j1JF4AF8jf9iSb9PY+soEztOSKKEbMZg4IPACWNc2Cf1LnNq78V/YOyzjBqnboA7vrq8FMk8+VzFBPAYAoaYXy3UXTzx0NdL5Wg5EgItKbMrShfax9l4d7g+IbRYYtaA2VZMTcREmCsFOG6S84Y9vPr8VelzGj8Cn4uUyVt9BvXT1BXyTCWLlroZT/k6PLFvPdH7x+puzVw3/tIsbl0MvzbX3zNYD/IphXrvnpgrtGQzb9PTYSnW/lOb6J3m23rS/b7YqI2yMQMXq41UkvRfA/MjPSwwdrkn6xE0SftfsK38Ge+q3AzdiJpFsuAHAXBqY8cFS1UUuP16vLKbr3RF/uw0DivNoRB8kYPRINaxLup9+2lTe2YEWiAjwNRDPi8Tta43rPYI5jcft9KrHt0fslQxbLbP2c4kdkVjPE5MwgPiVjljyRAnmv/leNoCT09bLchjcbSyDJo1mooK+9Q/yp+I0BlmQYWg3em5NxnMRY/NFjhvWiIGHEEtWmXyzZpYoXLSWY8SC/VC8NX8xpnPyEKx94S2PAfvP3u5Imh/2kfba097CAbBCckSn4Xzf6vnQwUemppwf/OBpsqmq6YBwHYhZePpmNlezHv+1KuLNzz0rpmXWOS1jb9SGvf1a3HniHX+lHwoXIkL4qCB+sGwBHJPZ8s7nykx5tyszqDf8dpBrnNoEtNMrWObA2Aal020WpLsWH
+  template:
+    metadata:
+      name: backstage-github-token
+      namespace: backstage

@@ -64,6 +64,13 @@ spec:
                   name: backstage-config-secret
                   key: AUTH_SESSION_SECRET
 
+            # GitHub integration
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backstage-github-token
+                  key: GITHUB_TOKEN
+
             # Node.js configuration
             - name: NODE_ENV
               value: production

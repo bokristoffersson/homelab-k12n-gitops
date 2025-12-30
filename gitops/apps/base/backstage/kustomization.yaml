@@ -19,3 +19,4 @@ resources:
   - postgres-secret-sealed.yaml
   - postgres-backup-aws-secret-sealed.yaml
   - backstage-config-secret-sealed.yaml
+  - backstage-github-token-sealed.yaml
