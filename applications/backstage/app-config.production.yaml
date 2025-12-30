@@ -26,8 +26,8 @@ backend:
       user: ${POSTGRES_USER}
       password: ${POSTGRES_PASSWORD}
       database: ${POSTGRES_DB}
-      ssl:
-        rejectUnauthorized: false
+      # PostgreSQL does not have SSL enabled
+      ssl: false
 
 auth:
   providers:
