@@ -116,6 +116,31 @@ SELECT
     CAST(active_power_l3 AS BIGINT) AS consumption_l3_actual_w
 FROM energy_consumption;
 
+-- Create continuous aggregate for hourly energy consumption
+-- This calculates energy used during each hour by taking the difference between
+-- the last and first cumulative meter readings, ensuring no gaps
+CREATE MATERIALIZED VIEW IF NOT EXISTS energy_hourly
+WITH (timescaledb.continuous) AS
+SELECT
+  time_bucket('1 hour'::interval, time, origin => '2000-01-01 00:00:00+00'::timestamptz) AS hour_start,
+  (time_bucket('1 hour'::interval, time, origin => '2000-01-01 00:00:00+00'::timestamptz) + '1 hour'::interval) AS hour_end,
+  (last(active_energy_total, time) - first(active_energy_total, time)) / 1000.0 AS total_energy_kwh,
+  (last(active_power_total, time) - first(active_power_total, time)) / 1000.0 AS total_energy_actual_kwh,
+  (last(active_power_l1, time) - first(active_power_l1, time)) / 1000.0 AS total_energy_L1_actual_kwh,
+  (last(active_power_l2, time) - first(active_power_l2, time)) / 1000.0 AS total_energy_L2_actual_kwh,
+  (last(active_power_l3, time) - first(active_power_l3, time)) / 1000.0 AS total_energy_L3_actual_kwh,
+  count(*) AS measurement_count
+FROM energy_consumption
+GROUP BY time_bucket('1 hour'::interval, time, origin => '2000-01-01 00:00:00+00'::timestamptz)
+WITH NO DATA;
+
+-- Add refresh policy for the continuous aggregate (refresh last 2 days of data every hour)
+SELECT add_continuous_aggregate_policy('energy_hourly',
+  start_offset => INTERVAL '2 days',
+  end_offset => INTERVAL '1 hour',
+  schedule_interval => INTERVAL '1 hour',
+  if_not_exists => TRUE);
+
 -- Add data retention policies (optional - keep last 90 days of raw data)
 SELECT add_retention_policy('energy_consumption', INTERVAL '90 days', if_not_exists => TRUE);
 SELECT add_retention_policy('temperature_sensors', INTERVAL '90 days', if_not_exists => TRUE);
