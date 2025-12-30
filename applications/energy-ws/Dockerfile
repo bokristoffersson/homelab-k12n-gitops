@@ -12,8 +12,13 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 
 # Create dummy source files to build dependencies
+# For lib+bin crates, need to declare all modules that main.rs imports
 RUN mkdir src && \
-    echo "pub fn lib_dummy() {}" > src/lib.rs && \
+    echo "pub mod auth {}" > src/lib.rs && \
+    echo "pub mod config {}" >> src/lib.rs && \
+    echo "pub mod error {}" >> src/lib.rs && \
+    echo "pub mod kafka {}" >> src/lib.rs && \
+    echo "pub mod ws {}" >> src/lib.rs && \
     echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
     cargo build --release && \
     rm -rf src
