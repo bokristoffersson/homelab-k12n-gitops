@@ -17,10 +17,11 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **Data Pipeline**: mqtt-kafka-bridge (Redpanda Connect/Benthos)
 
 ### Applications
-- **homelab-api**: Rust/Axum backend API for energy, heatpump, and temperature data
+- **homelab-api**: Rust/Axum read-only REST API serving TimescaleDB data (energy, heatpump, temperature)
 - **heatpump-web**: React/TypeScript frontend SPA
-- **redpanda-sink**: Kafka consumer writing to TimescaleDB
-- **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge
+- **energy-ws**: Rust/Axum WebSocket server streaming real-time energy data from Redpanda
+- **redpanda-sink**: Kafka consumer writing telemetry to TimescaleDB
+- **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
 
 ### IoT Devices
 - Shelly H&T Gen3 (temperature/humidity sensor)
@@ -135,10 +136,18 @@ kubectl rollout status deployment/homelab-api -n homelab-api
 ```
 
 ### Rust/Backend (homelab-api)
+**ARCHITECTURAL RULE - READ ONLY**:
+- homelab-api is a **read-only REST API** for serving data from TimescaleDB
+- **NEVER** create database write operations (INSERT, UPDATE, DELETE)
+- **NEVER** add Redpanda/Kafka consumer logic
+- Purpose: Query and serve existing telemetry data only
+- Data writes are handled exclusively by redpanda-sink service
+
+**Code Guidelines**:
 - Run `cargo fmt` before committing
 - Use Axum for REST APIs
 - JWT validation for authentication
-- sqlx for database access
+- sqlx for database access (SELECT queries only)
 - No over-engineering - direct implementations
 
 ### TypeScript/Frontend (heatpump-web)
