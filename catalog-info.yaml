@@ -20,9 +20,9 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: User
 metadata:
-  name: akadmin
+  name: bo.kristoffersson
 spec:
   profile:
-    displayName: Admin
-    email: akadmin@k12n.com
+    displayName: Bo Kristoffersson
+    email: bo.kristoffersson@me.com
   memberOf: [homelab-admins]

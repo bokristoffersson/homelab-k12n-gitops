@@ -25,9 +25,8 @@ backend.add(import('@backstage/plugin-techdocs-backend'));
 
 // auth plugin
 backend.add(import('@backstage/plugin-auth-backend'));
-// See https://backstage.io/docs/backend-system/building-backends/migrating#the-auth-plugin
-backend.add(import('@backstage/plugin-auth-backend-module-oidc-provider'));
-// See https://backstage.io/docs/auth/oidc/
+// Custom Authentik OIDC provider with sign-in resolver
+backend.add(import('./modules/authentikAuthModule').then(m => m.authentikAuthModule));
 
 // catalog plugin
 backend.add(import('@backstage/plugin-catalog-backend'));
