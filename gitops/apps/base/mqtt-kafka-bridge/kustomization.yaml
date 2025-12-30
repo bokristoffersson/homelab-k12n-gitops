@@ -11,5 +11,4 @@ configMapGenerator:
     files:
       - configs/energy.yaml
       - configs/temperature-indoor.yaml
-      - configs/temperature-outdoor.yaml
       - configs/heatpump.yaml
