@@ -5,6 +5,7 @@ applications/*/target/
 applications/*/dist/
 applications/*/build/
 applications/*/node_modules/
+applications/node_modules/
 applications/*/.venv/
 applications/*/__pycache__/
 applications/*/*.egg-info/
