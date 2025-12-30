@@ -3,16 +3,22 @@ use crate::ws::connection::handle_connection;
 use axum::{
     extract::{
         ws::{WebSocket, WebSocketUpgrade},
-        State,
+        Query, State,
     },
-    http::{HeaderMap, StatusCode},
+    http::StatusCode,
     response::Response,
 };
+use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::{error, info};
 
 use crate::kafka::EnergyMessage;
+
+#[derive(Deserialize)]
+pub struct WsParams {
+    token: String,
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -36,38 +42,14 @@ impl AppState {
 }
 
 /// Handle WebSocket upgrade request
-/// Expects JWT token in Authorization header or X-Auth-Request-Access-Token header (from oauth2-proxy)
+/// Expects JWT token as query parameter: /ws/energy?token=xxx
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
-    headers: HeaderMap,
+    Query(params): Query<WsParams>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Response, StatusCode> {
-    // Extract JWT token from headers
-    // First try X-Auth-Request-Access-Token (from oauth2-proxy ForwardAuth)
-    let token = if let Some(token_header) = headers.get("x-auth-request-access-token") {
-        token_header.to_str().map_err(|_| {
-            error!("Invalid X-Auth-Request-Access-Token header");
-            StatusCode::UNAUTHORIZED
-        })?
-    } else if let Some(auth_header) = headers.get("authorization") {
-        // Fall back to Authorization header
-        let auth_str = auth_header.to_str().map_err(|_| {
-            error!("Invalid Authorization header");
-            StatusCode::UNAUTHORIZED
-        })?;
-
-        // Extract token from "Bearer <token>" format
-        auth_str.strip_prefix("Bearer ").ok_or_else(|| {
-            error!("Authorization header missing Bearer prefix");
-            StatusCode::UNAUTHORIZED
-        })?
-    } else {
-        error!("No authentication token found in headers");
-        return Err(StatusCode::UNAUTHORIZED);
-    };
-
-    // Validate JWT token
-    let claims = auth::validate_token(token, &state.jwt_secret).map_err(|e| {
+    // Validate JWT token from query parameter
+    let claims = auth::validate_token(&params.token, &state.jwt_secret).map_err(|e| {
         error!("JWT validation failed: {}", e);
         StatusCode::UNAUTHORIZED
     })?;

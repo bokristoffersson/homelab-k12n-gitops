@@ -21,13 +21,11 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Energy WebSocket (protected by oauth2-proxy ForwardAuth)
+    # Energy WebSocket (JWT auth via query parameter)
     - match: Host(`api.k12n.com`) && PathPrefix(`/ws`)
       kind: Rule
       middlewares:
         - name: cors
-          namespace: traefik
-        - name: oauth2-proxy-auth
           namespace: traefik
       services:
         - name: homelab-energy-ws
