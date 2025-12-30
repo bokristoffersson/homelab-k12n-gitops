@@ -1,4 +1,4 @@
-use crate::api::handlers::{energy, health, heatpump};
+use crate::api::handlers::{energy, health, heatpump, temperature};
 use crate::config::Config;
 use crate::db::DbPool;
 use axum::{extract::Request, routing::get, Router};
@@ -30,6 +30,15 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
         .route(
             "/api/v1/heatpump/daily-summary",
             get(heatpump::get_daily_summary),
+        )
+        .route("/api/v1/temperature/latest", get(temperature::get_latest))
+        .route(
+            "/api/v1/temperature/all-latest",
+            get(temperature::get_all_latest),
+        )
+        .route(
+            "/api/v1/temperature/history",
+            get(temperature::get_history),
         );
 
     // Merge public and API routes
