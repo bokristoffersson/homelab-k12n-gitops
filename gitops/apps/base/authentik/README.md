@@ -181,17 +181,7 @@ kubectl port-forward -n authentik svc/authentik-server 9000:9000
 
 3. Save and note the **Client ID** and **Client Secret**
 
-### Step 2: Configure Token Introspection
-
-The introspection endpoint will be used by Kong:
-
-```
-Endpoint: http://authentik-server.authentik.svc.cluster.local:9000/application/o/introspect/
-Method: POST
-Authentication: Basic Auth (Client ID:Client Secret)
-```
-
-### Step 3: Create Application
+### Step 2: Create Application
 
 1. Navigate to **Applications** → **Applications**
 2. Create new application:
@@ -200,7 +190,7 @@ Authentication: Basic Auth (Client ID:Client Secret)
    - **Provider**: Select the provider created above
    - **Launch URL**: `https://api.k12n.com`
 
-### Step 4: Configure Default Scopes
+### Step 3: Configure Default Scopes
 
 Set default scopes for all users:
 
@@ -209,7 +199,7 @@ Set default scopes for all users:
 3. Add **User Write Stage** with default groups/scopes:
    - Default scopes: `openid email profile read:energy read:heatpump read:settings write:settings`
 
-### Step 5: Create Users
+### Step 4: Create Users
 
 1. Navigate to **Directory** → **Users**
 2. Create admin user:
@@ -218,7 +208,7 @@ Set default scopes for all users:
    - **Groups**: `Administrators`
 3. Create regular users as needed
 
-### Step 6: Test OIDC Flow
+### Step 5: Test OIDC Flow
 
 Test the authentication flow:
 
@@ -244,35 +234,23 @@ curl -X POST https://api.k12n.com/auth/application/o/token/ \
   "scope": "openid email profile read:energy read:heatpump read:settings write:settings"
 }
 
-# Test introspection (what Kong will do):
-curl -X POST http://localhost:9000/application/o/introspect/ \
-  -u "<CLIENT_ID>:<CLIENT_SECRET>" \
-  -d "token=<ACCESS_TOKEN>"
-
-# Response:
-{
-  "active": true,
-  "sub": "user-uuid-here",
-  "email": "admin@k12n.com",
-  "scope": "openid email profile read:energy read:heatpump read:settings write:settings",
-  "client_id": "<CLIENT_ID>",
-  "token_type": "Bearer",
-  "exp": 1735401234,
-  "iat": 1735314834
-}
 ```
 
-## Integration with Kong
+## Integration with Traefik
 
-Kong will be configured to:
+Authentik integrates with Traefik through:
 
-1. Intercept requests to `/api/*` and `/ws/*`
-2. Extract opaque token from `Authorization: Bearer <token>` header or cookie
-3. Validate token via introspection endpoint
-4. Forward authenticated requests with headers:
-   - `X-Authenticated-User-Id: <sub from introspection>`
-   - `X-Authenticated-User-Email: <email from introspection>`
-   - `X-Authenticated-Scope: <scope from introspection>`
+1. **Direct JWT validation**: Backend services validate JWT tokens using Authentik's JWKS endpoint
+2. **oauth2-proxy (optional)**: ForwardAuth middleware delegates authentication to oauth2-proxy
+3. **OIDC Flow**: Frontend SPAs use Authorization Code Flow with PKCE
+
+**Current Architecture**:
+- Frontend apps (heatpump-web) authenticate via OIDC and obtain JWT tokens
+- JWT tokens are included in API requests as `Authorization: Bearer <token>`
+- Backend APIs validate JWT signatures using Authentik's public key
+- No session state - fully stateless authentication
+
+For detailed authentication architecture, see `docs/AUTHENTICATION.md`
 
 ## Monitoring
 
@@ -341,41 +319,145 @@ kubectl exec -n authentik -it deploy/authentik-server -- ak showmigrations
 
 ## Backup and Recovery
 
-### Backup PostgreSQL
+### Automated S3 Backups
 
-```bash
-# Export database
-kubectl exec -n authentik deploy/authentik-postgres -- pg_dump -U authentik authentik > authentik-backup.sql
+A CronJob runs daily at **3 AM** to backup the Authentik PostgreSQL database to S3:
 
-# Or use PVC snapshots
-kubectl get pvc -n authentik
+```yaml
+Schedule: "0 3 * * *"
+Retention: 3 successful jobs, 3 failed jobs
+Backup format: pg_dump + gzip
+S3 path: s3://<bucket>/<prefix>/authentik-YYYYMMDD-HHMMSS.sql.gz
 ```
 
-### Restore PostgreSQL
+**Setup S3 backup** (if not already configured):
 
 ```bash
-# Restore from backup
-kubectl exec -i -n authentik deploy/authentik-postgres -- psql -U authentik authentik < authentik-backup.sql
+# Create sealed secret for AWS credentials
+kubectl create secret generic authentik-backup-aws \
+  --namespace=authentik \
+  --from-literal=AWS_ACCESS_KEY_ID="your-key" \
+  --from-literal=AWS_SECRET_ACCESS_KEY="your-secret" \
+  --from-literal=AWS_REGION=eu-north-1 \
+  --from-literal=S3_BUCKET="your-bucket" \
+  --from-literal=S3_PREFIX=authentik-backups \
+  --dry-run=client -o yaml | \
+kubeseal \
+  --namespace authentik \
+  --controller-name sealed-secrets \
+  --controller-namespace kube-system \
+  --format=yaml > gitops/apps/base/authentik/backup-aws-credentials-sealed.yaml
+
+# Commit and push the sealed secret
+git add gitops/apps/base/authentik/backup-aws-credentials-sealed.yaml
+git commit -m "Add Authentik backup AWS credentials"
+git push
 ```
+
+**Manually trigger a backup** (for testing):
+
+```bash
+# Create one-time job from CronJob
+kubectl create job authentik-backup-manual \
+  --from=cronjob/authentik-postgres-backup \
+  -n authentik
+
+# Watch the backup progress
+kubectl logs -n authentik -l job-name=authentik-backup-manual --follow
+
+# Verify in S3
+aws s3 ls s3://your-bucket/authentik-backups/ --region eu-north-1
+
+# Clean up test job
+kubectl delete job authentik-backup-manual -n authentik
+```
+
+### Manual Backup
+
+For ad-hoc backups outside the automated schedule:
+
+```bash
+# Export database to local file
+kubectl exec -n authentik deploy/authentik-postgres -- \
+  pg_dump -U authentik authentik > authentik-backup-$(date +%Y%m%d).sql
+
+# Or create compressed backup
+kubectl exec -n authentik deploy/authentik-postgres -- \
+  pg_dump -U authentik authentik | gzip > authentik-backup-$(date +%Y%m%d).sql.gz
+```
+
+### Restore from S3 Backup
+
+```bash
+# 1. Download backup from S3
+aws s3 cp s3://your-bucket/authentik-backups/authentik-20250130-030000.sql.gz . \
+  --region eu-north-1
+
+# 2. Decompress
+gunzip authentik-20250130-030000.sql.gz
+
+# 3. Stop Authentik server and worker to prevent writes
+kubectl scale deployment authentik-server -n authentik --replicas=0
+kubectl scale deployment authentik-worker -n authentik --replicas=0
+
+# 4. Restore database
+kubectl exec -i -n authentik deploy/authentik-postgres -- \
+  psql -U authentik authentik < authentik-20250130-030000.sql
+
+# 5. Restart Authentik
+kubectl scale deployment authentik-server -n authentik --replicas=1
+kubectl scale deployment authentik-worker -n authentik --replicas=1
+
+# 6. Verify
+kubectl logs -n authentik -l app=authentik-server --tail=50
+```
+
+### Restore from Manual Backup
+
+```bash
+# Stop Authentik services
+kubectl scale deployment authentik-server -n authentik --replicas=0
+kubectl scale deployment authentik-worker -n authentik --replicas=0
+
+# Restore from local backup
+kubectl exec -i -n authentik deploy/authentik-postgres -- \
+  psql -U authentik authentik < authentik-backup.sql
+
+# Restart services
+kubectl scale deployment authentik-server -n authentik --replicas=1
+kubectl scale deployment authentik-worker -n authentik --replicas=1
+```
+
+### Disaster Recovery
+
+For complete disaster recovery:
+
+1. **Restore sealed secrets**: Ensure sealed-secrets controller has the same sealing key
+2. **Restore PostgreSQL data**: Use S3 backup or PVC snapshot
+3. **Redeploy Authentik**: Apply kustomization to recreate all resources
+4. **Verify health**: Check server and worker logs, test login
 
 ## Security Considerations
 
-1. **Secrets**: All sensitive data in sealed secrets
+1. **Secrets**: All sensitive data stored in sealed secrets (encrypted at rest in Git)
 2. **Network**: PostgreSQL and Redis only accessible within cluster
-3. **HTTPS**: Should use HTTPS in production (via Kong/Cloudflare Tunnel)
-4. **Passwords**: Use strong bootstrap password (32+ characters)
-5. **Token Expiry**: Configure appropriate expiry times (24h access, 30d refresh)
-6. **Introspection**: Only Kong should access introspection endpoint (enforce via NetworkPolicy)
+3. **HTTPS**: Uses HTTPS in production via Cloudflare Tunnel + Traefik
+4. **Passwords**: Strong bootstrap password (32+ characters) generated with openssl
+5. **Token Expiry**: 24h access tokens, 30d refresh tokens
+6. **JWT Validation**: Backend services validate JWT signatures using Authentik's JWKS
+7. **Backup Security**: S3 backups encrypted in transit, AWS credentials in sealed secrets
+8. **Blueprint Automation**: OAuth2 applications managed as code via blueprints
 
 ## Next Steps
 
 After Authentik is deployed and configured:
 
-1. **Deploy Kong** - API Gateway with OIDC plugin
-2. **Configure Kong** - Point to Authentik introspection endpoint
-3. **Update Services** - Remove JWT validation from redpanda-sink and energy-ws
-4. **Update Frontend** - Implement OIDC authentication flow
-5. **Update Cloudflare Tunnel** - Route through Kong
+1. **Configure OAuth2 Applications** - Use blueprints for declarative app configuration
+2. **Update Frontend Apps** - Implement OIDC Authorization Code Flow
+3. **Configure Traefik** - Set up CORS and security headers middleware
+4. **Test Authentication** - Verify OIDC flow and JWT validation
+5. **Enable Backups** - Create sealed secret for S3 backup credentials
+6. **Monitor Logs** - Check server and worker logs for issues
 
 ## References
 
