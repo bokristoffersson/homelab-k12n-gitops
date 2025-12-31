@@ -27,9 +27,10 @@ spec:
             - --cookie-httponly=true
             - --cookie-samesite=lax
             - --cookie-name=_oauth2_proxy
+            - --cookie-domain=.k12n.com  # Allow cookie across subdomains
+            - --whitelist-domain=.k12n.com  # Allow all k12n.com subdomains
             - --email-domain=*
             - --http-address=0.0.0.0:4180
-            - --redirect-url=https://api.k12n.com/oauth2/callback
             - --upstream=static://202  # ForwardAuth mode
             - --skip-provider-button=true
             - --pass-authorization-header=true
