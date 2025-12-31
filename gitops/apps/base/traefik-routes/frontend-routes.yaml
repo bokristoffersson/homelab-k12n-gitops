@@ -20,6 +20,22 @@ spec:
           namespace: oauth2-proxy
           port: 4180
 
+    # API Proxy (protected by OAuth2 Proxy) - same-origin for SPA
+    - match: Host(`heatpump.k12n.com`) && PathPrefix(`/api`)
+      kind: Rule
+      priority: 90  # Higher priority than catch-all
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
     # Heatpump Web Frontend (protected by OAuth2 Proxy)
     - match: Host(`heatpump.k12n.com`)
       kind: Rule
