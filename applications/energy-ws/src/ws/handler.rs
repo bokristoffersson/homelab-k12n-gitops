@@ -99,9 +99,14 @@ mod tests {
     #[test]
     fn test_app_state_creation() {
         let (tx, _rx) = broadcast::channel(100);
-        let state = AppState::new("test-secret".to_string(), tx, 1000);
+        let auth = AuthMethod::Legacy("test-secret".to_string());
+        let state = AppState::new(auth, tx, 1000);
 
-        assert_eq!(state.jwt_secret, "test-secret");
         assert_eq!(state.max_connections, 1000);
+        // Verify auth method is Legacy
+        match &state.auth {
+            AuthMethod::Legacy(secret) => assert_eq!(secret, "test-secret"),
+            AuthMethod::Jwks(_) => panic!("Expected Legacy auth method"),
+        }
     }
 }
