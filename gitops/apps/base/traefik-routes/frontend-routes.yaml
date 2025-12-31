@@ -8,9 +8,12 @@ spec:
   entryPoints:
     - web
   routes:
-    # Heatpump Web Frontend (public)
+    # Heatpump Web Frontend (protected by OAuth2 Proxy)
     - match: Host(`heatpump.k12n.com`)
       kind: Rule
+      middlewares:
+        - name: oauth2-proxy-auth
+          namespace: traefik
       services:
         - name: heatpump-web
           namespace: heatpump-web
