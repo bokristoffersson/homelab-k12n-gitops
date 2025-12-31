@@ -8,10 +8,12 @@ spec:
   entryPoints:
     - web  # Port 8000
   routes:
-    # Homelab API (protected by JWT tokens from Authentik)
+    # Homelab API (protected by OAuth2 Proxy ForwardAuth)
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
       kind: Rule
       middlewares:
+        - name: oauth2-proxy-auth
+          namespace: traefik
         - name: cors
           namespace: traefik
         - name: security-headers
