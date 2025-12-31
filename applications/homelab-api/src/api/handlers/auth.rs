@@ -2,7 +2,11 @@ use crate::api::models::auth::{LoginRequest, LoginResponse, UserInfoResponse};
 use crate::auth::{jwt::create_token, password::verify_password};
 use crate::config::Config;
 use crate::db::DbPool;
-use axum::{extract::State, http::{HeaderMap, StatusCode}, response::Json};
+use axum::{
+    extract::State,
+    http::{HeaderMap, StatusCode},
+    response::Json,
+};
 
 pub async fn login(
     State((_pool, config)): State<(DbPool, Config)>,
