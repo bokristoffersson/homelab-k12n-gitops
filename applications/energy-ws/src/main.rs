@@ -54,27 +54,26 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Initialize authentication method based on configuration
-    let auth_method = if let (Some(jwks_url), Some(issuer)) =
-        (&config.auth.jwks_url, &config.auth.issuer)
-    {
-        // Prefer JWKS/RS256 validation for OIDC tokens
-        info!(
-            "Initializing JWKS authentication: issuer={}, jwks_url={}",
-            issuer, jwks_url
-        );
-        let validator = JwtValidator::new(jwks_url, issuer.clone())
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to initialize JWKS validator: {}", e))?;
-        AuthMethod::Jwks(Arc::new(validator))
-    } else if let Some(secret) = &config.auth.jwt_secret {
-        // Fall back to legacy HS256 validation
-        warn!("Using legacy HS256 JWT validation - consider migrating to JWKS/RS256");
-        AuthMethod::Legacy(secret.clone())
-    } else {
-        return Err(anyhow::anyhow!(
-            "No authentication method configured (need either JWKS or jwt_secret)"
-        ));
-    };
+    let auth_method =
+        if let (Some(jwks_url), Some(issuer)) = (&config.auth.jwks_url, &config.auth.issuer) {
+            // Prefer JWKS/RS256 validation for OIDC tokens
+            info!(
+                "Initializing JWKS authentication: issuer={}, jwks_url={}",
+                issuer, jwks_url
+            );
+            let validator = JwtValidator::new(jwks_url, issuer.clone())
+                .await
+                .map_err(|e| anyhow::anyhow!("Failed to initialize JWKS validator: {}", e))?;
+            AuthMethod::Jwks(Arc::new(validator))
+        } else if let Some(secret) = &config.auth.jwt_secret {
+            // Fall back to legacy HS256 validation
+            warn!("Using legacy HS256 JWT validation - consider migrating to JWKS/RS256");
+            AuthMethod::Legacy(secret.clone())
+        } else {
+            return Err(anyhow::anyhow!(
+                "No authentication method configured (need either JWKS or jwt_secret)"
+            ));
+        };
 
     // Create application state
     let state = Arc::new(AppState::new(

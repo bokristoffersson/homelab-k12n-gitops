@@ -61,13 +61,10 @@ pub async fn ws_handler(
     let claims = match &state.auth {
         AuthMethod::Jwks(validator) => {
             // Use JWKS/RS256 validation for OIDC tokens from Authentik
-            validator
-                .validate_token(&params.token)
-                .await
-                .map_err(|e| {
-                    error!("JWKS JWT validation failed: {:?}", e);
-                    StatusCode::UNAUTHORIZED
-                })?
+            validator.validate_token(&params.token).await.map_err(|e| {
+                error!("JWKS JWT validation failed: {:?}", e);
+                StatusCode::UNAUTHORIZED
+            })?
         }
         AuthMethod::Legacy(secret) => {
             // Use legacy HS256 validation
