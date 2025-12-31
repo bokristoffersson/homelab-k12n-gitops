@@ -1,4 +1,4 @@
-use crate::auth;
+use crate::auth::{self, jwt::JwtValidator};
 use crate::ws::connection::handle_connection;
 use axum::{
     extract::{
@@ -20,21 +20,30 @@ pub struct WsParams {
     token: String,
 }
 
+/// Authentication method for JWT validation
+#[derive(Clone)]
+pub enum AuthMethod {
+    /// JWKS-based RS256 validation (preferred for OIDC)
+    Jwks(Arc<JwtValidator>),
+    /// Legacy HS256 validation with shared secret
+    Legacy(String),
+}
+
 #[derive(Clone)]
 pub struct AppState {
-    pub jwt_secret: String,
+    pub auth: AuthMethod,
     pub broadcast_tx: broadcast::Sender<EnergyMessage>,
     pub max_connections: usize,
 }
 
 impl AppState {
     pub fn new(
-        jwt_secret: String,
+        auth: AuthMethod,
         broadcast_tx: broadcast::Sender<EnergyMessage>,
         max_connections: usize,
     ) -> Self {
         Self {
-            jwt_secret,
+            auth,
             broadcast_tx,
             max_connections,
         }
@@ -48,11 +57,26 @@ pub async fn ws_handler(
     Query(params): Query<WsParams>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Response, StatusCode> {
-    // Validate JWT token from query parameter
-    let claims = auth::validate_token(&params.token, &state.jwt_secret).map_err(|e| {
-        error!("JWT validation failed: {}", e);
-        StatusCode::UNAUTHORIZED
-    })?;
+    // Validate JWT token using the configured authentication method
+    let claims = match &state.auth {
+        AuthMethod::Jwks(validator) => {
+            // Use JWKS/RS256 validation for OIDC tokens from Authentik
+            validator
+                .validate_token(&params.token)
+                .await
+                .map_err(|e| {
+                    error!("JWKS JWT validation failed: {:?}", e);
+                    StatusCode::UNAUTHORIZED
+                })?
+        }
+        AuthMethod::Legacy(secret) => {
+            // Use legacy HS256 validation
+            auth::validate_token(&params.token, secret).map_err(|e| {
+                error!("Legacy JWT validation failed: {}", e);
+                StatusCode::UNAUTHORIZED
+            })?
+        }
+    };
 
     info!("WebSocket upgrade authorized for user: {}", claims.sub);
 
