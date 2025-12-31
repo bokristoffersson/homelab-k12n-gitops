@@ -10,6 +10,14 @@ input:
 
 pipeline:
   processors:
+    # Filter: Only process NotifyFullStatus messages (skip NotifyStatus and NotifyEvent)
+    - mapping: |
+        # Skip messages that don't have sensor data
+        root = if this.method != "NotifyFullStatus" {
+          deleted()
+        } else {
+          this
+        }
     - mapping: |
         root = this
         let ts = this.ts.parse_timestamp("2006-01-02T15:04:05.999999999Z07:00")
