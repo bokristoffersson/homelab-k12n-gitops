@@ -9,6 +9,7 @@ input:
     password: ${MQTT_PASSWORD}
     clean_session: true
     qos: 1
+    keepalive: 30
 
 pipeline:
   processors:
