@@ -6,3 +6,4 @@ resources:
   - forwardauth.yaml
   - cors.yaml
   - headers.yaml
+  - https-scheme.yaml

@@ -12,6 +12,8 @@ spec:
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
       kind: Rule
       middlewares:
+        - name: https-scheme
+          namespace: traefik
         - name: oauth2-proxy-auth
           namespace: traefik
         - name: cors
@@ -38,6 +40,8 @@ spec:
     - match: Host(`api.k12n.com`) && PathPrefix(`/oauth2`)
       kind: Rule
       middlewares:
+        - name: https-scheme
+          namespace: traefik
         - name: cors
           namespace: traefik
       services:

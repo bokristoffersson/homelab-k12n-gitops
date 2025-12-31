@@ -12,6 +12,8 @@ spec:
     - match: Host(`heatpump.k12n.com`)
       kind: Rule
       middlewares:
+        - name: https-scheme
+          namespace: traefik
         - name: oauth2-proxy-auth
           namespace: traefik
       services:
