@@ -13,6 +13,14 @@ pub struct LoginResponse {
     pub expires_in: u64,
 }
 
+#[derive(Debug, Serialize)]
+pub struct UserInfoResponse {
+    pub token: String,
+    pub username: String,
+    pub email: Option<String>,
+    pub expires_in: u64,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
