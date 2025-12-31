@@ -25,7 +25,7 @@ spec:
             - --cookie-secret=$(OAUTH2_PROXY_COOKIE_SECRET)
             - --cookie-secure=true
             - --cookie-httponly=true
-            - --cookie-samesite=lax
+            - --cookie-samesite=none  # Allow cross-origin requests between subdomains
             - --cookie-name=_oauth2_proxy
             - --cookie-domain=.k12n.com  # Allow cookie across subdomains
             - --whitelist-domain=.k12n.com  # Allow all k12n.com subdomains
