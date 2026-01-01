@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Accept build arguments for environment variables
-ARG VITE_API_URL=https://api.k12n.com
+ARG VITE_API_URL=https://heatpump.k12n.com
 
 ENV VITE_API_URL=${VITE_API_URL}
 
