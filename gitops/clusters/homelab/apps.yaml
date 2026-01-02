@@ -1,17 +1,18 @@
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: whoami
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/whoami
-  prune: true
-  wait: true
+# Removed whoami kustomization - directory doesn't exist
+# ---
+# apiVersion: kustomize.toolkit.fluxcd.io/v1
+# kind: Kustomization
+# metadata:
+#   name: whoami
+#   namespace: flux-system
+# spec:
+#   interval: 10m0s
+#   sourceRef:
+#     kind: GitRepository
+#     name: flux-system
+#   path: ./gitops/apps/homelab/whoami
+#   prune: true
+#   wait: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -27,35 +28,38 @@ spec:
   prune: true
   wait: true
 
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: loki
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/loki
-  prune: true
-  wait: true
+# Removed loki kustomization - base/loki directory doesn't exist
+# Loki is deployed via HelmRelease in base/monitoring
+# ---
+# apiVersion: kustomize.toolkit.fluxcd.io/v1
+# kind: Kustomization
+# metadata:
+#   name: loki
+#   namespace: flux-system
+# spec:
+#   interval: 10m0s
+#   sourceRef:
+#     kind: GitRepository
+#     name: flux-system
+#   path: ./gitops/apps/homelab/loki
+#   prune: true
+#   wait: true
 
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: alloy
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/alloy
-  prune: true
-  wait: true
+# Removed alloy kustomization - base/alloy directory doesn't exist
+# ---
+# apiVersion: kustomize.toolkit.fluxcd.io/v1
+# kind: Kustomization
+# metadata:
+#   name: alloy
+#   namespace: flux-system
+# spec:
+#   interval: 10m0s
+#   sourceRef:
+#     kind: GitRepository
+#     name: flux-system
+#   path: ./gitops/apps/homelab/alloy
+#   prune: true
+#   wait: true
 
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -135,20 +139,21 @@ spec:
   timeout: 15m
   dependsOn:
     - name: infrastructure-controllers
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: redpanda-sink
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/redpanda-sink
-  prune: true
-  wait: true
+# Removed redpanda-sink kustomization - directory doesn't exist
+# ---
+# apiVersion: kustomize.toolkit.fluxcd.io/v1
+# kind: Kustomization
+# metadata:
+#   name: redpanda-sink
+#   namespace: flux-system
+# spec:
+#   interval: 10m0s
+#   sourceRef:
+#     kind: GitRepository
+#     name: flux-system
+#   path: ./gitops/apps/homelab/redpanda-sink
+#   prune: true
+#   wait: true
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
