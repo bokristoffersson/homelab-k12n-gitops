@@ -44,6 +44,8 @@ spec:
           namespace: traefik
         - name: oauth2-proxy-auth
           namespace: traefik
+        - name: oauth2-errors
+          namespace: traefik
       services:
         - name: heatpump-web
           namespace: heatpump-web
