@@ -7,6 +7,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::Json,
 };
+use tracing;
 
 pub async fn login(
     State((_pool, config)): State<(DbPool, Config)>,
@@ -44,43 +45,39 @@ pub async fn login(
     }))
 }
 
-/// Get user info from oauth2-proxy headers and return a JWT token
-/// This endpoint is called by authenticated users (via oauth2-proxy) to get a JWT token for WebSocket auth
+/// Get user info and access token from oauth2-proxy headers
+/// This endpoint returns the Authentik OIDC access token for WebSocket authentication
+/// OAuth2-proxy sets X-Forwarded-Access-Token header with the original OIDC token
 pub async fn user_info(
-    State((_pool, config)): State<(DbPool, Config)>,
+    State((_pool, _config)): State<(DbPool, Config)>,
     headers: HeaderMap,
 ) -> Result<Json<UserInfoResponse>, StatusCode> {
-    let auth = config
-        .auth
-        .as_ref()
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    // Extract username from X-Forwarded-User header (set by oauth2-proxy)
+    // Extract username from X-Auth-Request-User header (set by oauth2-proxy)
     let username = headers
-        .get("x-forwarded-user")
+        .get("x-auth-request-user")
         .and_then(|v| v.to_str().ok())
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    // Extract email from X-Forwarded-Email header (optional)
+    // Extract email from X-Auth-Request-Email header (optional)
     let email = headers
-        .get("x-forwarded-email")
+        .get("x-auth-request-email")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
 
-    let secret = auth
-        .jwt_secret
-        .as_deref()
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    // Create JWT token for this user
-    let token = create_token(username, secret, auth.jwt_expiry_hours)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    // Extract the Authentik OIDC access token from oauth2-proxy header
+    let token = headers
+        .get("x-auth-request-access-token")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| {
+            tracing::error!("X-Auth-Request-Access-Token header not found");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     Ok(Json(UserInfoResponse {
-        token,
+        token: token.to_string(),
         username: username.to_string(),
         email,
-        expires_in: auth.jwt_expiry_hours * 3600,
+        expires_in: 3600, // Authentik token expiry (typically 1 hour)
     }))
 }
 
