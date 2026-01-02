@@ -36,15 +36,11 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Heatpump Web Frontend (protected by OAuth2 Proxy)
+    # Heatpump Web Frontend (public SPA - auth handled by API)
     - match: Host(`heatpump.k12n.com`)
       kind: Rule
       middlewares:
         - name: https-scheme
-          namespace: traefik
-        - name: oauth2-proxy-auth
-          namespace: traefik
-        - name: oauth2-errors
           namespace: traefik
       services:
         - name: heatpump-web
