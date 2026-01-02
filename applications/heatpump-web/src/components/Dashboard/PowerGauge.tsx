@@ -65,8 +65,9 @@ export default function PowerGauge() {
             const message: WebSocketMessage = JSON.parse(event.data);
 
             if (message.type === 'data' && message.stream === 'energy' && message.data) {
-              const powerW = message.data.consumption_total_actual_w
-                || message.data.consumption_total_w
+              // Extract power from the energy message structure
+              const powerW = message.data.activeActualConsumption?.total
+                || message.data.fields?.active_power_total
                 || 0;
               setPower(powerW);
             } else if (message.type === 'error') {
