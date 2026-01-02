@@ -20,6 +20,20 @@ spec:
           namespace: oauth2-proxy
           port: 4180
 
+    # WebSocket (JWT token auth via query parameter) - same-origin for SPA
+    - match: Host(`heatpump.k12n.com`) && PathPrefix(`/ws`)
+      kind: Rule
+      priority: 95  # Higher priority than API route
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+      services:
+        - name: energy-ws
+          namespace: energy-ws
+          port: 8080
+
     # API Proxy (protected by OAuth2 Proxy) - same-origin for SPA
     - match: Host(`heatpump.k12n.com`) && PathPrefix(`/api`)
       kind: Rule
