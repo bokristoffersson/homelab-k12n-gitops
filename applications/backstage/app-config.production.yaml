@@ -51,6 +51,13 @@ auth:
 
 signInPage: oidc
 
+techdocs:
+  builder: 'local'
+  generator:
+    runIn: 'local'
+  publisher:
+    type: 'local'
+
 kubernetes:
   serviceLocatorMethod:
     type: 'multiTenant'
