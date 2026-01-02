@@ -4,6 +4,9 @@ kind: Deployment
 metadata:
   name: mqtt-kafka-bridge
   namespace: mqtt-kafka-bridge
+  labels:
+    app: mqtt-kafka-bridge
+    backstage.io/kubernetes-id: mqtt-kafka-bridge
 spec:
   replicas: 1
   selector:
@@ -13,6 +16,7 @@ spec:
     metadata:
       labels:
         app: mqtt-kafka-bridge
+        backstage.io/kubernetes-id: mqtt-kafka-bridge
     spec:
       containers:
         - name: redpanda-connect

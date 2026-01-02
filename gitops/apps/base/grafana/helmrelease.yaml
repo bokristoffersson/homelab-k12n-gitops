@@ -3,6 +3,8 @@ kind: HelmRelease
 metadata:
   name: grafana
   namespace: grafana
+  labels:
+    backstage.io/kubernetes-id: grafana
 spec:
   interval: 5m
   install:
@@ -19,6 +21,9 @@ spec:
         namespace: flux-system
   values:
     replicas: 1
+
+    podLabels:
+      backstage.io/kubernetes-id: grafana
 
     persistence:
       enabled: true

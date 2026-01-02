@@ -4,6 +4,9 @@ kind: Deployment
 metadata:
   name: energy-ws
   namespace: energy-ws
+  labels:
+    app: energy-ws
+    backstage.io/kubernetes-id: energy-ws
 spec:
   replicas: 1
   selector:
@@ -13,6 +16,7 @@ spec:
     metadata:
       labels:
         app: energy-ws
+        backstage.io/kubernetes-id: energy-ws
     spec:
       imagePullSecrets:
         - name: ghcr-secret

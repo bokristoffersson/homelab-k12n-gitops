@@ -4,6 +4,9 @@ kind: Deployment
 metadata:
   name: redpanda-connect
   namespace: heatpump-settings
+  labels:
+    app: redpanda-connect
+    backstage.io/kubernetes-id: heatpump-settings
 spec:
   replicas: 1
   selector:
@@ -13,6 +16,7 @@ spec:
     metadata:
       labels:
         app: redpanda-connect
+        backstage.io/kubernetes-id: heatpump-settings
     spec:
       containers:
         - name: redpanda-connect

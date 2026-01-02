@@ -76,6 +76,96 @@ spec:
 
 ---
 apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: energy-ws
+  description: WebSocket server for real-time energy data streaming
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: energy-ws
+spec:
+  type: service
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: heatpump-settings
+  description: Heat pump settings service
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: heatpump-settings
+spec:
+  type: service
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: mqtt-kafka-bridge
+  description: Bridge service between MQTT and Kafka for IoT data
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: mqtt-kafka-bridge
+spec:
+  type: service
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: mosquitto
+  description: MQTT broker for IoT device communication
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: mosquitto
+spec:
+  type: service
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: grafana
+  description: Metrics visualization and dashboards
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: grafana
+spec:
+  type: website
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: timescaledb
+  description: TimescaleDB time-series database
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: timescaledb
+spec:
+  type: database
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+
+---
+apiVersion: backstage.io/v1alpha1
 kind: User
 metadata:
   name: bo.kristoffersson

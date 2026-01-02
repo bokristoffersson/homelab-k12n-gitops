@@ -4,6 +4,9 @@ kind: Deployment
 metadata:
   name: timescaledb
   namespace: timescaledb
+  labels:
+    app: timescaledb
+    backstage.io/kubernetes-id: timescaledb
 spec:
   replicas: 1
   strategy:
@@ -15,6 +18,7 @@ spec:
     metadata:
       labels:
         app: timescaledb
+        backstage.io/kubernetes-id: timescaledb
     spec:
       containers:
         - name: timescaledb
