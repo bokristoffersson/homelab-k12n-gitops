@@ -122,15 +122,19 @@ export default function PowerGauge() {
   }, []);
 
   const powerKw = power / 1000;
-  const maxPower = 10; // Maximum power for gauge (10 kW)
+  const maxPower = 17.5; // Maximum power for gauge (17.5 kW)
   const percentage = Math.min((powerKw / maxPower) * 100, 100);
-  const rotation = (percentage / 100) * 270 - 135; // -135 to 135 degrees
+
+  // Calculate stroke dash offset for progress ring
+  const radius = 80;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
   // Color based on power level
   const getColor = () => {
-    if (powerKw < 2) return '#4ade80'; // Green
-    if (powerKw < 5) return '#facc15'; // Yellow
-    if (powerKw < 8) return '#fb923c'; // Orange
+    if (powerKw < 4) return '#4ade80'; // Green
+    if (powerKw < 9) return '#facc15'; // Yellow
+    if (powerKw < 14) return '#fb923c'; // Orange
     return '#ef4444'; // Red
   };
 
@@ -149,33 +153,30 @@ export default function PowerGauge() {
     <div className="card">
       <h3>Live Power Monitor</h3>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem' }}>
-        {/* Circular Gauge */}
+        {/* Progress Ring */}
         <div style={{ position: 'relative', width: '200px', height: '200px' }}>
-          {/* Background arc */}
-          <svg width="200" height="200" style={{ position: 'absolute' }}>
+          <svg width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
+            {/* Background ring */}
             <circle
               cx="100"
               cy="100"
-              r="80"
+              r={radius}
               fill="none"
               stroke="#e5e7eb"
               strokeWidth="20"
-              strokeDasharray="377"
-              strokeDashoffset="94.25"
-              transform="rotate(-135 100 100)"
             />
-            {/* Foreground arc */}
+            {/* Progress ring */}
             <circle
               cx="100"
               cy="100"
-              r="80"
+              r={radius}
               fill="none"
               stroke={getColor()}
               strokeWidth="20"
-              strokeDasharray="377"
-              strokeDashoffset={377 - (377 * 0.75 * percentage / 100)}
-              transform="rotate(-135 100 100)"
-              style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.3s ease, stroke 0.3s ease' }}
             />
           </svg>
 
@@ -187,53 +188,16 @@ export default function PowerGauge() {
             transform: 'translate(-50%, -50%)',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '2rem', fontWeight: 'bold', color: getColor() }}>
-              {powerKw.toFixed(2)}
+            <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: getColor() }}>
+              {powerKw.toFixed(1)}
             </div>
-            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+            <div style={{ fontSize: '1rem', color: '#6b7280', marginTop: '0.25rem' }}>
               kW
             </div>
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.5rem' }}>
+              {percentage.toFixed(0)}% of {maxPower}
+            </div>
           </div>
-
-          {/* Needle */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: '3px',
-            height: '70px',
-            background: '#374151',
-            transformOrigin: 'bottom center',
-            transform: `translate(-50%, -100%) rotate(${rotation}deg)`,
-            transition: 'transform 0.3s ease',
-            borderRadius: '3px'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: '-6px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '10px',
-              height: '10px',
-              background: '#374151',
-              borderRadius: '50%'
-            }}></div>
-          </div>
-
-        </div>
-
-        {/* Range labels */}
-        <div style={{
-          width: '100%',
-          display: 'flex',
-          justifyContent: 'space-between',
-          marginTop: '0.5rem',
-          padding: '0 1rem',
-          fontSize: '0.75rem',
-          color: '#6b7280'
-        }}>
-          <span>0 kW</span>
-          <span>{maxPower} kW</span>
         </div>
 
         {/* Connection status */}
