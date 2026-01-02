@@ -70,8 +70,12 @@ export default function HourlyChart({ history, error, isLoading }: HourlyChartPr
   }
 
   const chartData = history.map(item => {
-    const startTime = new Date(item.hour_start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const endTime = new Date(item.hour_end).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // Ensure timestamps are parsed as UTC by appending 'Z' if not present
+    const startUtc = item.hour_start.endsWith('Z') ? item.hour_start : item.hour_start + 'Z';
+    const endUtc = item.hour_end.endsWith('Z') ? item.hour_end : item.hour_end + 'Z';
+
+    const startTime = new Date(startUtc).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const endTime = new Date(endUtc).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     return {
       time: `${startTime}-${endTime}`,
       timeRange: `${startTime} - ${endTime}`,
