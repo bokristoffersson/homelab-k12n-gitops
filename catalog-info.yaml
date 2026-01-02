@@ -18,6 +18,64 @@ spec:
 
 ---
 apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: heatpump-web
+  description: Heat pump dashboard web application
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: heatpump-web
+spec:
+  type: website
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: homelab-api
+  description: Homelab REST API
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: homelab-api
+spec:
+  type: service
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+  providesApis:
+    - homelab-api
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: homelab-api
+  description: Homelab REST API
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+spec:
+  type: openapi
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+  definition: |
+    openapi: 3.0.0
+    info:
+      title: Homelab API
+      version: 1.0.0
+    paths:
+      /api/v1/energy/latest:
+        get:
+          summary: Get latest energy data
+      /api/v1/heatpump/latest:
+        get:
+          summary: Get latest heatpump status
+
+---
+apiVersion: backstage.io/v1alpha1
 kind: User
 metadata:
   name: bo.kristoffersson

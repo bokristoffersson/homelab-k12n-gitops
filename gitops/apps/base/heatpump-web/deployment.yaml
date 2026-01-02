@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: heatpump-web
   namespace: heatpump-web
+  labels:
+    app: heatpump-web
+    backstage.io/kubernetes-id: heatpump-web
 spec:
   replicas: 1
   selector:
@@ -12,6 +15,7 @@ spec:
     metadata:
       labels:
         app: heatpump-web
+        backstage.io/kubernetes-id: heatpump-web
     spec:
       imagePullSecrets:
         - name: ghcr-secret

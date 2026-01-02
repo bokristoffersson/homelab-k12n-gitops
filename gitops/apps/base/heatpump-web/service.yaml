@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: heatpump-web
   namespace: heatpump-web
+  labels:
+    app: heatpump-web
+    backstage.io/kubernetes-id: heatpump-web
 spec:
   type: ClusterIP
   ports:

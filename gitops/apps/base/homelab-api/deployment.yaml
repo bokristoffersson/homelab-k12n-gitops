@@ -6,6 +6,7 @@ metadata:
   namespace: homelab-api
   labels:
     app: homelab-api
+    backstage.io/kubernetes-id: homelab-api
 spec:
   replicas: 1
   selector:
@@ -15,6 +16,7 @@ spec:
     metadata:
       labels:
         app: homelab-api
+        backstage.io/kubernetes-id: homelab-api
     spec:
       containers:
         - name: app

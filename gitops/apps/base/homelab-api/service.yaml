@@ -6,6 +6,7 @@ metadata:
   namespace: homelab-api
   labels:
     app: homelab-api
+    backstage.io/kubernetes-id: homelab-api
 spec:
   type: ClusterIP
   ports:
