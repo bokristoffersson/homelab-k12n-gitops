@@ -1,8 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
 
 interface PowerData {
-  consumption_total_actual_w?: number;
-  consumption_total_w?: number;
+  // Current energy message structure from Kafka
+  activeActualConsumption?: {
+    total?: number;
+    L1?: number;
+    L2?: number;
+    L3?: number;
+  };
+  fields?: {
+    active_power_total?: number;
+  };
   timestamp?: string;
 }
 
