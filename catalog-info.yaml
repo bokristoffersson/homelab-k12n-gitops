@@ -25,6 +25,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: heatpump-web
+    backstage.io/techdocs-ref: dir:./applications/heatpump-web
 spec:
   type: website
   lifecycle: production
