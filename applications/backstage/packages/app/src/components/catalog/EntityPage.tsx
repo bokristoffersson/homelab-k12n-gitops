@@ -57,6 +57,10 @@ import {
   EntityKubernetesContent,
   isKubernetesAvailable,
 } from '@backstage/plugin-kubernetes';
+import {
+  EntityKafkaContent,
+  isKafkaAvailable,
+} from '@backstage-community/plugin-kafka';
 
 const techdocsContent = (
   <EntityTechdocsContent>
@@ -161,6 +165,14 @@ const serviceEntityPage = (
       <EntityKubernetesContent />
     </EntityLayout.Route>
 
+    <EntityLayout.Route
+      path="/kafka"
+      title="Kafka"
+      if={isKafkaAvailable}
+    >
+      <EntityKafkaContent />
+    </EntityLayout.Route>
+
     <EntityLayout.Route path="/api" title="API">
       <Grid container spacing={3} alignItems="stretch">
         <Grid item md={6}>
@@ -205,6 +217,14 @@ const websiteEntityPage = (
       if={isKubernetesAvailable}
     >
       <EntityKubernetesContent />
+    </EntityLayout.Route>
+
+    <EntityLayout.Route
+      path="/kafka"
+      title="Kafka"
+      if={isKafkaAvailable}
+    >
+      <EntityKafkaContent />
     </EntityLayout.Route>
 
     <EntityLayout.Route path="/dependencies" title="Dependencies">

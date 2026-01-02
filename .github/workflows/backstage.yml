@@ -71,6 +71,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Build frontend
+        run: yarn workspace app build
+
       - name: Build backend bundle
         run: yarn build:backend --config ../../app-config.yaml --config ../../app-config.production.yaml
 
