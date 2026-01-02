@@ -4,7 +4,6 @@ import { EnergyLatest, HourlyTotal, EnergyHourly } from '../../types/energy';
 import { HeatpumpStatus } from '../../types/heatpump';
 import { TemperatureLatest, TemperatureReading } from '../../types/temperature';
 import { useTheme } from '../../hooks/useTheme';
-import CurrentPowerCard from './CurrentPowerCard';
 import HourlyTotalCard from './HourlyTotalCard';
 import HeatpumpStatusComponent from './HeatpumpStatus';
 import Temperatures from './Temperatures';
@@ -134,7 +133,6 @@ export default function Dashboard() {
       )}
       <div className="dashboard-grid">
         <PowerGauge />
-        <CurrentPowerCard energy={energy} error={energyError} isLoading={energyLoading} />
         <HourlyTotalCard hourlyTotal={hourlyTotal} error={hourlyError} isLoading={hourlyLoading} />
         <HeatpumpStatusComponent heatpump={heatpump} error={heatpumpError} isLoading={heatpumpLoading} />
         <Temperatures heatpump={heatpump} indoorTemp={indoorTemp} error={heatpumpError} isLoading={heatpumpLoading} />
