@@ -220,18 +220,6 @@ export default function PowerGauge() {
             }}></div>
           </div>
 
-          {/* Center dot */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            width: '15px',
-            height: '15px',
-            background: '#1f2937',
-            borderRadius: '50%',
-            transform: 'translate(-50%, -50%)',
-            border: '2px solid white'
-          }}></div>
         </div>
 
         {/* Range labels */}
