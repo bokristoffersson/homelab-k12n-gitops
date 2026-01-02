@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
-import { EnergyLatest, HourlyTotal, EnergyHourly } from '../../types/energy';
+import { HourlyTotal, EnergyHourly } from '../../types/energy';
 import { HeatpumpStatus } from '../../types/heatpump';
 import { TemperatureLatest, TemperatureReading } from '../../types/temperature';
 import { useTheme } from '../../hooks/useTheme';
