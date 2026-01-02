@@ -108,23 +108,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: kong
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/kong
-  prune: true
-  wait: true
-  timeout: 5m
-  dependsOn:
-    - name: authentik
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: mosquitto
   namespace: flux-system
 spec:
@@ -133,35 +116,6 @@ spec:
     kind: GitRepository
     name: flux-system
   path: ./gitops/apps/homelab/mosquitto
-  prune: true
-  wait: true
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: heatpump-mqtt
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/heatpump-mqtt
-  prune: true
-  wait: true
-
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: redpanda
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/redpanda
   prune: true
   wait: true
 ---
@@ -185,20 +139,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: mqtt-input
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/mqtt-input
-  prune: true
-  wait: true
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: redpanda-sink
   namespace: flux-system
 spec:
@@ -207,34 +147,6 @@ spec:
     kind: GitRepository
     name: flux-system
   path: ./gitops/apps/homelab/redpanda-sink
-  prune: true
-  wait: true
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: mqtt-input-v2
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/mqtt-input-v2
-  prune: true
-  wait: true
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: redpanda-sink-v2
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/redpanda-sink-v2
   prune: true
   wait: true
 ---
