@@ -2,6 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Disable V8 optimizations that cause issues in QEMU ARM64 emulation
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # No build-time environment variables needed - all config is runtime
 COPY package*.json ./
 RUN npm ci
