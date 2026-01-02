@@ -23,8 +23,27 @@ spec:
             - containerPort: 80
               name: http
           env:
+            # Runtime configuration from ConfigMap
             - name: VITE_API_URL
-              value: "https://api.k12n.com"
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-config
+                  key: VITE_API_URL
+            - name: VITE_AUTHENTIK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-config
+                  key: VITE_AUTHENTIK_URL
+            - name: VITE_OAUTH_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-config
+                  key: VITE_OAUTH_CLIENT_ID
+            - name: VITE_OAUTH_REDIRECT_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-config
+                  key: VITE_OAUTH_REDIRECT_URI
           resources:
             requests:
               cpu: 50m
@@ -44,10 +63,6 @@ spec:
               port: 80
             initialDelaySeconds: 10
             periodSeconds: 5
-      volumes:
-        - name: config
-          configMap:
-            name: heatpump-web-config
 
 
 

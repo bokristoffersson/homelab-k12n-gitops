@@ -4,6 +4,7 @@ namespace: heatpump-web
 resources:
   - namespace.yaml
   - ghcr-secret-sealed.yaml
+  - configmap.yaml
   - deployment.yaml
   - service.yaml
 

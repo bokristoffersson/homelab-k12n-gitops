@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.k12n.com';
+// Use runtime configuration from window.ENV (loaded from env-config.js)
+const API_BASE_URL = window.ENV?.API_URL || 'https://heatpump.k12n.com';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,

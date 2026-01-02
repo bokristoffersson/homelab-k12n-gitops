@@ -27,7 +27,7 @@ export default function PowerGauge() {
         // Get JWT token from the user info endpoint (authenticated via oauth2-proxy)
         const apiBaseUrl = import.meta.env.DEV
           ? 'http://localhost:8000/api/v1'
-          : 'https://api.k12n.com/api/v1';
+          : `${window.ENV?.API_URL}/api/v1`;
 
         const response = await fetch(`${apiBaseUrl}/user/info`);
         if (!response.ok) {
@@ -38,10 +38,9 @@ export default function PowerGauge() {
         const token = userInfo.token;
 
         // Determine WebSocket URL based on environment
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = import.meta.env.DEV
           ? `ws://localhost:8080/ws/energy?token=${token}`  // Development
-          : `${protocol}//api.k12n.com/ws/energy?token=${token}`;  // Production
+          : `wss://${new URL(window.ENV?.API_URL || '').host}/ws/energy?token=${token}`;  // Production
 
         console.log('Connecting to WebSocket:', wsUrl.replace(/token=[^&]+/, 'token=***'));
         const ws = new WebSocket(wsUrl);

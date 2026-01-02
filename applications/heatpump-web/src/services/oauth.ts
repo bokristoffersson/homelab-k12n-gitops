@@ -1,11 +1,12 @@
 /**
  * OAuth2 Authorization Code Flow with PKCE
  * Integrates with Authentik for authentication
+ * Uses runtime configuration from window.ENV (loaded from env-config.js)
  */
 
-const AUTHENTIK_URL = import.meta.env.VITE_AUTHENTIK_URL || 'https://authentik.k12n.com';
-const CLIENT_ID = import.meta.env.VITE_OAUTH_CLIENT_ID || 'heatpump-web';
-const REDIRECT_URI = import.meta.env.VITE_OAUTH_REDIRECT_URI || `${window.location.origin}/auth/callback`;
+const AUTHENTIK_URL = window.ENV?.AUTHENTIK_URL || 'https://authentik.k12n.com';
+const CLIENT_ID = window.ENV?.OAUTH_CLIENT_ID || 'heatpump-web';
+const REDIRECT_URI = window.ENV?.OAUTH_REDIRECT_URI || `${window.location.origin}/auth/callback`;
 const SCOPES = 'openid profile email read:energy read:heatpump read:settings write:settings';
 
 const TOKEN_KEY = 'oauth_access_token';
