@@ -14,13 +14,6 @@ import './Dashboard.css';
 
 export default function Dashboard() {
   const { theme, toggleTheme } = useTheme();
-  
-  const { data: energy, error: energyError, isLoading: energyLoading } = useQuery<EnergyLatest>({
-    queryKey: ['energy', 'latest'],
-    queryFn: () => api.get('/api/v1/energy/latest').then((r) => r.data),
-    refetchInterval: 5000,
-    retry: 1,
-  });
 
   const { data: hourlyTotal, error: hourlyError, isLoading: hourlyLoading } = useQuery<HourlyTotal>({
     queryKey: ['energy', 'hourly-total'],
@@ -76,7 +69,7 @@ export default function Dashboard() {
   });
 
   // Show error banner if any query failed
-  const hasErrors = energyError || hourlyError || heatpumpError || historyError || indoorTempError || tempHistoryError;
+  const hasErrors = hourlyError || heatpumpError || historyError || indoorTempError || tempHistoryError;
 
   return (
     <div className="dashboard">
@@ -92,14 +85,6 @@ export default function Dashboard() {
       {hasErrors && (
         <div className="error-banner">
           <strong>⚠️ API Errors:</strong>
-          {energyError && (
-            <div>
-              Energy Latest: {energyError instanceof Error 
-                ? (energyError as any).response?.data?.error || energyError.message 
-                : 'Failed to load'}
-              {(energyError as any).response?.status && ` (Status: ${(energyError as any).response.status})`}
-            </div>
-          )}
           {hourlyError && (
             <div>
               Hourly Total: {hourlyError instanceof Error 
