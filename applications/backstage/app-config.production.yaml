@@ -70,6 +70,19 @@ kubernetes:
           skipTLSVerify: false
           skipMetricsLookup: false
 
+kafka:
+  clientId: backstage
+  clusters:
+    - name: redpanda-v2
+      brokers:
+        - redpanda-v2.redpanda-v2.svc.cluster.local:9092
+      # Optional: Add authentication if needed
+      # ssl: true
+      # sasl:
+      #   mechanism: plain
+      #   username: ${KAFKA_USERNAME}
+      #   password: ${KAFKA_PASSWORD}
+
 catalog:
   import:
     entityFilename: catalog-info.yaml

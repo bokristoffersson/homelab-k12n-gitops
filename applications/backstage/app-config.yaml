@@ -109,6 +109,19 @@ catalog:
 kubernetes:
   # see https://backstage.io/docs/features/kubernetes/configuration for kubernetes configuration options
 
+kafka:
+  clientId: backstage
+  clusters:
+    - name: redpanda-v2
+      brokers:
+        - redpanda-v2.redpanda-v2.svc.cluster.local:9092
+      # Optional: Add authentication if needed
+      # ssl: true
+      # sasl:
+      #   mechanism: plain
+      #   username: ${KAFKA_USERNAME}
+      #   password: ${KAFKA_PASSWORD}
+
 # see https://backstage.io/docs/permissions/getting-started for more on the permission framework
 permission:
   # setting this to `false` will disable permissions
