@@ -143,6 +143,47 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
+  name: redpanda-sink-timescaledb
+  description: Redpanda Connect sink that streams Kafka data to TimescaleDB
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: redpanda-connect
+    backstage.io/kubernetes-namespace: timescaledb
+    backstage.io/techdocs-ref: dir:./gitops/apps/base/timescaledb/docs
+    kafka.apache.org/consumer-groups: redpanda-v2/timescaledb-energy,redpanda-v2/timescaledb-heatpump,redpanda-v2/timescaledb-temperature
+spec:
+  type: service
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+  dependsOn:
+    - resource:default/timescaledb
+    - component:default/mqtt-kafka-bridge
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: redpanda-sink-heatpump-settings
+  description: Redpanda Connect processor for heatpump settings data
+  annotations:
+    github.com/project-slug: bokristoffersson/homelab-k12n-gitops
+    backstage.io/kubernetes-id: redpanda-connect
+    backstage.io/kubernetes-namespace: heatpump-settings
+    backstage.io/techdocs-ref: dir:./gitops/apps/base/heatpump-settings/docs
+    kafka.apache.org/consumer-groups: redpanda-v2/heatpump-settings
+spec:
+  type: service
+  lifecycle: production
+  owner: homelab-admins
+  system: homelab
+  dependsOn:
+    - component:default/mqtt-kafka-bridge
+
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
   name: grafana
   description: Metrics visualization and dashboards
   annotations:

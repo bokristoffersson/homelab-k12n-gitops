@@ -1,0 +1,16 @@
+site_name: Homelab Streaming Architecture
+site_description: IoT data streaming and processing architecture documentation
+
+nav:
+  - Overview: index.md
+  - Data Flow: data-flow.md
+  - Kafka Topics: kafka-topics.md
+  - Monitoring: monitoring.md
+
+theme:
+  name: material
+  palette:
+    primary: blue
+  features:
+    - navigation.tabs
+    - navigation.sections

@@ -1,0 +1,13 @@
+site_name: TimescaleDB
+site_description: Time-series database for homelab IoT data
+
+nav:
+  - Overview: index.md
+  - Schema: schema.md
+  - Redpanda Sink: redpanda-sink.md
+  - Migrations: migrations.md
+
+theme:
+  name: material
+  palette:
+    primary: indigo
