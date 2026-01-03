@@ -84,6 +84,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: energy-ws
+    kafka.apache.org/consumer-groups: energy-ws
 spec:
   type: service
   lifecycle: production
@@ -99,6 +100,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: heatpump-settings
+    kafka.apache.org/consumer-groups: heatpump-settings
 spec:
   type: service
   lifecycle: production
@@ -159,6 +161,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: timescaledb
+    kafka.apache.org/consumer-groups: timescaledb-energy,timescaledb-heatpump,timescaledb-temperature
 spec:
   type: database
   lifecycle: production
