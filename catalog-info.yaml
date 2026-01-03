@@ -113,11 +113,12 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: mqtt-kafka-bridge
-  description: Bridge service between MQTT and Kafka for IoT data
+  description: Bridge service between MQTT and Kafka, producing to homelab.energy, homelab.heatpump, and homelab.temperature topics
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: mqtt-kafka-bridge
     backstage.io/techdocs-ref: dir:./applications/mqtt-kafka-bridge
+    kafka.apache.org/producer-topics: homelab.energy,homelab.heatpump,homelab.temperature
 spec:
   type: service
   lifecycle: production
