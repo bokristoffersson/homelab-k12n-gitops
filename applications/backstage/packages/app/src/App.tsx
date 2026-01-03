@@ -38,6 +38,45 @@ import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/
 import { NotificationsPage } from '@backstage/plugin-notifications';
 import { SignalsDisplay } from '@backstage/plugin-signals';
 import { Router as KafkaRouter } from '@backstage-community/plugin-kafka';
+import { ConfigReader } from '@backstage/config';
+import { loadConfig } from '@backstage/config-loader';
+
+// Helper to check if we're using guest auth
+// This reads the config at build time to determine which SignInPage to use
+const getSignInPageConfig = () => {
+  // Try to read from environment or default to production mode
+  // When running locally with app-config.local.yaml, signInPage will be 'guest'
+  // In production, it will be 'oidc'
+  const isLocal = process.env.NODE_ENV !== 'production' || 
+                  process.argv.some(arg => arg.includes('app-config.local'));
+  
+  return isLocal ? 'guest' : 'oidc';
+};
+
+const signInPageMode = getSignInPageConfig();
+
+// Conditional SignInPage component that uses guest auth locally, Authentik in production
+const ConditionalSignInPage = (props: any) => {
+  // If using guest auth, let Backstage handle it automatically
+  // Otherwise, use Authentik
+  if (signInPageMode === 'guest') {
+    return <SignInPage {...props} />;
+  }
+  
+  return (
+    <SignInPage
+      {...props}
+      providers={[
+        {
+          id: 'authentik-auth-provider',
+          title: 'Authentik',
+          message: 'Sign in using Authentik',
+          apiRef: authentikAuthApiRef,
+        },
+      ]}
+    />
+  );
+};
 
 const app = createApp({
   apis,
@@ -59,19 +98,7 @@ const app = createApp({
     });
   },
   components: {
-    SignInPage: props => (
-      <SignInPage
-        {...props}
-        providers={[
-          {
-            id: 'authentik-auth-provider',
-            title: 'Authentik',
-            message: 'Sign in using Authentik',
-            apiRef: authentikAuthApiRef,
-          },
-        ]}
-      />
-    ),
+    SignInPage: ConditionalSignInPage,
   },
 });
 
