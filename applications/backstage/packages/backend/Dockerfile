@@ -36,10 +36,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
-    apt-get install -y --no-install-recommends python3-pip && \
+    apt-get install -y --no-install-recommends python3-pip python3-venv && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --break-system-packages mkdocs-techdocs-core==1.3.3
+# Install mkdocs in a virtual environment to avoid system package conflicts
+RUN python3 -m venv /opt/mkdocs-venv && \
+    /opt/mkdocs-venv/bin/pip install --no-cache-dir mkdocs-techdocs-core==1.3.3
+
+# Add venv to PATH so mkdocs is available
+ENV PATH="/opt/mkdocs-venv/bin:$PATH"
 
 # From here on we use the least-privileged `node` user to run the backend.
 USER node
