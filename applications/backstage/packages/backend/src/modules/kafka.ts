@@ -16,7 +16,7 @@ export default createBackendModule({
           logger,
           config,
         });
-        httpRouter.use(router);
+        httpRouter.use('/kafka', router);
       },
     });
   },
