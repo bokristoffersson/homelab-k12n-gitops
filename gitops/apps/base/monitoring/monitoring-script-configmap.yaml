@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: monitoring-script
+  namespace: monitoring
+data:
+  check-health.sh: |
+    #!/bin/sh
+    set -e
+    
+    SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL}"
+    ALERT_THRESHOLD_TEMP=7200     # 2 hours for temperature
+    ALERT_THRESHOLD_ENERGY=600    # 10 minutes for energy
+    ALERT_THRESHOLD_HEATPUMP=600  # 10 minutes for heatpump
+    LAG_THRESHOLD=1000            # 1000 messages
+    
+    send_slack_alert() {
+      local message="$1"
+      local severity="$2"
+      local icon="⚠️"
+      
+      case "$severity" in
+        critical) icon="🚨" ;;
+        warning) icon="⚠️" ;;
+        info) icon="ℹ️" ;;
+      esac
+      
+      curl -X POST "$SLACK_WEBHOOK_URL" \
+        -H 'Content-Type: application/json' \
+        -d "{\"text\":\"$icon *$severity* | $message\"}" \
+        -s -o /dev/null
+    }
+    
+    # Check temperature data freshness
+    echo "Checking temperature data freshness..."
+    TEMP_AGE=$(kubectl exec -n timescaledb deployment/timescaledb -- \
+      psql -U postgres -d telemetry -tAc \
+      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(time))), 999999) FROM temperature_sensors;")
+    
+    if [ $(echo "$TEMP_AGE > $ALERT_THRESHOLD_TEMP" | bc) -eq 1 ]; then
+      HOURS=$(echo "$TEMP_AGE / 3600" | bc)
+      send_slack_alert "No temperature data for ${HOURS}h (last reading: $(echo "$TEMP_AGE / 60" | bc)m ago)" "warning"
+      echo "ALERT: Temperature data is $TEMP_AGE seconds old"
+    else
+      echo "Temperature data OK ($(echo "$TEMP_AGE / 60" | bc)m old)"
+    fi
+    
+    # Check energy data freshness
+    echo "Checking energy data freshness..."
+    ENERGY_AGE=$(kubectl exec -n timescaledb deployment/timescaledb -- \
+      psql -U postgres -d telemetry -tAc \
+      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(time))), 999999) FROM energy;")
+    
+    if [ $(echo "$ENERGY_AGE > $ALERT_THRESHOLD_ENERGY" | bc) -eq 1 ]; then
+      send_slack_alert "No energy data for $(echo "$ENERGY_AGE / 60" | bc)m" "critical"
+      echo "ALERT: Energy data is $ENERGY_AGE seconds old"
+    else
+      echo "Energy data OK ($(echo "$ENERGY_AGE" | bc)s old)"
+    fi
+    
+    # Check heatpump data freshness
+    echo "Checking heatpump data freshness..."
+    HEATPUMP_AGE=$(kubectl exec -n timescaledb deployment/timescaledb -- \
+      psql -U postgres -d telemetry -tAc \
+      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(time))), 999999) FROM heatpump_status;")
+    
+    if [ $(echo "$HEATPUMP_AGE > $ALERT_THRESHOLD_HEATPUMP" | bc) -eq 1 ]; then
+      send_slack_alert "No heatpump data for $(echo "$HEATPUMP_AGE / 60" | bc)m" "warning"
+      echo "ALERT: Heatpump data is $HEATPUMP_AGE seconds old"
+    else
+      echo "Heatpump data OK ($(echo "$HEATPUMP_AGE" | bc)s old)"
+    fi
+    
+    # Check Kafka consumer group lag
+    echo "Checking Kafka consumer group lag..."
+    CONSUMER_GROUPS="timescaledb-energy timescaledb-heatpump timescaledb-temperature heatpump-settings"
+    
+    for group in $CONSUMER_GROUPS; do
+      echo "Checking consumer group: redpanda-v2/$group"
+      
+      LAG=$(kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
+        rpk group describe "redpanda-v2/$group" -f json 2>/dev/null | \
+        grep -o '"lag":[0-9]*' | head -1 | cut -d: -f2 || echo "0")
+      
+      if [ -z "$LAG" ]; then
+        LAG=0
+      fi
+      
+      if [ $LAG -gt $LAG_THRESHOLD ]; then
+        send_slack_alert "High consumer lag for $group: $LAG messages" "warning"
+        echo "ALERT: Consumer group $group has lag of $LAG"
+      else
+        echo "Consumer group $group OK (lag: $LAG)"
+      fi
+    done
+    
+    # Check MQTT bridge health
+    echo "Checking MQTT bridge health..."
+    ERROR_COUNT=$(kubectl logs -n mqtt-kafka-bridge deployment/mqtt-kafka-bridge --since=15m 2>/dev/null | \
+      grep -c "Connection lost" || echo "0")
+    
+    if [ $ERROR_COUNT -gt 10 ]; then
+      send_slack_alert "MQTT bridge has $ERROR_COUNT connection errors in last 15m" "critical"
+      echo "ALERT: MQTT bridge error count: $ERROR_COUNT"
+    else
+      echo "MQTT bridge OK (errors: $ERROR_COUNT)"
+    fi
+    
+    echo "Health check complete"

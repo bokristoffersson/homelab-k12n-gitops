@@ -3,4 +3,7 @@ kind: Kustomization
 namespace: monitoring
 resources:
   - namespace.yaml
-  - helmrelease.yaml
+  - slack-webhook-secret-sealed.yaml
+  - serviceaccount.yaml
+  - monitoring-script-configmap.yaml
+  - cronjob.yaml
