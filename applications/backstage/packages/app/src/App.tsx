@@ -38,34 +38,6 @@ import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/
 import { NotificationsPage } from '@backstage/plugin-notifications';
 import { SignalsDisplay } from '@backstage/plugin-signals';
 
-// Conditional SignInPage component that uses guest auth locally, Authentik in production
-// This component reads from the config API to determine which auth mode to use
-const ConditionalSignInPage = (props: any) => {
-  const config = props.config;
-  const authEnvironment = config?.getOptionalString('auth.environment');
-
-  // In production (when auth.environment is set), use OIDC with Authentik
-  // Otherwise use guest auth for local development
-  if (authEnvironment === 'production') {
-    return (
-      <SignInPage
-        {...props}
-        providers={[
-          {
-            id: 'authentik-auth-provider',
-            title: 'Authentik',
-            message: 'Sign in using Authentik',
-            apiRef: authentikAuthApiRef,
-          },
-        ]}
-      />
-    );
-  }
-
-  // Default to guest auth for local development
-  return <SignInPage {...props} />;
-};
-
 const app = createApp({
   apis,
   bindRoutes({ bind }) {
@@ -86,7 +58,19 @@ const app = createApp({
     });
   },
   components: {
-    SignInPage: ConditionalSignInPage,
+    SignInPage: props => (
+      <SignInPage
+        {...props}
+        providers={[
+          {
+            id: 'oidc',
+            title: 'Authentik',
+            message: 'Sign in using Authentik',
+            apiRef: authentikAuthApiRef,
+          },
+        ]}
+      />
+    ),
   },
 });
 
