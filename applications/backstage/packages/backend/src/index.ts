@@ -59,7 +59,7 @@ backend.add(import('@backstage/plugin-search-backend-module-techdocs'));
 backend.add(import('@backstage/plugin-kubernetes-backend'));
 
 // kafka plugin
-backend.add(import('./modules/kafka'));
+backend.add(import('@backstage-community/plugin-kafka-backend/alpha'));
 
 // notifications and signals plugins
 backend.add(import('@backstage/plugin-notifications-backend'));
