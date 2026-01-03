@@ -38,8 +38,6 @@ import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/
 import { NotificationsPage } from '@backstage/plugin-notifications';
 import { SignalsDisplay } from '@backstage/plugin-signals';
 import { Router as KafkaRouter } from '@backstage-community/plugin-kafka';
-import { ConfigReader } from '@backstage/config';
-import { loadConfig } from '@backstage/config-loader';
 
 // Helper to check if we're using guest auth
 // This reads the config at build time to determine which SignInPage to use
