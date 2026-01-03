@@ -38,41 +38,32 @@ import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/
 import { NotificationsPage } from '@backstage/plugin-notifications';
 import { SignalsDisplay } from '@backstage/plugin-signals';
 
-// Helper to check if we're using guest auth
-// This reads the config at build time to determine which SignInPage to use
-const getSignInPageConfig = () => {
-  // Try to read from environment or default to production mode
-  // When running locally with app-config.local.yaml, signInPage will be 'guest'
-  // In production, it will be 'oidc'
-  const isLocal = process.env.NODE_ENV !== 'production' || 
-                  process.argv.some(arg => arg.includes('app-config.local'));
-  
-  return isLocal ? 'guest' : 'oidc';
-};
-
-const signInPageMode = getSignInPageConfig();
-
 // Conditional SignInPage component that uses guest auth locally, Authentik in production
+// This component reads from the config API to determine which auth mode to use
 const ConditionalSignInPage = (props: any) => {
-  // If using guest auth, let Backstage handle it automatically
-  // Otherwise, use Authentik
-  if (signInPageMode === 'guest') {
-    return <SignInPage {...props} />;
+  const config = props.config;
+  const authEnvironment = config?.getOptionalString('auth.environment');
+
+  // In production (when auth.environment is set), use OIDC with Authentik
+  // Otherwise use guest auth for local development
+  if (authEnvironment === 'production') {
+    return (
+      <SignInPage
+        {...props}
+        providers={[
+          {
+            id: 'authentik-auth-provider',
+            title: 'Authentik',
+            message: 'Sign in using Authentik',
+            apiRef: authentikAuthApiRef,
+          },
+        ]}
+      />
+    );
   }
-  
-  return (
-    <SignInPage
-      {...props}
-      providers={[
-        {
-          id: 'authentik-auth-provider',
-          title: 'Authentik',
-          message: 'Sign in using Authentik',
-          apiRef: authentikAuthApiRef,
-        },
-      ]}
-    />
-  );
+
+  // Default to guest auth for local development
+  return <SignInPage {...props} />;
 };
 
 const app = createApp({
