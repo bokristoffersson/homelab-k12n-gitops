@@ -49,7 +49,7 @@ data:
     echo "Checking energy data freshness..."
     ENERGY_AGE=$(kubectl exec -n timescaledb deployment/timescaledb -- \
       psql -U postgres -d telemetry -tAc \
-      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(time))), 999999) FROM energy;")
+      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(ts))), 999999) FROM energy;")
     
     if [ $(echo "$ENERGY_AGE > $ALERT_THRESHOLD_ENERGY" | bc) -eq 1 ]; then
       send_slack_alert "No energy data for $(echo "$ENERGY_AGE / 60" | bc)m" "critical"
