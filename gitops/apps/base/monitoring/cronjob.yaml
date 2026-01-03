@@ -20,7 +20,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: health-check
-              image: bitnami/kubectl:latest
+              image: alpine/k8s:1.30.7
               command:
                 - /bin/sh
                 - -c
