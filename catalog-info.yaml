@@ -84,7 +84,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: energy-ws
-    kafka.apache.org/consumer-groups: energy-ws
+    kafka.apache.org/consumer-groups: redpanda-v2/energy-ws
 spec:
   type: service
   lifecycle: production
@@ -100,7 +100,8 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: heatpump-settings
-    kafka.apache.org/consumer-groups: heatpump-settings
+    backstage.io/techdocs-ref: dir:./applications/heatpump-settings
+    kafka.apache.org/consumer-groups: redpanda-v2/heatpump-settings
 spec:
   type: service
   lifecycle: production
@@ -116,6 +117,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: mqtt-kafka-bridge
+    backstage.io/techdocs-ref: dir:./applications/mqtt-kafka-bridge
 spec:
   type: service
   lifecycle: production
@@ -161,7 +163,8 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: timescaledb
-    kafka.apache.org/consumer-groups: timescaledb-energy,timescaledb-heatpump,timescaledb-temperature
+    backstage.io/techdocs-ref: dir:./gitops/apps/base/timescaledb
+    kafka.apache.org/consumer-groups: redpanda-v2/timescaledb-energy,redpanda-v2/timescaledb-heatpump,redpanda-v2/timescaledb-temperature
 spec:
   type: database
   lifecycle: production
