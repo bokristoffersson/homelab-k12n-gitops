@@ -37,7 +37,6 @@ import { RequirePermission } from '@backstage/plugin-permission-react';
 import { catalogEntityCreatePermission } from '@backstage/plugin-catalog-common/alpha';
 import { NotificationsPage } from '@backstage/plugin-notifications';
 import { SignalsDisplay } from '@backstage/plugin-signals';
-import { Router as KafkaRouter } from '@backstage-community/plugin-kafka';
 
 // Helper to check if we're using guest auth
 // This reads the config at build time to determine which SignInPage to use
@@ -135,7 +134,6 @@ const routes = (
     <Route path="/settings" element={<UserSettingsPage />} />
     <Route path="/catalog-graph" element={<CatalogGraphPage />} />
     <Route path="/notifications" element={<NotificationsPage />} />
-    <Route path="/kafka" element={<KafkaRouter />} />
   </FlatRoutes>
 );
 
