@@ -11,7 +11,7 @@ spec:
       version: "0.13.1"
       sourceRef:
         kind: OCIRepository
-        name: actions-runner-controller
+        name: arc-controller
         namespace: flux-system
       interval: 12h
   install:
