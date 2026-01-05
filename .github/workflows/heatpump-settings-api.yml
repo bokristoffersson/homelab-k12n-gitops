@@ -83,6 +83,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Quick Docker Test
+        run: |
+          echo "Testing Docker access..."
+          whoami
+          id
+          docker version || echo "Docker failed"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
