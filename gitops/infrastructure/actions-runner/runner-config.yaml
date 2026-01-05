@@ -28,6 +28,8 @@ data:
 
     template:
       spec:
+        securityContext:
+          fsGroup: 123  # Match runner user group
         containers:
           - name: runner
             image: ghcr.io/actions/actions-runner:latest
