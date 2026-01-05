@@ -142,6 +142,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install build dependencies
+        uses: ./.github/actions/setup-rust-build-tools
+
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

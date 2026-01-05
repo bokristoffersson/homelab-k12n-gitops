@@ -1,0 +1,21 @@
+name: 'Setup Rust Build Tools'
+description: 'Install build dependencies for Rust projects (gcc, cmake, etc.)'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential \
+          gcc \
+          g++ \
+          cmake \
+          pkg-config \
+          libssl-dev \
+          ca-certificates
+        sudo rm -rf /var/lib/apt/lists/*
+      env:
+        DEBIAN_FRONTEND: noninteractive
+

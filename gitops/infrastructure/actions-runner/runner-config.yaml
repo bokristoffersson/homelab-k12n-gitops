@@ -33,46 +33,10 @@ data:
         containers:
           - name: runner
             image: ghcr.io/actions/actions-runner:latest
-            command:
-              - /bin/bash
-              - -c
-              - |
-                # Install build tools for Rust compilation (rdkafka-sys needs gcc, cmake, etc.)
-                if ! command -v gcc &> /dev/null; then
-                  apt-get update && \
-                  apt-get install -y --no-install-recommends \
-                    build-essential \
-                    gcc \
-                    g++ \
-                    cmake \
-                    pkg-config \
-                    libssl-dev \
-                    ca-certificates \
-                    libcap2-bin && \
-                  rm -rf /var/lib/apt/lists/*
-                fi
-                # Start the runner - try to run as runner user if we're root
-                # Clear any sudo-related environment variables
-                unset SUDO_USER SUDO_UID SUDO_GID SUDO_COMMAND 2>/dev/null || true
-                # If running as root, try to switch to runner user using setpriv
-                if [ "$(id -u)" = "0" ]; then
-                  # Ensure runner directories have correct ownership
-                  chown -R runner:runner /home/runner /opt/actions-runner 2>/dev/null || true
-                  # Use setpriv to drop privileges (if available) or try direct execution
-                  if command -v setpriv &> /dev/null; then
-                    exec setpriv --reuid=1001 --regid=123 --clear-groups --init-groups /home/runner/run.sh
-                  else
-                    # Fallback: try running as root (runner may handle this)
-                    exec /home/runner/run.sh
-                  fi
-                else
-                  exec /home/runner/run.sh
-                fi
+            command: ["/home/runner/run.sh"]
             env:
               - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
                 value: "false"  # Allow jobs without containers
-            securityContext:
-              runAsUser: 0  # Run as root to install packages, then drop to runner user
             resources:
               requests:
                 cpu: "1"
