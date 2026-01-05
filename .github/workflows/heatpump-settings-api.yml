@@ -79,54 +79,27 @@ jobs:
     permissions:
       contents: read
       packages: write
+    container:
+      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+      options: --user root
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Add this step to fix permissions
-      - name: Fix Docker Permissions
+      - name: Prepare Kaniko config
+        shell: sh
         run: |
-          if command -v sudo &> /dev/null; then
-            sudo usermod -aG docker runner
-            echo "Added runner to docker group"
-          else
-            echo "No sudo available - check runner permissions manually"
-          fi
+          mkdir -p /kaniko/.docker
+          echo "{\"auths\":{\"${{ env.REGISTRY }}\":{\"auth\":\"$(echo -n ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} | base64)\"}}}" > /kaniko/.docker/config.json
 
-      - name: Quick Docker Test
+      - name: Build and push with Kaniko
+        shell: sh
         run: |
-          echo "Testing Docker access..."
-          whoami
-          id
-          docker version || echo "Docker failed"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./applications/heatpump-settings-api
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          /kaniko/executor \
+            --context=dir:///${{ github.workspace }}/applications/heatpump-settings-api \
+            --dockerfile=/${{ github.workspace }}/applications/heatpump-settings-api/Dockerfile \
+            --destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main \
+            --destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --cache=true \
+            --cache-repo=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/cache \
+            --compressed-caching=false
