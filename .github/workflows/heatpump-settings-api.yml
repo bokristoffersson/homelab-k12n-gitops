@@ -20,6 +20,8 @@ jobs:
   test:
     name: Test
     runs-on: homelab-runners
+    env:
+      RUSTFLAGS: ""  # Override setup-rust-toolchain's -D warnings
     defaults:
       run:
         working-directory: applications/heatpump-settings-api
@@ -40,19 +42,17 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -A clippy::all
-        # Allow clippy warnings - they're suggestions, not errors
-        # To make clippy strict, remove -- -A clippy::all
+        run: cargo clippy --all-targets --all-features
 
       - name: Run tests
         run: cargo test --verbose
-        env:
-          RUSTFLAGS: "-A warnings"  # Allow compiler warnings during tests
 
   build:
     name: Build
     runs-on: homelab-runners
     needs: test
+    env:
+      RUSTFLAGS: ""  # Override setup-rust-toolchain's -D warnings
     defaults:
       run:
         working-directory: applications/heatpump-settings-api
@@ -67,8 +67,6 @@ jobs:
 
       - name: Build release binary
         run: cargo build --release --verbose
-        env:
-          RUSTFLAGS: "-A warnings"  # Allow compiler warnings during build
 
   docker:
     name: Build and Push Docker Image
