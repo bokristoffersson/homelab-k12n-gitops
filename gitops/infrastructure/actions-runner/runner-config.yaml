@@ -47,16 +47,22 @@ data:
                     cmake \
                     pkg-config \
                     libssl-dev \
-                    ca-certificates && \
+                    ca-certificates \
+                    sudo && \
                   rm -rf /var/lib/apt/lists/*
                 fi
-                # Start the runner
-                exec /home/runner/run.sh
+                # Start the runner as the runner user (the script handles user switching)
+                # Use sudo to switch to runner user if we're running as root
+                if [ "$(id -u)" = "0" ]; then
+                  exec sudo -u runner /home/runner/run.sh
+                else
+                  exec /home/runner/run.sh
+                fi
             env:
               - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
                 value: "false"  # Allow jobs without containers
             securityContext:
-              runAsUser: 0  # Run as root to install packages, runner will drop privileges
+              runAsUser: 0  # Run as root to install packages, then switch to runner user via sudo
             resources:
               requests:
                 cpu: "1"
