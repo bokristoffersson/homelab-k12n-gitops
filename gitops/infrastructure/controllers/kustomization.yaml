@@ -6,4 +6,3 @@ resources:
   - cloudflare-tunnel
   - redpanda-operator
   - traefik
-  - ../actions-runner
