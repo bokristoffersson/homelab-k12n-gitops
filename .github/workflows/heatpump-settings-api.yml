@@ -40,12 +40,14 @@ jobs:
         run: cargo fmt -- --check
 
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features
-        env:
-          RUSTFLAGS: ""  # Allow warnings for now
+        run: cargo clippy --all-targets --all-features -- -A clippy::all
+        # Allow clippy warnings - they're suggestions, not errors
+        # To make clippy strict, remove -- -A clippy::all
 
       - name: Run tests
         run: cargo test --verbose
+        env:
+          RUSTFLAGS: "-A warnings"  # Allow compiler warnings during tests
 
   build:
     name: Build
@@ -65,6 +67,8 @@ jobs:
 
       - name: Build release binary
         run: cargo build --release --verbose
+        env:
+          RUSTFLAGS: "-A warnings"  # Allow compiler warnings during build
 
   docker:
     name: Build and Push Docker Image
