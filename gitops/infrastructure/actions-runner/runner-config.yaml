@@ -48,13 +48,23 @@ data:
                     pkg-config \
                     libssl-dev \
                     ca-certificates \
-                    sudo && \
+                    libcap2-bin && \
                   rm -rf /var/lib/apt/lists/*
                 fi
-                # Start the runner as the runner user (the script handles user switching)
-                # Use sudo to switch to runner user if we're running as root
+                # Start the runner - try to run as runner user if we're root
+                # Clear any sudo-related environment variables
+                unset SUDO_USER SUDO_UID SUDO_GID SUDO_COMMAND 2>/dev/null || true
+                # If running as root, try to switch to runner user using setpriv
                 if [ "$(id -u)" = "0" ]; then
-                  exec sudo -u runner /home/runner/run.sh
+                  # Ensure runner directories have correct ownership
+                  chown -R runner:runner /home/runner /opt/actions-runner 2>/dev/null || true
+                  # Use setpriv to drop privileges (if available) or try direct execution
+                  if command -v setpriv &> /dev/null; then
+                    exec setpriv --reuid=1001 --regid=123 --clear-groups --init-groups /home/runner/run.sh
+                  else
+                    # Fallback: try running as root (runner may handle this)
+                    exec /home/runner/run.sh
+                  fi
                 else
                   exec /home/runner/run.sh
                 fi
@@ -62,7 +72,7 @@ data:
               - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
                 value: "false"  # Allow jobs without containers
             securityContext:
-              runAsUser: 0  # Run as root to install packages, then switch to runner user via sudo
+              runAsUser: 0  # Run as root to install packages, then drop to runner user
             resources:
               requests:
                 cpu: "1"
