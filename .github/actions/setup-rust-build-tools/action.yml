@@ -3,9 +3,23 @@ description: 'Install build dependencies for Rust projects (gcc, cmake, etc.)'
 runs:
   using: 'composite'
   steps:
+    - name: Check sudo access
+      shell: bash
+      run: |
+        if ! sudo -n true 2>/dev/null; then
+          echo "Warning: sudo may require password. Checking if we can install packages..."
+        fi
+    
     - name: Install build dependencies
       shell: bash
       run: |
+        # Check if packages are already installed
+        if command -v gcc &> /dev/null && command -v cmake &> /dev/null; then
+          echo "Build tools already installed, skipping..."
+          exit 0
+        fi
+        
+        # Install build dependencies
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
           build-essential \
@@ -14,8 +28,17 @@ runs:
           cmake \
           pkg-config \
           libssl-dev \
-          ca-certificates
+          ca-certificates || {
+          echo "Failed to install packages. Error: $?"
+          echo "Checking if sudo is available..."
+          sudo -v || echo "Sudo check failed"
+          exit 1
+        }
         sudo rm -rf /var/lib/apt/lists/*
+        
+        # Verify installation
+        gcc --version || echo "Warning: gcc not found after installation"
+        cmake --version || echo "Warning: cmake not found after installation"
       env:
         DEBIAN_FRONTEND: noninteractive
 
