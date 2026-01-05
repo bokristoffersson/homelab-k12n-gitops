@@ -7,8 +7,12 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+      chart: gha-runner-scale-set-controller
       version: "0.13.1"
+      sourceRef:
+        kind: HelmRepository
+        name: actions-runner-controller
+        namespace: flux-system
   install:
     remediation:
       retries: 3
