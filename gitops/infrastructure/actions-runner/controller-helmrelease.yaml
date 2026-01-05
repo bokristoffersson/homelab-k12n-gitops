@@ -7,13 +7,8 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: gha-runner-scale-set-controller
+      chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
       version: "0.13.1"
-      sourceRef:
-        kind: OCIRepository
-        name: arc-controller
-        namespace: flux-system
-      interval: 12h
   install:
     remediation:
       retries: 3

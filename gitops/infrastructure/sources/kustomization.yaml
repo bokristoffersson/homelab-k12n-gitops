@@ -9,4 +9,3 @@ resources:
   - postgres-operator.yaml
   - redpanda.yaml
   - redpanda-operator.yaml
-  - actions-runner-controller.yaml
