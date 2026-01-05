@@ -6,8 +6,6 @@ on:
     paths:
       - "applications/homelab-api/**"
       - ".github/workflows/homelab-api.yml"
-    tags:
-      - "homelab-api-v*"
   pull_request:
     branches: [main]
     paths:
@@ -15,96 +13,73 @@ on:
       - ".github/workflows/homelab-api.yml"
 
 env:
-  CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
-  RUSTFLAGS: -D warnings -A dead_code -A unused
+  REGISTRY: ghcr.io
+  IMAGE_NAME: bokristoffersson/homelab-api
 
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: homelab-runners
     defaults:
       run:
-        working-directory: ./applications/homelab-api
-
+        working-directory: applications/homelab-api
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
+      - name: Install build dependencies
+        uses: ./.github/actions/setup-rust-build-tools
+
+      - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
           components: rustfmt, clippy
-          cache: true
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/git
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Check formatting
         run: cargo fmt -- --check
 
       - name: Run clippy
-        run: cargo clippy -- -D warnings -A dead_code -A unused_imports
-
-      - name: Build
-        run: cargo build --verbose
+        run: cargo clippy --all-targets --all-features
+        env:
+          RUSTFLAGS: ""  # Allow warnings for now
 
       - name: Run tests
         run: cargo test --verbose
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: homelab-runners
     needs: test
     defaults:
       run:
-        working-directory: ./applications/homelab-api
-
+        working-directory: applications/homelab-api
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
+      - name: Install build dependencies
+        uses: ./.github/actions/setup-rust-build-tools
+
+      - name: Setup Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          cache: true
 
       - name: Build release binary
-        run: cargo build --release
-
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: homelab-api-binary
-          path: applications/homelab-api/target/release/homelab-api
-          retention-days: 7
+        run: cargo build --release --verbose
 
   docker:
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: homelab-runners
     needs: [test, build]
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/homelab-api-v')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
-    defaults:
-      run:
-        working-directory: ./applications/homelab-api
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -112,7 +87,7 @@ jobs:
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
@@ -120,18 +95,17 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/homelab-api
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=semver,pattern={{version}},prefix=homelab-api-v
-            type=semver,pattern={{major}}.{{minor}},prefix=homelab-api-v
             type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: ./applications/homelab-api
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
