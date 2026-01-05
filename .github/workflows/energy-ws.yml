@@ -21,7 +21,7 @@ env:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: homelab-runners
     defaults:
       run:
         working-directory: ./applications/energy-ws
@@ -62,7 +62,7 @@ jobs:
 
   e2e-test:
     name: End-to-End Tests
-    runs-on: ubuntu-latest
+    runs-on: homelab-runners
     # Disabled until E2E tests are implemented (currently all TODOs)
     if: false
     needs: test
@@ -133,7 +133,7 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: homelab-runners
     needs: test
     defaults:
       run:
@@ -160,7 +160,7 @@ jobs:
 
   docker:
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest
+    runs-on: homelab-runners
     needs: [test, build]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/energy-ws-v')
     permissions:

@@ -1,0 +1,5 @@
+[build]
+# Use a target directory without spaces to avoid issues with rdkafka-sys build scripts
+# Using home directory to avoid path space issues
+target-dir = "/Users/bo/.cargo-target/energy-ws"
+
