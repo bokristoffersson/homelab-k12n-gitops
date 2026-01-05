@@ -1,5 +1,5 @@
 [build]
 # Use a target directory without spaces to avoid issues with rdkafka-sys build scripts
-# Using home directory to avoid path space issues
-target-dir = "/Users/bo/.cargo-target/heatpump-settings-api"
+# Using /tmp which exists in both local and cluster environments
+target-dir = "/tmp/cargo-target/heatpump-settings-api"
 
