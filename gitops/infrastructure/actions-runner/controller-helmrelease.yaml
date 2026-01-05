@@ -1,0 +1,23 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: arc-controller
+  namespace: actions-runner-system
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: gha-runner-scale-set-controller
+      version: "0.13.1"
+      sourceRef:
+        kind: OCIRepository
+        name: actions-runner-controller
+        namespace: flux-system
+      interval: 12h
+  install:
+    remediation:
+      retries: 3
+    createNamespace: false
+  upgrade:
+    remediation:
+      retries: 3

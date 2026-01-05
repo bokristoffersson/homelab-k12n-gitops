@@ -3,3 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - github-token-sealed.yaml
+  - ocirepository.yaml
+  - controller-helmrelease.yaml
+  - runner-config.yaml
+  - runner-helmrelease.yaml
