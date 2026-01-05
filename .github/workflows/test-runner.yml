@@ -6,7 +6,7 @@ on:
 jobs:
   test:
     name: Test Runner
-    runs-on: [self-hosted, kubernetes]
+    runs-on: homelab-runners
 
     steps:
       - name: Checkout code

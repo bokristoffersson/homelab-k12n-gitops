@@ -13,11 +13,9 @@ data:
 
     runnerScaleSetName: "homelab-runners"
 
-    # Runner labels - these will be advertised to GitHub
-    # Note: "self-hosted" is automatically added
-    runnerLabels:
-      - kubernetes
-      - rust
+    # NOTE: ARC does not support custom runner labels
+    # Runners are targeted using the runner scale set name: "homelab-runners"
+    # See: https://github.com/orgs/community/discussions/135911
 
     containerMode:
       type: "kubernetes"
