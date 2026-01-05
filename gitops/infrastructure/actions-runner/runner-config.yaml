@@ -33,10 +33,30 @@ data:
         containers:
           - name: runner
             image: ghcr.io/actions/actions-runner:latest
-            command: ["/home/runner/run.sh"]
+            command:
+              - /bin/bash
+              - -c
+              - |
+                # Install build tools for Rust compilation (rdkafka-sys needs gcc, cmake, etc.)
+                if ! command -v gcc &> /dev/null; then
+                  apt-get update && \
+                  apt-get install -y --no-install-recommends \
+                    build-essential \
+                    gcc \
+                    g++ \
+                    cmake \
+                    pkg-config \
+                    libssl-dev \
+                    ca-certificates && \
+                  rm -rf /var/lib/apt/lists/*
+                fi
+                # Start the runner
+                exec /home/runner/run.sh
             env:
               - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
                 value: "false"  # Allow jobs without containers
+            securityContext:
+              runAsUser: 0  # Run as root to install packages, runner will drop privileges
             resources:
               requests:
                 cpu: "1"
