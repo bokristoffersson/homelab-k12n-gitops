@@ -1,0 +1,46 @@
+githubConfigUrl: "https://github.com/bokristoffersson/homelab-k12n-gitops"
+githubConfigSecret: github-token
+
+minRunners: 0
+maxRunners: 3
+
+runnerScaleSetName: "homelab-runners"
+
+containerMode:
+  type: "kubernetes"
+  kubernetesModeWorkVolumeClaim:
+    accessModes: ["ReadWriteOnce"]
+    storageClassName: "longhorn"
+    resources:
+      requests:
+        storage: 20Gi
+
+template:
+  spec:
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        resources:
+          requests:
+            cpu: "2"
+            memory: "4Gi"
+          limits:
+            cpu: "4"
+            memory: "8Gi"
+
+controllerServiceAccount:
+  name: arc-gha-rs-controller
+  namespace: actions-runner-system
+
+listenerTemplate:
+  spec:
+    containers:
+      - name: listener
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"

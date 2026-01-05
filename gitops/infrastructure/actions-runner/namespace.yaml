@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: actions-runner-system
+  labels:
+    name: actions-runner-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: actions-runners
+  labels:
+    name: actions-runners

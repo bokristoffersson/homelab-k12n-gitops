@@ -1,0 +1,12 @@
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: github-token
+  namespace: actions-runner-system
+spec:
+  encryptedData:
+    github_token: AgCc27NB54TQkKDsOSltD52i+w+SZ9E6JfKXe8lM8KoWIWLAQwd6vyuIw7zIJytVv0HmRei5THr8bhw4K6bHx/7OVBRFpkAitj4EJAWgbh2VlymJ0M50tvbJkLioS075I0TGWy9DbjS7MyZTZNnEagGVCIT3yK3LJSfVVrIlQCe98yTxDe5U5ovOadrIyxYKflAN19iV0yfB/8A0N7Qi7myyRwcGWl6Ttv0b24UscQvyiY3EttpQAcVZRQwORgb6DL0dmSoBMHS1KdvccVetUGW+TBnjjPnHHB1/cOAUSqRQSGiemy7c7MCmWjZ2O/LTH6nwP7mySNfn+FtmIwTJFWcF7lh5GbsPa3+ozo1gXl/IEBQXUoPs4Cw2wN7s6Fpu5oBDeGjstfr45U5Oa3LXf11nQHLE9yBdgOIdz5oLpXOUDGV8wdnDhCyroIMlv9F6/HqgpLaWw5KS5X2Ig8WO+/gZW3SXpJd/jn5HdfKYTC0rCse0HvArsA4kPa+wMF2mIfZfqYtvD00ZUzi+cs1ejV+OewY43ZF8hsot4Vl87LDe6rrT23jsAbV94wnSxJdLGi7lgKVsnycvFpWiYd/Ue75myhxaQfSr6Xmr5SH+JLuEa1JTVCF/h9qTEeN7mEVMJcUnIvn8fIGBxGyHnqlzMw76KX40Rv/8ukXMoAFv5L+Ft0D8ZU2E8Ecf6CS1HSIsIRFGgT8EQWMSYlXg9C2jIS/6lyV6jZ8xsZEgl4AfnPh2v6wUemRZyeuQ
+  template:
+    metadata:
+      name: github-token
+      namespace: actions-runner-system

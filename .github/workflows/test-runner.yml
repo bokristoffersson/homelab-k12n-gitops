@@ -1,0 +1,35 @@
+name: Test Self-Hosted Runner
+
+on:
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  test:
+    name: Test Runner
+    runs-on: [self-hosted, kubernetes]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Display runner info
+        run: |
+          echo "Runner name: $RUNNER_NAME"
+          echo "Runner OS: $RUNNER_OS"
+          echo "Runner arch: $RUNNER_ARCH"
+          uname -a
+
+      - name: Check available resources
+        run: |
+          echo "CPU info:"
+          nproc
+          echo "Memory info:"
+          free -h || echo "free command not available"
+
+      - name: Test basic commands
+        run: |
+          echo "Testing basic commands..."
+          pwd
+          ls -la
+          which git
+          git --version
