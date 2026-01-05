@@ -1,0 +1,105 @@
+name: heatpump-settings-api CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "applications/heatpump-settings-api/**"
+      - ".github/workflows/heatpump-settings-api.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "applications/heatpump-settings-api/**"
+      - ".github/workflows/heatpump-settings-api.yml"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: bokristoffersson/heatpump-settings-api
+
+jobs:
+  test:
+    name: Test
+    runs-on: homelab-runners
+    defaults:
+      run:
+        working-directory: applications/heatpump-settings-api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        run: cargo test --verbose
+
+  build:
+    name: Build
+    runs-on: homelab-runners
+    needs: test
+    defaults:
+      run:
+        working-directory: applications/heatpump-settings-api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Build release binary
+        run: cargo build --release --verbose
+
+  docker:
+    name: Build and Push Docker Image
+    runs-on: homelab-runners
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./applications/heatpump-settings-api
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
