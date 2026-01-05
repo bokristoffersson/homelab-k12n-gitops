@@ -43,7 +43,7 @@ data:
                 memory: "8Gi"
 
     controllerServiceAccount:
-      name: arc-gha-rs-controller
+      name: arc-controller-gha-rs-controller
       namespace: actions-runner-system
 
     listenerTemplate:
