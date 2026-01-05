@@ -62,10 +62,7 @@ impl KafkaConsumerService {
                                 );
                             }
                             Err(e) => {
-                                tracing::error!(
-                                    "Error processing message: {:?}. Continuing...",
-                                    e
-                                );
+                                tracing::error!("Error processing message: {:?}. Continuing...", e);
                             }
                         }
                     }

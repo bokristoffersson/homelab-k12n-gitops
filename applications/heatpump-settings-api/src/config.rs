@@ -43,8 +43,8 @@ pub struct LoggingConfig {
 impl Config {
     /// Load configuration from file with environment variable substitution
     pub fn load() -> Result<Self> {
-        let config_path = env::var("APP_CONFIG")
-            .unwrap_or_else(|_| "config/config.yaml".to_string());
+        let config_path =
+            env::var("APP_CONFIG").unwrap_or_else(|_| "config/config.yaml".to_string());
 
         tracing::info!("Loading configuration from: {}", config_path);
 
@@ -56,8 +56,8 @@ impl Config {
         let config_content = substitute_env_vars(&config_content)?;
 
         // Parse YAML
-        let config: Config = serde_yaml::from_str(&config_content)
-            .context("Failed to parse config YAML")?;
+        let config: Config =
+            serde_yaml::from_str(&config_content).context("Failed to parse config YAML")?;
 
         tracing::info!("Configuration loaded successfully");
         Ok(config)

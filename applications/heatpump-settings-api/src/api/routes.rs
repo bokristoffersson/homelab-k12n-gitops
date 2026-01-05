@@ -11,10 +11,7 @@ pub fn create_router(state: AppState) -> Router {
         // Health check (no auth)
         .route("/health", get(health::health_check))
         // Settings API routes
-        .route(
-            "/api/v1/heatpump/settings",
-            get(settings::get_all_settings),
-        )
+        .route("/api/v1/heatpump/settings", get(settings::get_all_settings))
         .route(
             "/api/v1/heatpump/settings/:device_id",
             get(settings::get_setting_by_device).patch(settings::update_setting),

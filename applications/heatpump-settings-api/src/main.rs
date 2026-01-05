@@ -11,9 +11,7 @@ use tokio::signal;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
-    api::handlers::AppState,
-    config::Config,
-    kafka::KafkaConsumerService,
+    api::handlers::AppState, config::Config, kafka::KafkaConsumerService,
     repositories::SettingsRepository,
 };
 
@@ -47,7 +45,8 @@ async fn main() -> Result<()> {
 
     // Create Kafka consumer service
     tracing::info!("Initializing Kafka consumer...");
-    let kafka_consumer = KafkaConsumerService::new(&config.kafka, SettingsRepository::new(db_pool))?;
+    let kafka_consumer =
+        KafkaConsumerService::new(&config.kafka, SettingsRepository::new(db_pool))?;
 
     // Spawn Kafka consumer task
     let kafka_handle = tokio::spawn(async move {

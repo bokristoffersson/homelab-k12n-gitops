@@ -18,9 +18,7 @@ pub struct AppState {
 
 /// GET /api/v1/heatpump/settings
 /// Returns all device settings
-pub async fn get_all_settings(
-    State(state): State<AppState>,
-) -> Result<Json<SettingsListResponse>> {
+pub async fn get_all_settings(State(state): State<AppState>) -> Result<Json<SettingsListResponse>> {
     let settings = state.repository.get_all().await?;
 
     Ok(Json(SettingsListResponse { settings }))
