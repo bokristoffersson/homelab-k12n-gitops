@@ -73,7 +73,7 @@ jobs:
 
   docker:
     name: Build and Push Docker Image
-    runs-on: ubuntu-latest  # Use GitHub-hosted runner for Docker build
+    runs-on: homelab-runners  # Build on custom runner for arm64
     needs: [test, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
@@ -107,6 +107,7 @@ jobs:
         with:
           context: ./applications/heatpump-settings-api
           push: true
+          platforms: linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
