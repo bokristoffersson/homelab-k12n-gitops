@@ -47,60 +47,70 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
-  build:
-    name: Build
-    runs-on: homelab-runners
-    needs: test
-    env:
-      RUSTFLAGS: ""  # Override setup-rust-toolchain's -D warnings
-    defaults:
-      run:
-        working-directory: applications/heatpump-settings-api
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install build dependencies
-        uses: ./.github/actions/setup-rust-build-tools
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          toolchain: stable
-
-      - name: Build release binary
-        run: cargo build --release --verbose
-
   docker:
     name: Build and Push Docker Image
     runs-on: homelab-runners
-    needs: [test, build]
+    needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
-    container:
-      image: gcr.io/kaniko-project/executor:v1.23.2-debug
-      options: --user root
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Prepare Kaniko config
-        shell: sh
-        run: |
-          mkdir -p /kaniko/.docker
-          echo "{\"auths\":{\"${{ env.REGISTRY }}\":{\"auth\":\"$(echo -n ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} | base64)\"}}}" > /kaniko/.docker/config.json
-
       - name: Build and push with Kaniko
-        shell: sh
         run: |
-          /kaniko/executor \
-            --context=dir:///${{ github.workspace }}/applications/heatpump-settings-api \
-            --dockerfile=/${{ github.workspace }}/applications/heatpump-settings-api/Dockerfile \
-            --destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main \
-            --destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --cache=true \
-            --cache-repo=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/cache \
-            --compressed-caching=false \
-            --custom-platform=linux/arm64
+          # Create Kaniko pod spec
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: kaniko-build-${{ github.run_id }}
+            namespace: default
+          spec:
+            restartPolicy: Never
+            containers:
+            - name: kaniko
+              image: gcr.io/kaniko-project/executor:v1.23.2
+              args:
+              - "--context=git://github.com/${{ github.repository }}.git#refs/heads/main"
+              - "--context-sub-path=applications/heatpump-settings-api"
+              - "--dockerfile=Dockerfile"
+              - "--destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+              - "--destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+              - "--cache=true"
+              - "--cache-repo=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/cache"
+              - "--custom-platform=linux/arm64"
+              volumeMounts:
+              - name: docker-config
+                mountPath: /kaniko/.docker
+            volumes:
+            - name: docker-config
+              secret:
+                secretName: kaniko-docker-config-${{ github.run_id }}
+          EOF
+
+          # Create Docker config secret
+          kubectl create secret generic kaniko-docker-config-${{ github.run_id }} \
+            --from-literal=config.json="{\"auths\":{\"${{ env.REGISTRY }}\":{\"auth\":\"$(echo -n ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} | base64)\"}}}" \
+            --namespace=default
+
+          # Wait for pod to complete
+          kubectl wait --for=condition=Ready pod/kaniko-build-${{ github.run_id }} --namespace=default --timeout=600s || true
+
+          # Stream logs
+          kubectl logs -f kaniko-build-${{ github.run_id }} --namespace=default || true
+
+          # Check if pod succeeded
+          POD_STATUS=$(kubectl get pod kaniko-build-${{ github.run_id }} --namespace=default -o jsonpath='{.status.phase}')
+
+          # Cleanup
+          kubectl delete pod kaniko-build-${{ github.run_id }} --namespace=default || true
+          kubectl delete secret kaniko-docker-config-${{ github.run_id }} --namespace=default || true
+
+          # Exit with error if build failed
+          if [ "$POD_STATUS" != "Succeeded" ]; then
+            echo "Kaniko build failed with status: $POD_STATUS"
+            exit 1
+          fi
