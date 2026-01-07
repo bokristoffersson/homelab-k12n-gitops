@@ -73,42 +73,34 @@ jobs:
 
   docker:
     name: Build and Push Docker Image
-    runs-on: homelab-runners  # Build on custom runner for arm64
+    runs-on: homelab-runners
     needs: [test, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
+    container:
+      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+      options: --user root
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Prepare Kaniko config
+        shell: sh
+        run: |
+          mkdir -p /kaniko/.docker
+          echo "{\"auths\":{\"${{ env.REGISTRY }}\":{\"auth\":\"$(echo -n ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} | base64)\"}}}" > /kaniko/.docker/config.json
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=main
-            type=sha,prefix={{branch}}-
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./applications/heatpump-settings-api
-          push: true
-          platforms: linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build and push with Kaniko
+        shell: sh
+        run: |
+          /kaniko/executor \
+            --context=dir:///${{ github.workspace }}/applications/heatpump-settings-api \
+            --dockerfile=/${{ github.workspace }}/applications/heatpump-settings-api/Dockerfile \
+            --destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main \
+            --destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --cache=true \
+            --cache-repo=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/cache \
+            --compressed-caching=false \
+            --custom-platform=linux/arm64
