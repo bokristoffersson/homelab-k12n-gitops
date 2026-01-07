@@ -71,8 +71,14 @@ jobs:
 
       - name: Build and push with Kaniko
         run: |
+          # Create Docker config secret first
+          kubectl create secret generic kaniko-docker-config-${{ github.run_id }} \
+            --from-literal=config.json="{\"auths\":{\"${{ env.REGISTRY }}\":{\"auth\":\"$(echo -n ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} | base64)\"}}}" \
+            --namespace=default \
+            --validate=false || true
+
           # Create Kaniko pod spec
-          cat <<EOF | kubectl apply -f -
+          cat <<EOF | kubectl apply --validate=false -f -
           apiVersion: v1
           kind: Pod
           metadata:
@@ -101,11 +107,6 @@ jobs:
                 secretName: kaniko-docker-config-${{ github.run_id }}
           EOF
 
-          # Create Docker config secret
-          kubectl create secret generic kaniko-docker-config-${{ github.run_id }} \
-            --from-literal=config.json="{\"auths\":{\"${{ env.REGISTRY }}\":{\"auth\":\"$(echo -n ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} | base64)\"}}}" \
-            --namespace=default
-
           # Wait for pod to complete
           kubectl wait --for=condition=Ready pod/kaniko-build-${{ github.run_id }} --namespace=default --timeout=600s || true
 
@@ -116,8 +117,8 @@ jobs:
           POD_STATUS=$(kubectl get pod kaniko-build-${{ github.run_id }} --namespace=default -o jsonpath='{.status.phase}')
 
           # Cleanup
-          kubectl delete pod kaniko-build-${{ github.run_id }} --namespace=default || true
-          kubectl delete secret kaniko-docker-config-${{ github.run_id }} --namespace=default || true
+          kubectl delete pod kaniko-build-${{ github.run_id }} --namespace=default --validate=false || true
+          kubectl delete secret kaniko-docker-config-${{ github.run_id }} --namespace=default --validate=false || true
 
           # Exit with error if build failed
           if [ "$POD_STATUS" != "Succeeded" ]; then
