@@ -66,6 +66,6 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: "./gitops/infrastructure/actions-runner"   # <-- Denna pekar på actions-runner/
+  path: "./gitops/infrastructure/actions-runner"
   prune: true
 ---
