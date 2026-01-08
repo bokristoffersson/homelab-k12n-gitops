@@ -68,4 +68,7 @@ spec:
     name: flux-system
   path: "./gitops/infrastructure/actions-runner"
   prune: true
+  dependsOn:
+    - name: infrastructure-controllers
+    - name: infrastructure-sources
 ---
