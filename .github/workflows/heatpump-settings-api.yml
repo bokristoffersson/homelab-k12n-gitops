@@ -146,6 +146,9 @@ jobs:
           # Stream logs
           kubectl logs -f buildkit-${{ github.run_id }} --namespace=default || true
 
+          # Wait for pod to complete (succeeded or failed)
+          kubectl wait --for=condition=Ready=false pod/buildkit-${{ github.run_id }} --namespace=default --timeout=60s || true
+
           # Check if pod succeeded
           POD_STATUS=$(kubectl get pod buildkit-${{ github.run_id }} --namespace=default -o jsonpath='{.status.phase}')
 
