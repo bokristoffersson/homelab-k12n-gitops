@@ -3,4 +3,5 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - helmrelease.yaml
-  - node-nvme.yaml
+  # Temporarily commented out - will re-enable after Longhorn CRDs are installed
+  # - node-nvme.yaml
