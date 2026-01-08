@@ -26,5 +26,5 @@ roleRef:
   name: buildkit-runner-role
 subjects:
   - kind: ServiceAccount
-    name: homelab-runners-85d8f765-listener
-    namespace: actions-runner-system
+    name: homelab-runners-gha-rs-kube-mode
+    namespace: actions-runners
