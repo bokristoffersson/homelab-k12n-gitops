@@ -5,3 +5,4 @@ target/
 Dockerfile
 .dockerignore
 # Test runner configuration
+# Test build with fixed kubeconfig
