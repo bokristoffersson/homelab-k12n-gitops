@@ -139,8 +139,8 @@ jobs:
                   path: password
           EOF
 
-          # Wait for pod to be created
-          sleep 5
+          # Wait for pod to be ready
+          kubectl wait --for=condition=Ready pod/buildkit-${{ github.run_id }} --namespace=default --timeout=60s
 
           # Stream logs
           kubectl logs -f buildkit-${{ github.run_id }} --namespace=default || true
