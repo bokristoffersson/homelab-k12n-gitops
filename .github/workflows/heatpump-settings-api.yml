@@ -85,10 +85,9 @@ jobs:
             restartPolicy: Never
             containers:
             - name: buildkit
-              image: moby/buildkit:v0.17.2-rootless
+              image: moby/buildkit:v0.17.2
               securityContext:
-                runAsUser: 1000
-                runAsGroup: 1000
+                privileged: true
               command:
               - sh
               - -c
@@ -96,18 +95,18 @@ jobs:
                 set -ex
 
                 # Start buildkitd in background
-                buildkitd --addr unix:///run/user/1000/buildkit/buildkitd.sock &
+                buildkitd &
                 BUILDKIT_PID=\$!
 
                 # Wait for buildkitd to be ready
-                timeout 60 sh -c 'until buildctl --addr unix:///run/user/1000/buildkit/buildkitd.sock debug workers; do sleep 1; done'
+                timeout 60 sh -c 'until buildctl debug workers; do sleep 1; done'
 
                 # Clone the repository
                 git clone --depth 1 --branch main https://github.com/${{ github.repository }}.git /tmp/repo
                 cd /tmp/repo/applications/heatpump-settings-api
 
                 # Login to registry
-                echo "${{ secrets.GITHUB_TOKEN }}" | buildctl --addr unix:///run/user/1000/buildkit/buildkitd.sock build \
+                echo "${{ secrets.GITHUB_TOKEN }}" | buildctl build \
                   --frontend dockerfile.v0 \
                   --local context=. \
                   --local dockerfile=. \
@@ -121,8 +120,6 @@ jobs:
                 kill \$BUILDKIT_PID || true
                 wait \$BUILDKIT_PID || true
               env:
-              - name: BUILDKIT_HOST
-                value: unix:///run/user/1000/buildkit/buildkitd.sock
               - name: DOCKER_CONFIG
                 value: /tmp/.docker
               volumeMounts:
