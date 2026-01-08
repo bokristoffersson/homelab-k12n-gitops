@@ -28,6 +28,7 @@ data:
 
     template:
       spec:
+        serviceAccountName: homelab-runners-85d8f765-listener
         securityContext:
           fsGroup: 123  # Match runner user group
         containers:
@@ -37,6 +38,12 @@ data:
             env:
               - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
                 value: "false"  # Allow jobs without containers
+              - name: KUBECONFIG
+                value: /etc/kubeconfig/config
+            volumeMounts:
+              - name: kubeconfig
+                mountPath: /etc/kubeconfig
+                readOnly: true
             resources:
               requests:
                 cpu: "1"
@@ -44,6 +51,13 @@ data:
               limits:
                 cpu: "2"
                 memory: "4Gi"
+        volumes:
+          - name: kubeconfig
+            secret:
+              secretName: github-actions-kubeconfig
+              items:
+                - key: KUBECONFIG_DATA
+                  path: config
 
     controllerServiceAccount:
       name: arc-controller-gha-rs-controller
