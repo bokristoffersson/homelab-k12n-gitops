@@ -1,0 +1,9 @@
+site_name: 'Grafana Dashboards'
+site_description: 'Metrics visualization and monitoring dashboards'
+
+nav:
+  - Home: index.md
+  - Dashboards: dashboards.md
+
+plugins:
+  - techdocs-core

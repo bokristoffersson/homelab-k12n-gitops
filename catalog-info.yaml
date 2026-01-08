@@ -136,6 +136,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: mosquitto
+    backstage.io/techdocs-ref: dir:./gitops/apps/base/mosquitto
 spec:
   type: service
   lifecycle: production
@@ -192,6 +193,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: grafana
+    backstage.io/techdocs-ref: dir:./gitops/apps/base/grafana
 spec:
   type: website
   lifecycle: production
