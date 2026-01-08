@@ -68,22 +68,12 @@ jobs:
             sudo mv kubectl /usr/local/bin/
           fi
 
-          # Set up kubeconfig from runner's default location
-          mkdir -p $HOME/.kube
-          if [ -f /etc/rancher/k3s/k3s.yaml ]; then
-            # If k3s config exists on the runner, use it
-            cp /etc/rancher/k3s/k3s.yaml $HOME/.kube/config
-            chmod 600 $HOME/.kube/config
-          elif [ ! -z "$KUBECONFIG_DATA" ]; then
-            # Otherwise use KUBECONFIG_DATA secret if provided
-            echo "$KUBECONFIG_DATA" | base64 -d > $HOME/.kube/config
-            chmod 600 $HOME/.kube/config
-          fi
+          # Use in-cluster authentication (runner has service account with RBAC permissions)
+          # The service account token is automatically mounted at /var/run/secrets/kubernetes.io/serviceaccount/
+          # kubectl will use this automatically when KUBECONFIG is not set
 
           kubectl version --client
           kubectl cluster-info
-        env:
-          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_DATA }}
 
       - name: Build and push with BuildKit
         run: |
