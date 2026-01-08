@@ -105,8 +105,12 @@ jobs:
                 git clone --depth 1 --branch main https://github.com/${{ github.repository }}.git /tmp/repo
                 cd /tmp/repo/applications/heatpump-settings-api
 
-                # Login to registry
-                echo "${{ secrets.GITHUB_TOKEN }}" | buildctl build \
+                # Create Docker config for authentication
+                mkdir -p /tmp/.docker
+                echo '{"auths":{"ghcr.io":{"auth":"'$(echo -n "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" | base64)'"}}}' > /tmp/.docker/config.json
+
+                # Build and push
+                buildctl build \
                   --frontend dockerfile.v0 \
                   --local context=. \
                   --local dockerfile=. \

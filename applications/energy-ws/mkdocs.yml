@@ -1,0 +1,10 @@
+site_name: 'Energy WebSocket Server'
+site_description: 'Real-time energy data streaming via WebSocket'
+
+nav:
+  - Home: index.md
+  - Usage: usage.md
+  - Development: development.md
+
+plugins:
+  - techdocs-core

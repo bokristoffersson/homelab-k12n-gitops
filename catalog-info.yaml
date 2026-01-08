@@ -41,6 +41,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: homelab-api
+    backstage.io/techdocs-ref: dir:./applications/homelab-api
 spec:
   type: service
   lifecycle: production
@@ -84,6 +85,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: energy-ws
+    backstage.io/techdocs-ref: dir:./applications/energy-ws
     kafka.apache.org/consumer-groups: redpanda-v2/energy-ws
 spec:
   type: service
