@@ -4,3 +4,4 @@ target/
 *.md
 Dockerfile
 .dockerignore
+# Test runner configuration
