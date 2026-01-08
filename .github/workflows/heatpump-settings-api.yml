@@ -149,15 +149,17 @@ jobs:
           # Wait for pod to complete (succeeded or failed)
           kubectl wait --for=condition=Ready=false pod/buildkit-${{ github.run_id }} --namespace=default --timeout=60s || true
 
-          # Check if pod succeeded
-          POD_STATUS=$(kubectl get pod buildkit-${{ github.run_id }} --namespace=default -o jsonpath='{.status.phase}')
+          # Check container exit code (more reliable than pod phase)
+          EXIT_CODE=$(kubectl get pod buildkit-${{ github.run_id }} --namespace=default -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}')
 
           # Cleanup
           kubectl delete pod buildkit-${{ github.run_id }} --namespace=default || true
           kubectl delete secret buildkit-registry-${{ github.run_id }} --namespace=default || true
 
-          # Exit with error if build failed
-          if [ "$POD_STATUS" != "Succeeded" ]; then
-            echo "BuildKit build failed with status: $POD_STATUS"
+          # Exit with error if build failed (exit code 0 = success)
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "BuildKit build failed with exit code: $EXIT_CODE"
             exit 1
           fi
+
+          echo "BuildKit build succeeded!"
