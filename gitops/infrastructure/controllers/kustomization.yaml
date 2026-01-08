@@ -3,8 +3,7 @@ kind: Kustomization
 resources:
   - cert-manager
   - sealed-secrets
-  # Temporarily commented out - will re-enable after sealed-secrets CRD is installed
-  # - cloudflare-tunnel
+  - cloudflare-tunnel
   - redpanda-operator
   - traefik
   - traefik-config.yaml
