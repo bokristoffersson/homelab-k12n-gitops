@@ -85,58 +85,94 @@ jobs:
         env:
           KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_DATA }}
 
-      - name: Build and push with Kaniko
+      - name: Build and push with BuildKit
         run: |
-          # Create Docker config secret first
-          kubectl create secret generic kaniko-docker-config-${{ github.run_id }} \
-            --from-literal=config.json="{\"auths\":{\"${{ env.REGISTRY }}\":{\"auth\":\"$(echo -n ${{ github.actor }}:${{ secrets.GITHUB_TOKEN }} | base64)\"}}}" \
+          # Create registry credentials secret
+          kubectl create secret generic buildkit-registry-${{ github.run_id }} \
+            --from-literal=username=${{ github.actor }} \
+            --from-literal=password=${{ secrets.GITHUB_TOKEN }} \
             --namespace=default
 
-          # Create Kaniko pod spec
+          # Create BuildKit pod
           cat <<EOF | kubectl apply -f -
           apiVersion: v1
           kind: Pod
           metadata:
-            name: kaniko-build-${{ github.run_id }}
+            name: buildkit-${{ github.run_id }}
             namespace: default
           spec:
             restartPolicy: Never
             containers:
-            - name: kaniko
-              image: gcr.io/kaniko-project/executor:v1.23.2
-              args:
-              - "--context=git://github.com/${{ github.repository }}.git#refs/heads/main"
-              - "--context-sub-path=applications/heatpump-settings-api"
-              - "--dockerfile=Dockerfile"
-              - "--destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
-              - "--destination=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-              - "--cache=true"
-              - "--cache-repo=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/cache"
-              - "--custom-platform=linux/arm64"
+            - name: buildkit
+              image: moby/buildkit:v0.17.2-rootless
+              securityContext:
+                runAsUser: 1000
+                runAsGroup: 1000
+              command:
+              - sh
+              - -c
+              - |
+                set -ex
+
+                # Start buildkitd in background
+                buildkitd --addr unix:///run/user/1000/buildkit/buildkitd.sock &
+                BUILDKIT_PID=\$!
+
+                # Wait for buildkitd to be ready
+                timeout 60 sh -c 'until buildctl --addr unix:///run/user/1000/buildkit/buildkitd.sock debug workers; do sleep 1; done'
+
+                # Clone the repository
+                git clone --depth 1 --branch main https://github.com/${{ github.repository }}.git /tmp/repo
+                cd /tmp/repo/applications/heatpump-settings-api
+
+                # Login to registry
+                echo "${{ secrets.GITHUB_TOKEN }}" | buildctl --addr unix:///run/user/1000/buildkit/buildkitd.sock build \
+                  --frontend dockerfile.v0 \
+                  --local context=. \
+                  --local dockerfile=. \
+                  --output type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }},push=true,registry.insecure=false \
+                  --opt platform=linux/arm64 \
+                  --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
+                  --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache \
+                  --metadata-file /tmp/metadata.json
+
+                # Stop buildkitd
+                kill \$BUILDKIT_PID || true
+                wait \$BUILDKIT_PID || true
+              env:
+              - name: BUILDKIT_HOST
+                value: unix:///run/user/1000/buildkit/buildkitd.sock
+              - name: DOCKER_CONFIG
+                value: /tmp/.docker
               volumeMounts:
-              - name: docker-config
-                mountPath: /kaniko/.docker
+              - name: registry-auth
+                mountPath: /tmp/.docker-secret
             volumes:
-            - name: docker-config
+            - name: registry-auth
               secret:
-                secretName: kaniko-docker-config-${{ github.run_id }}
+                secretName: buildkit-registry-${{ github.run_id }}
+                items:
+                - key: username
+                  path: username
+                - key: password
+                  path: password
           EOF
 
-          # Wait for pod to complete
-          kubectl wait --for=condition=Ready pod/kaniko-build-${{ github.run_id }} --namespace=default --timeout=600s || true
+          # Wait for pod to be created
+          sleep 5
 
           # Stream logs
-          kubectl logs -f kaniko-build-${{ github.run_id }} --namespace=default || true
+          kubectl logs -f buildkit-${{ github.run_id }} --namespace=default || true
 
           # Check if pod succeeded
-          POD_STATUS=$(kubectl get pod kaniko-build-${{ github.run_id }} --namespace=default -o jsonpath='{.status.phase}')
+          POD_STATUS=$(kubectl get pod buildkit-${{ github.run_id }} --namespace=default -o jsonpath='{.status.phase}')
 
           # Cleanup
-          kubectl delete pod kaniko-build-${{ github.run_id }} --namespace=default || true
-          kubectl delete secret kaniko-docker-config-${{ github.run_id }} --namespace=default || true
+          kubectl delete pod buildkit-${{ github.run_id }} --namespace=default || true
+          kubectl delete secret buildkit-registry-${{ github.run_id }} --namespace=default || true
 
           # Exit with error if build failed
           if [ "$POD_STATUS" != "Succeeded" ]; then
-            echo "Kaniko build failed with status: $POD_STATUS"
+            echo "BuildKit build failed with status: $POD_STATUS"
             exit 1
           fi
