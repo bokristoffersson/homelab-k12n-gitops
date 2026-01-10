@@ -1,0 +1,23 @@
+# Application configuration
+database:
+  url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres.heatpump-settings.svc.cluster.local:5432/heatpump_settings"
+  max_connections: 10
+  min_connections: 2
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+
+kafka:
+  brokers:
+    - "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+  topic: "homelab-heatpump-telemetry"
+  consumer_group: "heatpump-settings-api"
+  auto_offset_reset: "latest"
+  session_timeout_ms: 6000
+  enable_auto_commit: true
+  auto_commit_interval_ms: 5000
+
+logging:
+  level: "info"
+  format: "json"

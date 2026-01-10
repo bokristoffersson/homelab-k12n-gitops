@@ -16,6 +16,9 @@ configMapGenerator:
   - name: heatpump-settings-config
     files:
       - configs/heatpump-settings.yaml
+  - name: heatpump-settings-api-config
+    files:
+      - config.yaml=configs/heatpump-settings-api-config.yaml
   - name: postgres-migrations
     files:
       - migrations/001_initial_schema.sql
