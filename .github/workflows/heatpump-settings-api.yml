@@ -114,11 +114,17 @@ jobs:
                   --frontend dockerfile.v0 \
                   --local context=. \
                   --local dockerfile=. \
-                  --output type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }},push=true,registry.insecure=false \
+                  --output type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }},push=true,registry.insecure=false \
                   --opt platform=linux/arm64 \
                   --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
                   --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache \
                   --metadata-file /tmp/metadata.json
+
+                # Install and use crane to tag as 'main'
+                wget -q https://github.com/google/go-containerregistry/releases/download/v0.19.0/go-containerregistry_Linux_arm64.tar.gz
+                tar -xzf go-containerregistry_Linux_arm64.tar.gz crane
+                echo "${{ secrets.GITHUB_TOKEN }}" | ./crane auth login ghcr.io -u ${{ github.actor }} --password-stdin
+                ./crane tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} main
 
                 # Stop buildkitd
                 kill \$BUILDKIT_PID || true
