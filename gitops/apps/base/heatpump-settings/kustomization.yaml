@@ -8,6 +8,7 @@ resources:
   - service.yaml
   - migration-job.yaml
   - redpanda-connect-deployment.yaml
+  - heatpump-settings-api-deployment.yaml
   - backup-cronjob.yaml
   - backup-aws-credentials-sealed.yaml
 

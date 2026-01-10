@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heatpump-settings-api
+  namespace: heatpump-settings
+  labels:
+    app: heatpump-settings-api
+    backstage.io/kubernetes-id: heatpump-settings
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: heatpump-settings-api
+  template:
+    metadata:
+      labels:
+        app: heatpump-settings-api
+        backstage.io/kubernetes-id: heatpump-settings
+    spec:
+      containers:
+        - name: heatpump-settings-api
+          image: ghcr.io/bokristoffersson/heatpump-settings-api:main
+          env:
+            - name: KAFKA_BROKERS
+              value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "homelab-heatpump-telemetry"
+            - name: KAFKA_GROUP_ID
+              value: "heatpump-settings-api"
+            - name: DATABASE_URL
+              value: "postgres://postgres:postgres@postgres.heatpump-settings.svc.cluster.local:5432/heatpump_settings?sslmode=disable"
+            - name: RUST_LOG
+              value: "info"
+          ports:
+            - containerPort: 8080
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
