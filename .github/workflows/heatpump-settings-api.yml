@@ -19,7 +19,7 @@ env:
 jobs:
   test:
     name: Test
-    runs-on: homelab-runners
+    runs-on: ubuntu-24.04-arm
     env:
       RUSTFLAGS: ""  # Override setup-rust-toolchain's -D warnings
     defaults:
@@ -49,123 +49,72 @@ jobs:
 
   docker:
     name: Build and Push Docker Image
-    runs-on: homelab-runners
+    runs-on: ubuntu-24.04-arm
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
       packages: write
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install kubectl
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify authentication
         run: |
-          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/arm64/kubectl"
-          chmod +x kubectl
-          sudo mv kubectl /usr/local/bin/
-          kubectl version --client
+          # Show who we're authenticated as
+          AUTH_USER=$(docker info | grep Username | awk '{print $2}' || echo "unknown")
+          echo "✅ Successfully authenticated to GitHub Container Registry as: $AUTH_USER"
+          echo "🔑 Using GitHub token authentication (actor: ${{ github.actor }})"
 
-      - name: Build and push with BuildKit
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=main
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./applications/heatpump-settings-api
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=arm64
+          cache-to: type=gha,mode=max,scope=arm64
+
+      - name: Verify push
         run: |
-          # Create registry credentials secret
-          kubectl create secret generic buildkit-registry-${{ github.run_id }} \
-            --from-literal=username=${{ github.actor }} \
-            --from-literal=password=${{ secrets.GITHUB_TOKEN }} \
-            --namespace=default
-
-          # Create BuildKit pod
-          cat <<EOF | kubectl apply -f -
-          apiVersion: v1
-          kind: Pod
-          metadata:
-            name: buildkit-${{ github.run_id }}
-            namespace: default
-          spec:
-            restartPolicy: Never
-            containers:
-            - name: buildkit
-              image: moby/buildkit:v0.17.2
-              securityContext:
-                privileged: true
-              command:
-              - sh
-              - -c
-              - |
-                set -ex
-
-                # Start buildkitd in background
-                buildkitd &
-                BUILDKIT_PID=\$!
-
-                # Wait for buildkitd to be ready
-                timeout 60 sh -c 'until buildctl debug workers; do sleep 1; done'
-
-                # Clone the repository
-                git clone --depth 1 --branch main https://github.com/${{ github.repository }}.git /tmp/repo
-                cd /tmp/repo/applications/heatpump-settings-api
-
-                # Create Docker config for authentication
-                mkdir -p /tmp/.docker
-                echo '{"auths":{"ghcr.io":{"auth":"'$(echo -n "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}" | base64)'"}}}' > /tmp/.docker/config.json
-
-                # Build and push
-                buildctl build \
-                  --frontend dockerfile.v0 \
-                  --local context=. \
-                  --local dockerfile=. \
-                  --output type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }},push=true,registry.insecure=false \
-                  --opt platform=linux/arm64 \
-                  --export-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max \
-                  --import-cache type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache \
-                  --metadata-file /tmp/metadata.json
-
-                # Install and use crane to tag as 'main'
-                wget -q https://github.com/google/go-containerregistry/releases/download/v0.19.0/go-containerregistry_Linux_arm64.tar.gz
-                tar -xzf go-containerregistry_Linux_arm64.tar.gz crane
-                echo "${{ secrets.GITHUB_TOKEN }}" | ./crane auth login ghcr.io -u ${{ github.actor }} --password-stdin
-                ./crane tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} main
-
-                # Stop buildkitd
-                kill \$BUILDKIT_PID || true
-                wait \$BUILDKIT_PID || true
-              env:
-              - name: DOCKER_CONFIG
-                value: /tmp/.docker
-              volumeMounts:
-              - name: registry-auth
-                mountPath: /tmp/.docker-secret
-            volumes:
-            - name: registry-auth
-              secret:
-                secretName: buildkit-registry-${{ github.run_id }}
-                items:
-                - key: username
-                  path: username
-                - key: password
-                  path: password
-          EOF
-
-          # Wait for pod to be ready
-          kubectl wait --for=condition=Ready pod/buildkit-${{ github.run_id }} --namespace=default --timeout=60s
-
-          # Stream logs
-          kubectl logs -f buildkit-${{ github.run_id }} --namespace=default || true
-
-          # Wait for pod to complete (succeeded or failed)
-          kubectl wait --for=condition=Ready=false pod/buildkit-${{ github.run_id }} --namespace=default --timeout=60s || true
-
-          # Check container exit code (more reliable than pod phase)
-          EXIT_CODE=$(kubectl get pod buildkit-${{ github.run_id }} --namespace=default -o jsonpath='{.status.containerStatuses[0].state.terminated.exitCode}')
-
-          # Cleanup
-          kubectl delete pod buildkit-${{ github.run_id }} --namespace=default || true
-          kubectl delete secret buildkit-registry-${{ github.run_id }} --namespace=default || true
-
-          # Exit with error if build failed (exit code 0 = success)
-          if [ "$EXIT_CODE" != "0" ]; then
-            echo "BuildKit build failed with exit code: $EXIT_CODE"
-            exit 1
+          echo "🔍 Verifying image was pushed..."
+          
+          # Give registry some time to propagate
+          sleep 10
+          
+          # Try to pull the image to verify it exists (ARM64 runner can pull ARM64)
+          if docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >/dev/null 2>&1; then
+            echo "✅ Image confirmed in registry (can pull)"
+            docker rmi "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >/dev/null 2>&1 || true
+          else
+            echo "❌ Image NOT found in registry (cannot pull)"
+            echo "This might be a temporary registry delay, checking with buildx inspect..."
+            if docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >/dev/null 2>&1; then
+              echo "✅ Image found via buildx imagetools"
+            else
+              echo "❌ Image verification failed completely"
+              exit 1
+            fi
           fi
-
-          echo "BuildKit build succeeded!"
