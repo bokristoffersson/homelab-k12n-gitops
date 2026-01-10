@@ -12,7 +12,7 @@ spec:
   chart:
     spec:
       chart: operator
-      version: "0.4.x"
+      version: "25.3.1"
       sourceRef:
         kind: HelmRepository
         name: redpanda-operator
