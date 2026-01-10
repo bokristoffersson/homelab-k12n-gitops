@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.84 AS builder
+FROM rust:latest AS builder
 
 WORKDIR /app
 
@@ -18,8 +18,8 @@ COPY config ./config
 RUN touch src/main.rs && \
     cargo build --release
 
-# Runtime stage
-FROM debian:bookworm-slim
+# Runtime stage - use newer Debian with GLIBC 2.38+
+FROM debian:trixie-slim
 
 # Install CA certificates for HTTPS connections
 RUN apt-get update && \
