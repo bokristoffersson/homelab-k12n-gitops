@@ -1,0 +1,26 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: redpanda-v2
+  description: Kafka-compatible streaming platform for IoT data pipeline
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    backstage.io/kubernetes-id: redpanda-v2
+  tags:
+    - kafka
+    - streaming
+    - redpanda
+    - messaging
+  links:
+    - url: http://localhost:8080
+      title: Redpanda Console (port-forward)
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: platform
+  system: data-pipeline
+  providesApis:
+    - kafka-api
+  dependsOn:
+    - resource:longhorn

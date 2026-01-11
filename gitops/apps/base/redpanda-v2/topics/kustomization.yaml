@@ -2,11 +2,3 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - topic-creator-job.yaml
-
-# Keep old Topic CRDs as documentation
-# These are no longer applied - topics are created via rpk Job
-# - heatpump-telemetry.yaml
-# - heatpump-realtime.yaml
-# - energy-realtime.yaml
-# - sensor-state.yaml
-# - heatpump-settings.yaml
