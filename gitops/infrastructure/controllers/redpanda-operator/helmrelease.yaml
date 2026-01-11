@@ -39,3 +39,5 @@ spec:
     additionalCmdFlags:
       - "--enable-console=false"
       - "--enable-redpanda-controllers=false"
+      - "--enable-v2-nodepools=false"
+      - "--enable-vectorized-controllers=true"  # Keep legacy controllers for Topics
