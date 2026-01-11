@@ -22,7 +22,6 @@ spec:
             - /bin/sh
             - -c
             - |
-              chmod +x /migrations/run_migrations.sh
               /migrations/run_migrations.sh
           env:
             - name: PGHOST
@@ -30,15 +29,9 @@ spec:
             - name: PGPORT
               value: "5432"
             - name: PGUSER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: DATABASE_USERNAME
+              value: postgres
             - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: DATABASE_PASSWORD
+              value: postgres
             - name: PGDATABASE
               value: postgres
           volumeMounts:
