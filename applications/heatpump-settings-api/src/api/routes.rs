@@ -8,7 +8,7 @@ use super::handlers::{health, settings, AppState};
 
 pub fn create_router(state: AppState) -> Router {
     Router::new()
-        // Health check (no auth)
+        // Health check (includes database status)
         .route("/health", get(health::health_check))
         // Settings API routes
         .route("/api/v1/heatpump/settings", get(settings::get_all_settings))

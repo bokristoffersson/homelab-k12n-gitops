@@ -29,10 +29,32 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
-            AppError::Database(ref e) => {
+        let (status, error_message) = match &self {
+            AppError::Database(e) => {
+                // Log full error for debugging
                 tracing::error!("Database error: {:?}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, "Database error")
+                
+                // Provide more descriptive error messages based on error type
+                let user_message = match e {
+                    sqlx::Error::Database(db_err) => {
+                        let msg = db_err.message();
+                        if msg.contains("does not exist") || msg.contains("relation") {
+                            "Database table or schema does not exist. Please run migrations."
+                        } else if msg.contains("connection") || msg.contains("Connection") {
+                            "Database connection failed. Please check database configuration."
+                        } else if msg.contains("database") && msg.contains("does not exist") {
+                            "Database does not exist. Please check database configuration."
+                        } else {
+                            "Database query error. Please check logs for details."
+                        }
+                    }
+                    sqlx::Error::PoolClosed => "Database connection pool is closed.",
+                    sqlx::Error::PoolTimedOut => "Database connection timeout. Please try again.",
+                    sqlx::Error::Io(_) => "Database I/O error. Please check database availability.",
+                    _ => "Database error occurred. Please check logs for details.",
+                };
+                
+                (StatusCode::INTERNAL_SERVER_ERROR, user_message)
             }
             AppError::Kafka(ref e) => {
                 tracing::error!("Kafka error: {:?}", e);

@@ -22,4 +22,5 @@ configMapGenerator:
   - name: postgres-migrations
     files:
       - migrations/001_initial_schema.sql
+      - migrations/002_fix_indoor_target_temp_type.sql
       - migrations/run_migrations.sh
