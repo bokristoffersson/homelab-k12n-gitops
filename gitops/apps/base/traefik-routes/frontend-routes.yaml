@@ -34,6 +34,22 @@ spec:
           namespace: energy-ws
           port: 8080
 
+    # Heatpump Settings API (protected by OAuth2 Proxy) - same-origin for SPA
+    - match: Host(`heatpump.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
+      kind: Rule
+      priority: 95  # Higher priority than general API route
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+      services:
+        - name: heatpump-settings-api
+          namespace: heatpump-settings
+          port: 8080
+
     # API Proxy (protected by OAuth2 Proxy) - same-origin for SPA
     - match: Host(`heatpump.k12n.com`) && PathPrefix(`/api`)
       kind: Rule
