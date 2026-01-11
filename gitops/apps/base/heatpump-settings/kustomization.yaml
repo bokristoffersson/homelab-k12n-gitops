@@ -11,6 +11,7 @@ resources:
   - heatpump-settings-api-deployment.yaml
   - backup-cronjob.yaml
   - backup-aws-credentials-sealed.yaml
+  - postgres-credentials-sealed.yaml
 
 configMapGenerator:
   - name: heatpump-settings-config
