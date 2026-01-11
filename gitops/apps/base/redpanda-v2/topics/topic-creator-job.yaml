@@ -1,0 +1,74 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-topics
+  namespace: redpanda-system
+  annotations:
+    # Force new job on each apply
+    timestamp: "TIMESTAMP_PLACEHOLDER"
+spec:
+  ttlSecondsAfterFinished: 300  # Clean up 5 minutes after completion
+  template:
+    metadata:
+      labels:
+        app: topic-creator
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: rpk
+          image: docker.redpanda.com/redpandadata/redpanda:v25.3.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              # Wait for Redpanda to be ready
+              until rpk cluster info --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 2>/dev/null; do
+                echo "Waiting for Redpanda to be ready..."
+                sleep 5
+              done
+
+              echo "Redpanda is ready. Creating topics..."
+
+              # Create topics (rpk topic create is idempotent - skips if exists)
+              rpk topic create energy-realtime \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=86400000 \
+                --topic-config segment.ms=3600000 || echo "Topic energy-realtime already exists"
+
+              rpk topic create heatpump-realtime \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=3600000 \
+                --topic-config segment.ms=3600000 || echo "Topic heatpump-realtime already exists"
+
+              rpk topic create heatpump-settings \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=604800000 \
+                --topic-config segment.ms=3600000 || echo "Topic heatpump-settings already exists"
+
+              rpk topic create heatpump-telemetry \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=3600000 \
+                --topic-config segment.ms=3600000 || echo "Topic heatpump-telemetry already exists"
+
+              rpk topic create sensor-state \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=86400000 \
+                --topic-config segment.ms=3600000 || echo "Topic sensor-state already exists"
+
+              echo "All topics created successfully!"
+
+              # List topics to verify
+              rpk topic list --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092
