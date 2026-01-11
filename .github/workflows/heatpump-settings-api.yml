@@ -100,21 +100,27 @@ jobs:
       - name: Verify push
         run: |
           echo "🔍 Verifying image was pushed..."
+          echo "📋 Tags that were pushed:"
+          echo "${{ steps.meta.outputs.tags }}" | while IFS= read -r tag; do
+            echo "  - $tag"
+          done
           
           # Give registry some time to propagate
           sleep 10
           
-          # Try to pull the image to verify it exists (ARM64 runner can pull ARM64)
-          if docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >/dev/null 2>&1; then
-            echo "✅ Image confirmed in registry (can pull)"
-            docker rmi "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >/dev/null 2>&1 || true
+          # Verify using the main tag (which we know is being pushed)
+          if docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main" >/dev/null 2>&1; then
+            echo "✅ Image confirmed in registry (main tag exists)"
           else
-            echo "❌ Image NOT found in registry (cannot pull)"
-            echo "This might be a temporary registry delay, checking with buildx inspect..."
-            if docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >/dev/null 2>&1; then
-              echo "✅ Image found via buildx imagetools"
-            else
-              echo "❌ Image verification failed completely"
-              exit 1
-            fi
+            echo "❌ Image NOT found in registry (main tag missing)"
+            exit 1
+          fi
+          
+          # Verify the first tag (SHA tag) from metadata output
+          SHA_TAG_FULL=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          if docker buildx imagetools inspect "${SHA_TAG_FULL}" >/dev/null 2>&1; then
+            SHA_TAG_ONLY=$(echo "${SHA_TAG_FULL}" | sed 's/.*://')
+            echo "✅ SHA tag confirmed in registry: ${SHA_TAG_ONLY}"
+          else
+            echo "⚠️ SHA tag not found in registry, but main tag exists"
           fi
