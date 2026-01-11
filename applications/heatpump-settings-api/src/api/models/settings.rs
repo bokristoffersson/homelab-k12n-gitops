@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-pub use crate::repositories::settings::{Setting, SettingPatch};
+pub use crate::repositories::settings::Setting;
 
 #[derive(Debug, Serialize)]
 pub struct SettingsListResponse {

@@ -7,6 +7,7 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub api: ApiConfig,
     pub kafka: KafkaConfig,
+    #[allow(dead_code)]
     pub logging: LoggingConfig,
 }
 
@@ -35,6 +36,7 @@ pub struct KafkaConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[allow(dead_code)]
 pub struct LoggingConfig {
     pub level: String,
     pub format: String,
@@ -69,10 +71,6 @@ impl Config {
 
     pub fn api_bind_address(&self) -> String {
         format!("{}:{}", self.api.host, self.api.port)
-    }
-
-    pub fn kafka_brokers(&self) -> String {
-        self.kafka.brokers.join(",")
     }
 }
 

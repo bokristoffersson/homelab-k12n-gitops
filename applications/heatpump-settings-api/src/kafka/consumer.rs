@@ -21,7 +21,7 @@ impl KafkaConsumerService {
     pub fn new(config: &KafkaConfig, repository: SettingsRepository) -> anyhow::Result<Self> {
         let consumer: StreamConsumer = ClientConfig::new()
             .set("group.id", &config.consumer_group)
-            .set("bootstrap.servers", &config.brokers.join(","))
+            .set("bootstrap.servers", config.brokers.join(","))
             .set("enable.auto.commit", config.enable_auto_commit.to_string())
             .set(
                 "auto.commit.interval.ms",

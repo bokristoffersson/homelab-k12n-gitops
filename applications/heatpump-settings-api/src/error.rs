@@ -23,6 +23,7 @@ pub enum AppError {
     #[error("Invalid input: {0}")]
     InvalidInput(String),
 
+    #[allow(dead_code)]
     #[error("Internal server error: {0}")]
     Internal(String),
 }
@@ -33,7 +34,7 @@ impl IntoResponse for AppError {
             AppError::Database(e) => {
                 // Log full error for debugging
                 tracing::error!("Database error: {:?}", e);
-                
+
                 // Provide more descriptive error messages based on error type
                 let user_message = match e {
                     sqlx::Error::Database(db_err) => {
@@ -53,7 +54,7 @@ impl IntoResponse for AppError {
                     sqlx::Error::Io(_) => "Database I/O error. Please check database availability.",
                     _ => "Database error occurred. Please check logs for details.",
                 };
-                
+
                 (StatusCode::INTERNAL_SERVER_ERROR, user_message)
             }
             AppError::Kafka(ref e) => {

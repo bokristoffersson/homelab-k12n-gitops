@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
     let db_pool = PgPoolOptions::new()
         .max_connections(config.database.max_connections)
         .min_connections(config.database.min_connections)
-        .connect(&config.database_url())
+        .connect(config.database_url())
         .await?;
     tracing::info!("Database connection established");
 

@@ -58,9 +58,7 @@ impl SettingsRepository {
     /// Check database connectivity and table existence
     pub async fn health_check(&self) -> Result<(bool, bool)> {
         // Check connectivity
-        sqlx::query("SELECT 1")
-            .execute(&self.pool)
-            .await?;
+        sqlx::query("SELECT 1").execute(&self.pool).await?;
 
         // Check if settings table exists
         let exists: bool = sqlx::query_scalar::<_, bool>(
@@ -68,7 +66,7 @@ impl SettingsRepository {
                 SELECT FROM information_schema.tables 
                 WHERE table_schema = 'public' 
                 AND table_name = 'settings'
-            )"
+            )",
         )
         .fetch_one(&self.pool)
         .await?;

@@ -19,9 +19,10 @@ pub async fn health_check(State(state): State<AppState>) -> (StatusCode, Json<Va
         Ok((connected, table_exists)) => {
             response["database"]["connected"] = json!(connected);
             response["database"]["table_exists"] = json!(table_exists);
-            
+
             if !table_exists {
-                response["database"]["error"] = json!("Settings table does not exist. Please run migrations.");
+                response["database"]["error"] =
+                    json!("Settings table does not exist. Please run migrations.");
             }
         }
         Err(e) => {
@@ -29,8 +30,11 @@ pub async fn health_check(State(state): State<AppState>) -> (StatusCode, Json<Va
         }
     }
 
-    let status = if response["database"]["connected"].as_bool().unwrap_or(false) 
-        && response["database"]["table_exists"].as_bool().unwrap_or(true) {
+    let status = if response["database"]["connected"].as_bool().unwrap_or(false)
+        && response["database"]["table_exists"]
+            .as_bool()
+            .unwrap_or(true)
+    {
         StatusCode::OK
     } else {
         StatusCode::SERVICE_UNAVAILABLE
