@@ -4,6 +4,6 @@ resources:
   - cert-manager
   - sealed-secrets
   - cloudflare-tunnel
-  - redpanda-operator
+#  - redpanda-operator
   - traefik
   - traefik-config.yaml
