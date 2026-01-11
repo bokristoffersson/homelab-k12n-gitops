@@ -27,17 +27,13 @@ spec:
         cpu: 200m
         memory: 256Mi
 
+    # Limit scope to single namespace to avoid cluster-wide controllers
+    scope: redpanda-system
+
     # Disable ServiceMonitor - we already have Prometheus installed
     monitoring:
       enabled: false
 
-    # Disable webhook to avoid "invalid combination of scope and webhook.enabled" error
+    # Disable webhook (required when scope is set)
     webhook:
       enabled: false
-
-    # Disable controllers we don't use (only need Topics)
-    additionalCmdFlags:
-      - "--enable-console=false"
-      - "--enable-redpanda-controllers=false"
-      - "--enable-v2-nodepools=false"
-      - "--enable-vectorized-controllers=true"  # Keep legacy controllers for Topics
