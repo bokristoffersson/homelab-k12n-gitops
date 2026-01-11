@@ -13,7 +13,7 @@ pub fn create_router(state: AppState) -> Router {
         // Settings API routes
         .route("/api/v1/heatpump/settings", get(settings::get_all_settings))
         .route(
-            "/api/v1/heatpump/settings/:device_id",
+            "/api/v1/heatpump/settings/{device_id}",
             get(settings::get_setting_by_device).patch(settings::update_setting),
         )
         .with_state(state)
