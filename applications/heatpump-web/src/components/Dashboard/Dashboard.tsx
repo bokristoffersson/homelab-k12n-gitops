@@ -3,7 +3,6 @@ import { api } from '../../services/api';
 import { HourlyTotal, EnergyHourly } from '../../types/energy';
 import { HeatpumpStatus } from '../../types/heatpump';
 import { TemperatureLatest, TemperatureReading } from '../../types/temperature';
-import { useTheme } from '../../hooks/useTheme';
 import HourlyTotalCard from './HourlyTotalCard';
 import HeatpumpStatusComponent from './HeatpumpStatus';
 import Temperatures from './Temperatures';
@@ -13,7 +12,6 @@ import PowerGauge from './PowerGauge';
 import './Dashboard.css';
 
 export default function Dashboard() {
-  const { theme, toggleTheme } = useTheme();
 
   const { data: hourlyTotal, error: hourlyError, isLoading: hourlyLoading } = useQuery<HourlyTotal>({
     queryKey: ['energy', 'hourly-total'],
@@ -73,15 +71,6 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard">
-      <div className="dashboard-header">
-        <h1>Dashboard</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span>Last Update: {new Date().toLocaleTimeString()}</span>
-          <button className="theme-toggle" onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
-        </div>
-      </div>
       {hasErrors && (
         <div className="error-banner">
           <strong>⚠️ API Errors:</strong>
