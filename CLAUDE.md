@@ -2,23 +2,35 @@
 
 ## Project Overview
 
-This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructure runs on a k3d cluster with various services for home automation, monitoring, and data collection.
+This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructure runs on a k3s cluster deployed across two Raspberry Pi nodes with various services for home automation, monitoring, and data collection.
+
+## Infrastructure
+
+- **Cluster Type**: k3s
+- **Nodes**:
+  - p0.local (Raspberry Pi)
+  - p1.local (Raspberry Pi)
+- **Architecture**: arm64
+- **Container Registry**: GitHub Container Registry (ghcr.io)
 
 ### Key Technologies
 - **GitOps**: FluxCD for continuous deployment
-- **Kubernetes**: k3d cluster
+- **Kubernetes**: k3s cluster (arm64)
 - **Authentication**: Authentik (IdP) + oauth2-proxy (auth gateway)
 - **Ingress**: Traefik with ForwardAuth middleware
 - **Databases**:
   - TimescaleDB (telemetry data)
   - Authentik PostgreSQL (identity data)
 - **Message Broker**: Redpanda (Kafka-compatible)
+  - Topics managed via `rpk` commands in Kubernetes Job (not operator/CRDs)
+  - Single-node cluster in `redpanda-v2` namespace
 - **MQTT**: Mosquitto broker
 - **Data Pipeline**: mqtt-kafka-bridge (Redpanda Connect/Benthos)
 
 ### Applications
 - **homelab-api**: Rust/Axum read-only REST API serving TimescaleDB data (energy, heatpump, temperature)
 - **heatpump-web**: React/TypeScript frontend SPA
+- **heatpump-settings-api**: Rust/Axum API managing heatpump settings (Kafka consumer: `heatpump-settings-api` group)
 - **energy-ws**: Rust/Axum WebSocket server streaming real-time energy data from Redpanda
 - **redpanda-sink**: Kafka consumer writing telemetry to TimescaleDB
 - **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
@@ -109,7 +121,7 @@ kubeseal \
 ### Deployment Workflow
 **IMPORTANT**: After certain changes, deployments must be manually restarted:
 
-1. **After GitHub Actions builds**: When a new application image is built and pushed, k3d doesn't automatically detect it. You must:
+1. **After GitHub Actions builds**: When a new application image is built and pushed to GHCR, Kubernetes doesn't automatically detect it. You must:
    ```bash
    kubectl rollout restart deployment/<app-name> -n <namespace>
    ```
@@ -124,16 +136,15 @@ kubeseal \
 # 1. Wait for GitHub Actions to complete
 gh run watch
 
-# 2. Import new image to k3d (if needed)
-k3d image import <image-name>:<tag> -c <cluster-name>
-
-# 3. Restart deployment to pick up changes
+# 2. Restart deployment to pick up new image
 kubectl rollout restart deployment/homelab-api -n homelab-api
 kubectl rollout restart deployment/heatpump-web -n heatpump-web
 
-# 4. Verify rollout
+# 3. Verify rollout
 kubectl rollout status deployment/homelab-api -n homelab-api
 ```
+
+**Note**: k3s pulls images directly from GHCR, so no manual image import is needed (unlike k3d).
 
 ### Docker
 **REQUIRED**: All Dockerfiles must implement layered builds with dependency caching.
@@ -283,6 +294,10 @@ docs/
 
 ## Recent Changes
 
+- Deployed heatpump-settings-api service with separate Kafka consumer group (2026-01-11)
+- Replaced Redpanda operator with rpk-based topic management (Job in redpanda-v2 namespace) (2026-01-11)
+- Created comprehensive TechDocs for redpanda-v2 with Backstage integration (2026-01-11)
+- Removed redpanda-operator and redpanda-system namespace (2026-01-11)
 - Added temperature API endpoints and 24h chart (2025-12-30)
 - Created authentication documentation (2025-12-30)
 - Added Authentik PostgreSQL backup CronJob (2025-12-30)
