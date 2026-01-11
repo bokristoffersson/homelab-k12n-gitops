@@ -33,17 +33,14 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: postgres-credentials
-                  key: POSTGRES_USER
+                  key: DATABASE_USERNAME
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
                   name: postgres-credentials
-                  key: POSTGRES_PASSWORD
+                  key: DATABASE_PASSWORD
             - name: PGDATABASE
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-credentials
-                  key: POSTGRES_DB
+              value: postgres
           volumeMounts:
             - name: migrations
               mountPath: /migrations
