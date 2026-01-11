@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: create-topics
-  namespace: redpanda-system
+  namespace: redpanda-v2
   annotations:
     # Force new job on each apply
     timestamp: "TIMESTAMP_PLACEHOLDER"
