@@ -1,4 +1,7 @@
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, patch},
+    Router,
+};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use super::handlers::{health, settings, AppState};
@@ -12,6 +15,11 @@ pub fn create_router(state: AppState) -> Router {
         .route(
             "/api/v1/heatpump/settings/{device_id}",
             get(settings::get_setting_by_device).patch(settings::update_setting),
+        )
+        // Outbox status endpoint
+        .route(
+            "/api/v1/heatpump/settings/outbox/{id}",
+            get(settings::get_outbox_status),
         )
         .with_state(state)
         .layer(CorsLayer::permissive())

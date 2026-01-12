@@ -11,8 +11,10 @@ use tokio::signal;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
-    api::handlers::AppState, config::Config, kafka::KafkaConsumerService,
-    repositories::SettingsRepository,
+    api::handlers::AppState,
+    config::Config,
+    kafka::KafkaConsumerService,
+    repositories::{OutboxRepository, SettingsRepository},
 };
 
 #[tokio::main]
@@ -40,13 +42,14 @@ async fn main() -> Result<()> {
         .await?;
     tracing::info!("Database connection established");
 
-    // Create repository
+    // Create repositories
     let repository = Arc::new(SettingsRepository::new(db_pool.clone()));
+    let outbox_repository = Arc::new(OutboxRepository::new(db_pool.clone()));
 
     // Create Kafka consumer service
     tracing::info!("Initializing Kafka consumer...");
     let kafka_consumer =
-        KafkaConsumerService::new(&config.kafka, SettingsRepository::new(db_pool))?;
+        KafkaConsumerService::new(&config.kafka, SettingsRepository::new(db_pool.clone()))?;
 
     // Spawn Kafka consumer task
     let kafka_handle = tokio::spawn(async move {
@@ -56,6 +59,8 @@ async fn main() -> Result<()> {
     // Create API server
     let app_state = AppState {
         repository: repository.clone(),
+        outbox_repository,
+        pool: db_pool,
     };
     let app = api::create_router(app_state);
 

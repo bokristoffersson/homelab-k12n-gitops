@@ -3,17 +3,24 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use sqlx::PgPool;
 use std::sync::Arc;
 
 use crate::{
-    api::models::{SettingResponse, SettingsListResponse},
+    api::models::{SettingResponse, SettingsListResponse, OutboxStatusResponse},
     error::Result,
-    repositories::{settings::SettingPatch, SettingsRepository},
+    repositories::{
+        settings::SettingPatch,
+        outbox::OutboxRepository,
+        SettingsRepository,
+    },
 };
 
 #[derive(Clone)]
 pub struct AppState {
     pub repository: Arc<SettingsRepository>,
+    pub outbox_repository: Arc<OutboxRepository>,
+    pub pool: PgPool,
 }
 
 /// GET /api/v1/heatpump/settings
@@ -36,7 +43,7 @@ pub async fn get_setting_by_device(
 }
 
 /// PATCH /api/v1/heatpump/settings/:device_id
-/// Partially update settings for a device
+/// Partially update settings for a device using transactional outbox pattern
 pub async fn update_setting(
     State(state): State<AppState>,
     Path(device_id): Path<String>,
@@ -45,9 +52,140 @@ pub async fn update_setting(
     // Validate patch data
     validate_patch(&patch)?;
 
-    let setting = state.repository.update(&device_id, &patch).await?;
+    // Begin transaction
+    let mut tx = state.pool.begin().await?;
 
-    Ok((StatusCode::OK, Json(SettingResponse { setting })))
+    // 1. Update settings table (within transaction)
+    let setting = update_setting_in_tx(&mut tx, &device_id, &patch).await?;
+
+    // 2. Insert outbox command (within same transaction)
+    let outbox_entry = crate::repositories::outbox::OutboxRepository::insert_in_tx(
+        &mut tx,
+        &device_id,
+        &patch,
+    ).await?;
+
+    // 3. Commit transaction (atomic: both succeed or both fail)
+    tx.commit().await?;
+
+    // Return 202 Accepted (command is pending, not yet confirmed by heatpump)
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(SettingResponse {
+            setting,
+            outbox_id: Some(outbox_entry.id),
+            outbox_status: Some(outbox_entry.status),
+        })
+    ))
+}
+
+/// Helper: Update setting within a transaction
+async fn update_setting_in_tx(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    device_id: &str,
+    patch: &SettingPatch,
+) -> Result<crate::repositories::settings::Setting> {
+    use crate::error::AppError;
+
+    // Build dynamic UPDATE query based on which fields are present
+    let mut query = String::from("UPDATE settings SET updated_at = NOW()");
+    let mut bind_count = 1;
+
+    if patch.indoor_target_temp.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", indoor_target_temp = ${}", bind_count));
+    }
+    if patch.mode.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", mode = ${}", bind_count));
+    }
+    if patch.curve.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", curve = ${}", bind_count));
+    }
+    if patch.curve_min.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", curve_min = ${}", bind_count));
+    }
+    if patch.curve_max.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", curve_max = ${}", bind_count));
+    }
+    if patch.curve_plus_5.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", curve_plus_5 = ${}", bind_count));
+    }
+    if patch.curve_zero.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", curve_zero = ${}", bind_count));
+    }
+    if patch.curve_minus_5.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", curve_minus_5 = ${}", bind_count));
+    }
+    if patch.heatstop.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", heatstop = ${}", bind_count));
+    }
+
+    query.push_str(" WHERE device_id = $1 RETURNING *");
+
+    let mut query_builder = sqlx::query_as::<_, crate::repositories::settings::Setting>(&query)
+        .bind(device_id);
+
+    if let Some(val) = patch.indoor_target_temp {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.mode {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.curve {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.curve_min {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.curve_max {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.curve_plus_5 {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.curve_zero {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.curve_minus_5 {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.heatstop {
+        query_builder = query_builder.bind(val);
+    }
+
+    let setting = query_builder
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Device {} not found", device_id)))?;
+
+    Ok(setting)
+}
+
+/// GET /api/v1/heatpump/settings/outbox/:id
+/// Get outbox status for a specific command
+pub async fn get_outbox_status(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<Json<OutboxStatusResponse>> {
+    let entry = state.outbox_repository.get_by_id(id).await?;
+
+    Ok(Json(OutboxStatusResponse {
+        id: entry.id,
+        status: entry.status,
+        created_at: entry.created_at,
+        published_at: entry.published_at,
+        confirmed_at: entry.confirmed_at,
+        error_message: entry.error_message,
+        retry_count: entry.retry_count,
+    }))
 }
 
 /// Validate PATCH request data
