@@ -1,5 +1,5 @@
-pub mod settings;
 pub mod outbox;
+pub mod settings;
 
-pub use settings::SettingsRepository;
 pub use outbox::OutboxRepository;
+pub use settings::SettingsRepository;

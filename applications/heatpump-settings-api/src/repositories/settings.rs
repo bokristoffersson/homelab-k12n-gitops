@@ -33,7 +33,7 @@ pub struct SettingUpdate {
     pub heatstop: Option<i32>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SettingPatch {
     pub indoor_target_temp: Option<f64>,
     pub mode: Option<i32>,
@@ -146,6 +146,8 @@ impl SettingsRepository {
     }
 
     /// Partially update settings (PATCH endpoint)
+    /// Note: This method is replaced by update_setting_in_tx for transactional outbox pattern
+    #[allow(dead_code)]
     pub async fn update(&self, device_id: &str, patch: &SettingPatch) -> Result<Setting> {
         // Build dynamic UPDATE query based on which fields are present
         let mut query = String::from("UPDATE settings SET updated_at = NOW()");

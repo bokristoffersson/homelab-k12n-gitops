@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-pub use crate::repositories::settings::{Setting, SettingPatch};
+pub use crate::repositories::settings::Setting;
 
 #[derive(Debug, Serialize)]
 pub struct SettingsListResponse {

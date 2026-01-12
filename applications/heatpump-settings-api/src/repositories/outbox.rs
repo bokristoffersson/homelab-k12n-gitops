@@ -84,6 +84,7 @@ impl OutboxRepository {
     }
 
     /// Get pending outbox entries (for processor)
+    #[allow(dead_code)]
     pub async fn get_pending(&self, limit: i64) -> Result<Vec<OutboxEntry>> {
         let entries = sqlx::query_as::<_, OutboxEntry>(
             r#"
@@ -101,6 +102,7 @@ impl OutboxRepository {
     }
 
     /// Update status to 'published'
+    #[allow(dead_code)]
     pub async fn mark_published(&self, id: i64) -> Result<()> {
         sqlx::query(
             r#"
@@ -117,6 +119,7 @@ impl OutboxRepository {
     }
 
     /// Update status to 'confirmed'
+    #[allow(dead_code)]
     pub async fn mark_confirmed(&self, id: i64) -> Result<()> {
         sqlx::query(
             r#"
@@ -133,6 +136,7 @@ impl OutboxRepository {
     }
 
     /// Update status to 'failed' with error message
+    #[allow(dead_code)]
     pub async fn mark_failed(&self, id: i64, error: &str) -> Result<()> {
         sqlx::query(
             r#"
@@ -152,6 +156,7 @@ impl OutboxRepository {
     }
 
     /// Increment retry count
+    #[allow(dead_code)]
     pub async fn increment_retry(&self, id: i64) -> Result<()> {
         sqlx::query(
             r#"
@@ -168,6 +173,7 @@ impl OutboxRepository {
     }
 
     /// Get published entries awaiting confirmation (for processor)
+    #[allow(dead_code)]
     pub async fn get_published_pending_confirmation(&self, limit: i64) -> Result<Vec<OutboxEntry>> {
         let entries = sqlx::query_as::<_, OutboxEntry>(
             r#"

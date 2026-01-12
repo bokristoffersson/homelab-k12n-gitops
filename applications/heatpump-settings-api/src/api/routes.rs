@@ -1,7 +1,4 @@
-use axum::{
-    routing::{get, patch},
-    Router,
-};
+use axum::{routing::get, Router};
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use super::handlers::{health, settings, AppState};

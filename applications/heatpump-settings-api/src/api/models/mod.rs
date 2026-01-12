@@ -1,3 +1,3 @@
 pub mod settings;
 
-pub use settings::{SettingResponse, SettingsListResponse};
+pub use settings::{OutboxStatusResponse, SettingResponse, SettingsListResponse};

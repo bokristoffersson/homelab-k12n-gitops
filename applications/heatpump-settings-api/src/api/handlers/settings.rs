@@ -7,13 +7,9 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 use crate::{
-    api::models::{SettingResponse, SettingsListResponse, OutboxStatusResponse},
+    api::models::{OutboxStatusResponse, SettingResponse, SettingsListResponse},
     error::Result,
-    repositories::{
-        settings::SettingPatch,
-        outbox::OutboxRepository,
-        SettingsRepository,
-    },
+    repositories::{outbox::OutboxRepository, settings::SettingPatch, SettingsRepository},
 };
 
 #[derive(Clone)]
@@ -39,7 +35,11 @@ pub async fn get_setting_by_device(
 ) -> Result<Json<SettingResponse>> {
     let setting = state.repository.get_by_device_id(&device_id).await?;
 
-    Ok(Json(SettingResponse { setting }))
+    Ok(Json(SettingResponse {
+        setting,
+        outbox_id: None,
+        outbox_status: None,
+    }))
 }
 
 /// PATCH /api/v1/heatpump/settings/:device_id
@@ -59,11 +59,9 @@ pub async fn update_setting(
     let setting = update_setting_in_tx(&mut tx, &device_id, &patch).await?;
 
     // 2. Insert outbox command (within same transaction)
-    let outbox_entry = crate::repositories::outbox::OutboxRepository::insert_in_tx(
-        &mut tx,
-        &device_id,
-        &patch,
-    ).await?;
+    let outbox_entry =
+        crate::repositories::outbox::OutboxRepository::insert_in_tx(&mut tx, &device_id, &patch)
+            .await?;
 
     // 3. Commit transaction (atomic: both succeed or both fail)
     tx.commit().await?;
@@ -75,7 +73,7 @@ pub async fn update_setting(
             setting,
             outbox_id: Some(outbox_entry.id),
             outbox_status: Some(outbox_entry.status),
-        })
+        }),
     ))
 }
 
@@ -130,8 +128,8 @@ async fn update_setting_in_tx(
 
     query.push_str(" WHERE device_id = $1 RETURNING *");
 
-    let mut query_builder = sqlx::query_as::<_, crate::repositories::settings::Setting>(&query)
-        .bind(device_id);
+    let mut query_builder =
+        sqlx::query_as::<_, crate::repositories::settings::Setting>(&query).bind(device_id);
 
     if let Some(val) = patch.indoor_target_temp {
         query_builder = query_builder.bind(val);
