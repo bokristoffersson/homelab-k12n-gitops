@@ -1,0 +1,53 @@
+id: logs-deployment-selector
+title: View Logs from Deployment Pods
+intent: logs
+resource: deployment
+risk_level: none
+
+preconditions:
+  - Deployment has running pods
+  - User has logs permissions
+
+command_template: "kubectl logs -n {{namespace}} -l app={{app_label}} --tail={{tail}} --prefix"
+
+flags:
+  - name: --tail
+    default: "50"
+    note: Lines to show per pod
+  - name: --prefix
+    default: "true"
+    note: Show pod name prefix
+  - name: --all-containers
+    default: ""
+    note: Include all containers in pods
+
+defaults:
+  tail: "50"
+
+examples:
+  - goal: View logs from all api pods
+    render:
+      command: kubectl logs -n prod -l app=api --tail=50 --prefix
+      checks:
+        - Review for errors across all replicas
+        - Look for patterns
+
+  - goal: Stream logs from worker deployment
+    render:
+      command: kubectl logs -n staging -l app=worker --tail=20 --follow --prefix
+      checks:
+        - Monitor real-time activity
+        - Ctrl+C to stop
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Shows logs from all pods matching label selector
+  - Prefix helps identify which pod generated each line
+  - Use --all-containers for multi-container pods
+  - Consider stern for better multi-pod log viewing
+  - May be overwhelming with many replicas
+
+references:
+  - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#logs

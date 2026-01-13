@@ -1,0 +1,1810 @@
+[
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "actions-runner-system",
+    "target": "deploy/arc-controller-gha-rs-controller",
+    "selector": "app.kubernetes.io/name=gha-rs-controller",
+    "goal": "restart arc-controller-gha-rs-controller in actions-runner-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "actions-runner-system",
+    "target": "deploy/arc-controller-gha-rs-controller",
+    "selector": "app.kubernetes.io/name=gha-rs-controller",
+    "goal": "check rollout status for arc-controller-gha-rs-controller in actions-runner-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "actions-runner-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=gha-rs-controller",
+    "goal": "fetch logs for newest Ready pod of arc-controller-gha-rs-controller in actions-runner-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "actions-runner-system",
+    "target": "deploy/arc-controller-gha-rs-controller",
+    "selector": "app.kubernetes.io/name=gha-rs-controller",
+    "goal": "describe arc-controller-gha-rs-controller and recent events in actions-runner-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "actions-runner-system",
+    "target": "deploy/arc-controller-gha-rs-controller",
+    "selector": "app.kubernetes.io/name=gha-rs-controller",
+    "goal": "scale arc-controller-gha-rs-controller in actions-runner-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-postgres",
+    "selector": null,
+    "goal": "restart authentik-postgres in authentik"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-postgres",
+    "selector": null,
+    "goal": "check rollout status for authentik-postgres in authentik"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "authentik",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of authentik-postgres in authentik for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-postgres",
+    "selector": null,
+    "goal": "describe authentik-postgres and recent events in authentik"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-postgres",
+    "selector": null,
+    "goal": "scale authentik-postgres in authentik to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-redis",
+    "selector": null,
+    "goal": "restart authentik-redis in authentik"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-redis",
+    "selector": null,
+    "goal": "check rollout status for authentik-redis in authentik"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "authentik",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of authentik-redis in authentik for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-redis",
+    "selector": null,
+    "goal": "describe authentik-redis and recent events in authentik"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-redis",
+    "selector": null,
+    "goal": "scale authentik-redis in authentik to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-server",
+    "selector": null,
+    "goal": "restart authentik-server in authentik"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-server",
+    "selector": null,
+    "goal": "check rollout status for authentik-server in authentik"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "authentik",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of authentik-server in authentik for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-server",
+    "selector": null,
+    "goal": "describe authentik-server and recent events in authentik"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-server",
+    "selector": null,
+    "goal": "scale authentik-server in authentik to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-worker",
+    "selector": null,
+    "goal": "restart authentik-worker in authentik"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-worker",
+    "selector": null,
+    "goal": "check rollout status for authentik-worker in authentik"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "authentik",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of authentik-worker in authentik for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-worker",
+    "selector": null,
+    "goal": "describe authentik-worker and recent events in authentik"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "authentik",
+    "target": "deploy/authentik-worker",
+    "selector": null,
+    "goal": "scale authentik-worker in authentik to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage",
+    "selector": "app=backstage",
+    "goal": "restart backstage in backstage"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage",
+    "selector": "app=backstage",
+    "goal": "check rollout status for backstage in backstage"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "backstage",
+    "target": "pod/<newestReady>",
+    "selector": "app=backstage",
+    "goal": "fetch logs for newest Ready pod of backstage in backstage for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage",
+    "selector": "app=backstage",
+    "goal": "describe backstage and recent events in backstage"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage",
+    "selector": "app=backstage",
+    "goal": "scale backstage in backstage to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage-postgres",
+    "selector": "app=backstage-postgres",
+    "goal": "restart backstage-postgres in backstage"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage-postgres",
+    "selector": "app=backstage-postgres",
+    "goal": "check rollout status for backstage-postgres in backstage"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "backstage",
+    "target": "pod/<newestReady>",
+    "selector": "app=backstage-postgres",
+    "goal": "fetch logs for newest Ready pod of backstage-postgres in backstage for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage-postgres",
+    "selector": "app=backstage-postgres",
+    "goal": "describe backstage-postgres and recent events in backstage"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "backstage",
+    "target": "deploy/backstage-postgres",
+    "selector": "app=backstage-postgres",
+    "goal": "scale backstage-postgres in backstage to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager",
+    "selector": "app=cert-manager",
+    "goal": "restart cert-manager in cert-manager"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager",
+    "selector": "app=cert-manager",
+    "goal": "check rollout status for cert-manager in cert-manager"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "cert-manager",
+    "target": "pod/<newestReady>",
+    "selector": "app=cert-manager",
+    "goal": "fetch logs for newest Ready pod of cert-manager in cert-manager for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager",
+    "selector": "app=cert-manager",
+    "goal": "describe cert-manager and recent events in cert-manager"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager",
+    "selector": "app=cert-manager",
+    "goal": "scale cert-manager in cert-manager to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-cainjector",
+    "selector": "app=cainjector",
+    "goal": "restart cert-manager-cainjector in cert-manager"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-cainjector",
+    "selector": "app=cainjector",
+    "goal": "check rollout status for cert-manager-cainjector in cert-manager"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "cert-manager",
+    "target": "pod/<newestReady>",
+    "selector": "app=cainjector",
+    "goal": "fetch logs for newest Ready pod of cert-manager-cainjector in cert-manager for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-cainjector",
+    "selector": "app=cainjector",
+    "goal": "describe cert-manager-cainjector and recent events in cert-manager"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-cainjector",
+    "selector": "app=cainjector",
+    "goal": "scale cert-manager-cainjector in cert-manager to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-webhook",
+    "selector": "app=webhook",
+    "goal": "restart cert-manager-webhook in cert-manager"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-webhook",
+    "selector": "app=webhook",
+    "goal": "check rollout status for cert-manager-webhook in cert-manager"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "cert-manager",
+    "target": "pod/<newestReady>",
+    "selector": "app=webhook",
+    "goal": "fetch logs for newest Ready pod of cert-manager-webhook in cert-manager for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-webhook",
+    "selector": "app=webhook",
+    "goal": "describe cert-manager-webhook and recent events in cert-manager"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "cert-manager",
+    "target": "deploy/cert-manager-webhook",
+    "selector": "app=webhook",
+    "goal": "scale cert-manager-webhook in cert-manager to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "cloudflare-tunnel",
+    "target": "deploy/cloudflared",
+    "selector": "app=cloudflare-tunnel",
+    "goal": "restart cloudflared in cloudflare-tunnel"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cloudflare-tunnel",
+    "target": "deploy/cloudflared",
+    "selector": "app=cloudflare-tunnel",
+    "goal": "check rollout status for cloudflared in cloudflare-tunnel"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "cloudflare-tunnel",
+    "target": "pod/<newestReady>",
+    "selector": "app=cloudflare-tunnel",
+    "goal": "fetch logs for newest Ready pod of cloudflared in cloudflare-tunnel for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "cloudflare-tunnel",
+    "target": "deploy/cloudflared",
+    "selector": "app=cloudflare-tunnel",
+    "goal": "describe cloudflared and recent events in cloudflare-tunnel"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "cloudflare-tunnel",
+    "target": "deploy/cloudflared",
+    "selector": "app=cloudflare-tunnel",
+    "goal": "scale cloudflared in cloudflare-tunnel to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "energy-ws",
+    "target": "deploy/energy-ws",
+    "selector": "app=energy-ws",
+    "goal": "restart energy-ws in energy-ws"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "energy-ws",
+    "target": "deploy/energy-ws",
+    "selector": "app=energy-ws",
+    "goal": "check rollout status for energy-ws in energy-ws"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "energy-ws",
+    "target": "pod/<newestReady>",
+    "selector": "app=energy-ws",
+    "goal": "fetch logs for newest Ready pod of energy-ws in energy-ws for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "energy-ws",
+    "target": "deploy/energy-ws",
+    "selector": "app=energy-ws",
+    "goal": "describe energy-ws and recent events in energy-ws"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "energy-ws",
+    "target": "deploy/energy-ws",
+    "selector": "app=energy-ws",
+    "goal": "scale energy-ws in energy-ws to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/flux-operator",
+    "selector": "app.kubernetes.io/name=flux-operator",
+    "goal": "restart flux-operator in flux-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/flux-operator",
+    "selector": "app.kubernetes.io/name=flux-operator",
+    "goal": "check rollout status for flux-operator in flux-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "flux-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=flux-operator",
+    "goal": "fetch logs for newest Ready pod of flux-operator in flux-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/flux-operator",
+    "selector": "app.kubernetes.io/name=flux-operator",
+    "goal": "describe flux-operator and recent events in flux-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/flux-operator",
+    "selector": "app.kubernetes.io/name=flux-operator",
+    "goal": "scale flux-operator in flux-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/helm-controller",
+    "selector": "app.kubernetes.io/component=helm-controller",
+    "goal": "restart helm-controller in flux-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/helm-controller",
+    "selector": "app.kubernetes.io/component=helm-controller",
+    "goal": "check rollout status for helm-controller in flux-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "flux-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/component=helm-controller",
+    "goal": "fetch logs for newest Ready pod of helm-controller in flux-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/helm-controller",
+    "selector": "app.kubernetes.io/component=helm-controller",
+    "goal": "describe helm-controller and recent events in flux-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/helm-controller",
+    "selector": "app.kubernetes.io/component=helm-controller",
+    "goal": "scale helm-controller in flux-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-automation-controller",
+    "selector": "app.kubernetes.io/component=image-automation-controller",
+    "goal": "restart image-automation-controller in flux-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-automation-controller",
+    "selector": "app.kubernetes.io/component=image-automation-controller",
+    "goal": "check rollout status for image-automation-controller in flux-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "flux-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/component=image-automation-controller",
+    "goal": "fetch logs for newest Ready pod of image-automation-controller in flux-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-automation-controller",
+    "selector": "app.kubernetes.io/component=image-automation-controller",
+    "goal": "describe image-automation-controller and recent events in flux-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-automation-controller",
+    "selector": "app.kubernetes.io/component=image-automation-controller",
+    "goal": "scale image-automation-controller in flux-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-reflector-controller",
+    "selector": "app.kubernetes.io/component=image-reflector-controller",
+    "goal": "restart image-reflector-controller in flux-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-reflector-controller",
+    "selector": "app.kubernetes.io/component=image-reflector-controller",
+    "goal": "check rollout status for image-reflector-controller in flux-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "flux-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/component=image-reflector-controller",
+    "goal": "fetch logs for newest Ready pod of image-reflector-controller in flux-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-reflector-controller",
+    "selector": "app.kubernetes.io/component=image-reflector-controller",
+    "goal": "describe image-reflector-controller and recent events in flux-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/image-reflector-controller",
+    "selector": "app.kubernetes.io/component=image-reflector-controller",
+    "goal": "scale image-reflector-controller in flux-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/kustomize-controller",
+    "selector": "app.kubernetes.io/component=kustomize-controller",
+    "goal": "restart kustomize-controller in flux-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/kustomize-controller",
+    "selector": "app.kubernetes.io/component=kustomize-controller",
+    "goal": "check rollout status for kustomize-controller in flux-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "flux-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/component=kustomize-controller",
+    "goal": "fetch logs for newest Ready pod of kustomize-controller in flux-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/kustomize-controller",
+    "selector": "app.kubernetes.io/component=kustomize-controller",
+    "goal": "describe kustomize-controller and recent events in flux-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/kustomize-controller",
+    "selector": "app.kubernetes.io/component=kustomize-controller",
+    "goal": "scale kustomize-controller in flux-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/notification-controller",
+    "selector": "app.kubernetes.io/component=notification-controller",
+    "goal": "restart notification-controller in flux-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/notification-controller",
+    "selector": "app.kubernetes.io/component=notification-controller",
+    "goal": "check rollout status for notification-controller in flux-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "flux-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/component=notification-controller",
+    "goal": "fetch logs for newest Ready pod of notification-controller in flux-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/notification-controller",
+    "selector": "app.kubernetes.io/component=notification-controller",
+    "goal": "describe notification-controller and recent events in flux-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/notification-controller",
+    "selector": "app.kubernetes.io/component=notification-controller",
+    "goal": "scale notification-controller in flux-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/source-controller",
+    "selector": "app.kubernetes.io/component=source-controller",
+    "goal": "restart source-controller in flux-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/source-controller",
+    "selector": "app.kubernetes.io/component=source-controller",
+    "goal": "check rollout status for source-controller in flux-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "flux-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/component=source-controller",
+    "goal": "fetch logs for newest Ready pod of source-controller in flux-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/source-controller",
+    "selector": "app.kubernetes.io/component=source-controller",
+    "goal": "describe source-controller and recent events in flux-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "flux-system",
+    "target": "deploy/source-controller",
+    "selector": "app.kubernetes.io/component=source-controller",
+    "goal": "scale source-controller in flux-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "grafana",
+    "target": "deploy/grafana",
+    "selector": "app.kubernetes.io/name=grafana",
+    "goal": "restart grafana in grafana"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "grafana",
+    "target": "deploy/grafana",
+    "selector": "app.kubernetes.io/name=grafana",
+    "goal": "check rollout status for grafana in grafana"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "grafana",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=grafana",
+    "goal": "fetch logs for newest Ready pod of grafana in grafana for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "grafana",
+    "target": "deploy/grafana",
+    "selector": "app.kubernetes.io/name=grafana",
+    "goal": "describe grafana and recent events in grafana"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "grafana",
+    "target": "deploy/grafana",
+    "selector": "app.kubernetes.io/name=grafana",
+    "goal": "scale grafana in grafana to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/heatpump-settings-api",
+    "selector": "app=heatpump-settings-api",
+    "goal": "restart heatpump-settings-api in heatpump-settings"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/heatpump-settings-api",
+    "selector": "app=heatpump-settings-api",
+    "goal": "check rollout status for heatpump-settings-api in heatpump-settings"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "heatpump-settings",
+    "target": "pod/<newestReady>",
+    "selector": "app=heatpump-settings-api",
+    "goal": "fetch logs for newest Ready pod of heatpump-settings-api in heatpump-settings for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/heatpump-settings-api",
+    "selector": "app=heatpump-settings-api",
+    "goal": "describe heatpump-settings-api and recent events in heatpump-settings"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/heatpump-settings-api",
+    "selector": "app=heatpump-settings-api",
+    "goal": "scale heatpump-settings-api in heatpump-settings to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/postgres",
+    "selector": null,
+    "goal": "restart postgres in heatpump-settings"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/postgres",
+    "selector": null,
+    "goal": "check rollout status for postgres in heatpump-settings"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "heatpump-settings",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of postgres in heatpump-settings for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/postgres",
+    "selector": null,
+    "goal": "describe postgres and recent events in heatpump-settings"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/postgres",
+    "selector": null,
+    "goal": "scale postgres in heatpump-settings to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/redpanda-connect",
+    "selector": "app=redpanda-connect",
+    "goal": "restart redpanda-connect in heatpump-settings"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/redpanda-connect",
+    "selector": "app=redpanda-connect",
+    "goal": "check rollout status for redpanda-connect in heatpump-settings"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "heatpump-settings",
+    "target": "pod/<newestReady>",
+    "selector": "app=redpanda-connect",
+    "goal": "fetch logs for newest Ready pod of redpanda-connect in heatpump-settings for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/redpanda-connect",
+    "selector": "app=redpanda-connect",
+    "goal": "describe redpanda-connect and recent events in heatpump-settings"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "target": "deploy/redpanda-connect",
+    "selector": "app=redpanda-connect",
+    "goal": "scale redpanda-connect in heatpump-settings to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "heatpump-web",
+    "target": "deploy/heatpump-web",
+    "selector": "app=heatpump-web",
+    "goal": "restart heatpump-web in heatpump-web"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-web",
+    "target": "deploy/heatpump-web",
+    "selector": "app=heatpump-web",
+    "goal": "check rollout status for heatpump-web in heatpump-web"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "heatpump-web",
+    "target": "pod/<newestReady>",
+    "selector": "app=heatpump-web",
+    "goal": "fetch logs for newest Ready pod of heatpump-web in heatpump-web for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "heatpump-web",
+    "target": "deploy/heatpump-web",
+    "selector": "app=heatpump-web",
+    "goal": "describe heatpump-web and recent events in heatpump-web"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "heatpump-web",
+    "target": "deploy/heatpump-web",
+    "selector": "app=heatpump-web",
+    "goal": "scale heatpump-web in heatpump-web to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "homelab-api",
+    "target": "deploy/homelab-api",
+    "selector": "app=homelab-api",
+    "goal": "restart homelab-api in homelab-api"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "homelab-api",
+    "target": "deploy/homelab-api",
+    "selector": "app=homelab-api",
+    "goal": "check rollout status for homelab-api in homelab-api"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "homelab-api",
+    "target": "pod/<newestReady>",
+    "selector": "app=homelab-api",
+    "goal": "fetch logs for newest Ready pod of homelab-api in homelab-api for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "homelab-api",
+    "target": "deploy/homelab-api",
+    "selector": "app=homelab-api",
+    "goal": "describe homelab-api and recent events in homelab-api"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "homelab-api",
+    "target": "deploy/homelab-api",
+    "selector": "app=homelab-api",
+    "goal": "scale homelab-api in homelab-api to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/coredns",
+    "selector": null,
+    "goal": "restart coredns in kube-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/coredns",
+    "selector": null,
+    "goal": "check rollout status for coredns in kube-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "kube-system",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of coredns in kube-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/coredns",
+    "selector": null,
+    "goal": "describe coredns and recent events in kube-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/coredns",
+    "selector": null,
+    "goal": "scale coredns in kube-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/local-path-provisioner",
+    "selector": null,
+    "goal": "restart local-path-provisioner in kube-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/local-path-provisioner",
+    "selector": null,
+    "goal": "check rollout status for local-path-provisioner in kube-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "kube-system",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of local-path-provisioner in kube-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/local-path-provisioner",
+    "selector": null,
+    "goal": "describe local-path-provisioner and recent events in kube-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/local-path-provisioner",
+    "selector": null,
+    "goal": "scale local-path-provisioner in kube-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/metrics-server",
+    "selector": null,
+    "goal": "restart metrics-server in kube-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/metrics-server",
+    "selector": null,
+    "goal": "check rollout status for metrics-server in kube-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "kube-system",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of metrics-server in kube-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/metrics-server",
+    "selector": null,
+    "goal": "describe metrics-server and recent events in kube-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/metrics-server",
+    "selector": null,
+    "goal": "scale metrics-server in kube-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/sealed-secrets",
+    "selector": "app.kubernetes.io/name=sealed-secrets",
+    "goal": "restart sealed-secrets in kube-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/sealed-secrets",
+    "selector": "app.kubernetes.io/name=sealed-secrets",
+    "goal": "check rollout status for sealed-secrets in kube-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "kube-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=sealed-secrets",
+    "goal": "fetch logs for newest Ready pod of sealed-secrets in kube-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/sealed-secrets",
+    "selector": "app.kubernetes.io/name=sealed-secrets",
+    "goal": "describe sealed-secrets and recent events in kube-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/sealed-secrets",
+    "selector": "app.kubernetes.io/name=sealed-secrets",
+    "goal": "scale sealed-secrets in kube-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "restart traefik in kube-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "check rollout status for traefik in kube-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "kube-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "fetch logs for newest Ready pod of traefik in kube-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "describe traefik and recent events in kube-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "kube-system",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "scale traefik in kube-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-attacher",
+    "selector": "app=csi-attacher",
+    "goal": "restart csi-attacher in longhorn-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-attacher",
+    "selector": "app=csi-attacher",
+    "goal": "check rollout status for csi-attacher in longhorn-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "longhorn-system",
+    "target": "pod/<newestReady>",
+    "selector": "app=csi-attacher",
+    "goal": "fetch logs for newest Ready pod of csi-attacher in longhorn-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-attacher",
+    "selector": "app=csi-attacher",
+    "goal": "describe csi-attacher and recent events in longhorn-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-attacher",
+    "selector": "app=csi-attacher",
+    "goal": "scale csi-attacher in longhorn-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-provisioner",
+    "selector": "app=csi-provisioner",
+    "goal": "restart csi-provisioner in longhorn-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-provisioner",
+    "selector": "app=csi-provisioner",
+    "goal": "check rollout status for csi-provisioner in longhorn-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "longhorn-system",
+    "target": "pod/<newestReady>",
+    "selector": "app=csi-provisioner",
+    "goal": "fetch logs for newest Ready pod of csi-provisioner in longhorn-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-provisioner",
+    "selector": "app=csi-provisioner",
+    "goal": "describe csi-provisioner and recent events in longhorn-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-provisioner",
+    "selector": "app=csi-provisioner",
+    "goal": "scale csi-provisioner in longhorn-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-resizer",
+    "selector": "app=csi-resizer",
+    "goal": "restart csi-resizer in longhorn-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-resizer",
+    "selector": "app=csi-resizer",
+    "goal": "check rollout status for csi-resizer in longhorn-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "longhorn-system",
+    "target": "pod/<newestReady>",
+    "selector": "app=csi-resizer",
+    "goal": "fetch logs for newest Ready pod of csi-resizer in longhorn-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-resizer",
+    "selector": "app=csi-resizer",
+    "goal": "describe csi-resizer and recent events in longhorn-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-resizer",
+    "selector": "app=csi-resizer",
+    "goal": "scale csi-resizer in longhorn-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-snapshotter",
+    "selector": "app=csi-snapshotter",
+    "goal": "restart csi-snapshotter in longhorn-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-snapshotter",
+    "selector": "app=csi-snapshotter",
+    "goal": "check rollout status for csi-snapshotter in longhorn-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "longhorn-system",
+    "target": "pod/<newestReady>",
+    "selector": "app=csi-snapshotter",
+    "goal": "fetch logs for newest Ready pod of csi-snapshotter in longhorn-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-snapshotter",
+    "selector": "app=csi-snapshotter",
+    "goal": "describe csi-snapshotter and recent events in longhorn-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/csi-snapshotter",
+    "selector": "app=csi-snapshotter",
+    "goal": "scale csi-snapshotter in longhorn-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-driver-deployer",
+    "selector": "app.kubernetes.io/name=longhorn",
+    "goal": "restart longhorn-driver-deployer in longhorn-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-driver-deployer",
+    "selector": "app.kubernetes.io/name=longhorn",
+    "goal": "check rollout status for longhorn-driver-deployer in longhorn-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "longhorn-system",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=longhorn",
+    "goal": "fetch logs for newest Ready pod of longhorn-driver-deployer in longhorn-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-driver-deployer",
+    "selector": "app.kubernetes.io/name=longhorn",
+    "goal": "describe longhorn-driver-deployer and recent events in longhorn-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-driver-deployer",
+    "selector": "app.kubernetes.io/name=longhorn",
+    "goal": "scale longhorn-driver-deployer in longhorn-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-ui",
+    "selector": "app=longhorn-ui",
+    "goal": "restart longhorn-ui in longhorn-system"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-ui",
+    "selector": "app=longhorn-ui",
+    "goal": "check rollout status for longhorn-ui in longhorn-system"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "longhorn-system",
+    "target": "pod/<newestReady>",
+    "selector": "app=longhorn-ui",
+    "goal": "fetch logs for newest Ready pod of longhorn-ui in longhorn-system for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-ui",
+    "selector": "app=longhorn-ui",
+    "goal": "describe longhorn-ui and recent events in longhorn-system"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "longhorn-system",
+    "target": "deploy/longhorn-ui",
+    "selector": "app=longhorn-ui",
+    "goal": "scale longhorn-ui in longhorn-system to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-kube-state-metrics",
+    "selector": "app.kubernetes.io/name=kube-state-metrics",
+    "goal": "restart kube-prometheus-stack-kube-state-metrics in monitoring"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-kube-state-metrics",
+    "selector": "app.kubernetes.io/name=kube-state-metrics",
+    "goal": "check rollout status for kube-prometheus-stack-kube-state-metrics in monitoring"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "monitoring",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=kube-state-metrics",
+    "goal": "fetch logs for newest Ready pod of kube-prometheus-stack-kube-state-metrics in monitoring for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-kube-state-metrics",
+    "selector": "app.kubernetes.io/name=kube-state-metrics",
+    "goal": "describe kube-prometheus-stack-kube-state-metrics and recent events in monitoring"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-kube-state-metrics",
+    "selector": "app.kubernetes.io/name=kube-state-metrics",
+    "goal": "scale kube-prometheus-stack-kube-state-metrics in monitoring to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-operator",
+    "selector": "app=kube-prometheus-stack-operator",
+    "goal": "restart kube-prometheus-stack-operator in monitoring"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-operator",
+    "selector": "app=kube-prometheus-stack-operator",
+    "goal": "check rollout status for kube-prometheus-stack-operator in monitoring"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "monitoring",
+    "target": "pod/<newestReady>",
+    "selector": "app=kube-prometheus-stack-operator",
+    "goal": "fetch logs for newest Ready pod of kube-prometheus-stack-operator in monitoring for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-operator",
+    "selector": "app=kube-prometheus-stack-operator",
+    "goal": "describe kube-prometheus-stack-operator and recent events in monitoring"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "monitoring",
+    "target": "deploy/kube-prometheus-stack-operator",
+    "selector": "app=kube-prometheus-stack-operator",
+    "goal": "scale kube-prometheus-stack-operator in monitoring to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "mosquitto",
+    "target": "deploy/mosquitto",
+    "selector": "app=mosquitto",
+    "goal": "restart mosquitto in mosquitto"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "mosquitto",
+    "target": "deploy/mosquitto",
+    "selector": "app=mosquitto",
+    "goal": "check rollout status for mosquitto in mosquitto"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "mosquitto",
+    "target": "pod/<newestReady>",
+    "selector": "app=mosquitto",
+    "goal": "fetch logs for newest Ready pod of mosquitto in mosquitto for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "mosquitto",
+    "target": "deploy/mosquitto",
+    "selector": "app=mosquitto",
+    "goal": "describe mosquitto and recent events in mosquitto"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "mosquitto",
+    "target": "deploy/mosquitto",
+    "selector": "app=mosquitto",
+    "goal": "scale mosquitto in mosquitto to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "mqtt-kafka-bridge",
+    "target": "deploy/mqtt-kafka-bridge",
+    "selector": "app=mqtt-kafka-bridge",
+    "goal": "restart mqtt-kafka-bridge in mqtt-kafka-bridge"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "mqtt-kafka-bridge",
+    "target": "deploy/mqtt-kafka-bridge",
+    "selector": "app=mqtt-kafka-bridge",
+    "goal": "check rollout status for mqtt-kafka-bridge in mqtt-kafka-bridge"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "mqtt-kafka-bridge",
+    "target": "pod/<newestReady>",
+    "selector": "app=mqtt-kafka-bridge",
+    "goal": "fetch logs for newest Ready pod of mqtt-kafka-bridge in mqtt-kafka-bridge for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "mqtt-kafka-bridge",
+    "target": "deploy/mqtt-kafka-bridge",
+    "selector": "app=mqtt-kafka-bridge",
+    "goal": "describe mqtt-kafka-bridge and recent events in mqtt-kafka-bridge"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "mqtt-kafka-bridge",
+    "target": "deploy/mqtt-kafka-bridge",
+    "selector": "app=mqtt-kafka-bridge",
+    "goal": "scale mqtt-kafka-bridge in mqtt-kafka-bridge to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "oauth2-proxy",
+    "target": "deploy/oauth2-proxy",
+    "selector": null,
+    "goal": "restart oauth2-proxy in oauth2-proxy"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "oauth2-proxy",
+    "target": "deploy/oauth2-proxy",
+    "selector": null,
+    "goal": "check rollout status for oauth2-proxy in oauth2-proxy"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "oauth2-proxy",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of oauth2-proxy in oauth2-proxy for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "oauth2-proxy",
+    "target": "deploy/oauth2-proxy",
+    "selector": null,
+    "goal": "describe oauth2-proxy and recent events in oauth2-proxy"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "oauth2-proxy",
+    "target": "deploy/oauth2-proxy",
+    "selector": null,
+    "goal": "scale oauth2-proxy in oauth2-proxy to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "redpanda-v2",
+    "target": "deploy/redpanda-v2-console",
+    "selector": "app.kubernetes.io/name=console",
+    "goal": "restart redpanda-v2-console in redpanda-v2"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "redpanda-v2",
+    "target": "deploy/redpanda-v2-console",
+    "selector": "app.kubernetes.io/name=console",
+    "goal": "check rollout status for redpanda-v2-console in redpanda-v2"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "redpanda-v2",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=console",
+    "goal": "fetch logs for newest Ready pod of redpanda-v2-console in redpanda-v2 for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "redpanda-v2",
+    "target": "deploy/redpanda-v2-console",
+    "selector": "app.kubernetes.io/name=console",
+    "goal": "describe redpanda-v2-console and recent events in redpanda-v2"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "redpanda-v2",
+    "target": "deploy/redpanda-v2-console",
+    "selector": "app.kubernetes.io/name=console",
+    "goal": "scale redpanda-v2-console in redpanda-v2 to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/redpanda-connect",
+    "selector": null,
+    "goal": "restart redpanda-connect in timescaledb"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/redpanda-connect",
+    "selector": null,
+    "goal": "check rollout status for redpanda-connect in timescaledb"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "timescaledb",
+    "target": "pod/<newestReady>",
+    "selector": null,
+    "goal": "fetch logs for newest Ready pod of redpanda-connect in timescaledb for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/redpanda-connect",
+    "selector": null,
+    "goal": "describe redpanda-connect and recent events in timescaledb"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/redpanda-connect",
+    "selector": null,
+    "goal": "scale redpanda-connect in timescaledb to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/timescaledb",
+    "selector": "app=timescaledb",
+    "goal": "restart timescaledb in timescaledb"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/timescaledb",
+    "selector": "app=timescaledb",
+    "goal": "check rollout status for timescaledb in timescaledb"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "timescaledb",
+    "target": "pod/<newestReady>",
+    "selector": "app=timescaledb",
+    "goal": "fetch logs for newest Ready pod of timescaledb in timescaledb for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/timescaledb",
+    "selector": "app=timescaledb",
+    "goal": "describe timescaledb and recent events in timescaledb"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "timescaledb",
+    "target": "deploy/timescaledb",
+    "selector": "app=timescaledb",
+    "goal": "scale timescaledb in timescaledb to 2 replicas"
+  },
+  {
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "traefik",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "restart traefik in traefik"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "traefik",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "check rollout status for traefik in traefik"
+  },
+  {
+    "intent": "logs",
+    "resource": "pod",
+    "namespace": "traefik",
+    "target": "pod/<newestReady>",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "fetch logs for newest Ready pod of traefik in traefik for 15m tail 300"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "deployment",
+    "namespace": "traefik",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "describe traefik and recent events in traefik"
+  },
+  {
+    "intent": "scale",
+    "resource": "deployment",
+    "namespace": "traefik",
+    "target": "deploy/traefik",
+    "selector": "app.kubernetes.io/name=traefik",
+    "goal": "scale traefik in traefik to 2 replicas"
+  },
+  {
+    "intent": "diagnose",
+    "resource": "statefulset",
+    "namespace": "redpanda-v2",
+    "target": "sts/redpanda-v2",
+    "selector": "app.kubernetes.io/name=redpanda",
+    "goal": "show status for sts redpanda-v2 in redpanda-v2 and logs for index 0"
+  }
+]

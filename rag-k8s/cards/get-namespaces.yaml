@@ -1,0 +1,37 @@
+id: get-namespaces
+title: List Kubernetes namespaces
+intent: describe
+resource: namespace
+risk_level: read-only
+description: |
+  List all namespaces or filter namespaces by pattern.
+  Useful for discovering available namespaces when a namespace name is unknown or incorrect.
+
+command_template: "kubectl get namespaces {selector}"
+
+parameters:
+  selector:
+    type: string
+    optional: true
+    description: "Optional: grep pattern to filter namespaces (e.g., 'grep -i heatpump')"
+
+examples:
+  - goal: "List all namespaces in the cluster"
+    render:
+      command: "kubectl get namespaces"
+
+  - goal: "Find namespaces containing 'heatpump'"
+    render:
+      command: "kubectl get namespaces | grep -i heatpump"
+
+  - goal: "List namespaces with detailed status and age"
+    render:
+      command: "kubectl get namespaces -o wide"
+
+notes:
+  - Namespaces are cluster-scoped resources (no -n flag needed)
+  - Common patterns include app-name, app-name-component, or environment-app
+  - System namespaces include kube-system, kube-public, kube-node-lease, default
+  - Use grep to filter large lists of namespaces
+  - Helpful when you get 'namespace not found' errors
+  - Can pipe to grep to search for specific patterns

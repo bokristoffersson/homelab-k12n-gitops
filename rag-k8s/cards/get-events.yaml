@@ -1,0 +1,49 @@
+id: get-events
+title: Get Namespace Events
+intent: events
+resource: namespace
+risk_level: none
+
+preconditions:
+  - Namespace exists
+  - User has list permissions for events
+
+command_template: "kubectl get events -n {{namespace}} --sort-by='.lastTimestamp' --field-selector type={{type}}"
+
+flags:
+  - name: --sort-by
+    default: .lastTimestamp
+    note: Sort events by timestamp
+  - name: --field-selector
+    default: ""
+    note: Filter by type (Normal, Warning)
+
+defaults:
+  type: Warning
+
+examples:
+  - goal: View recent warning events in prod
+    render:
+      command: kubectl get events -n prod --sort-by='.lastTimestamp' --field-selector type=Warning
+      checks:
+        - Review for recurring issues
+        - Check timestamps
+
+  - goal: See all events in staging
+    render:
+      command: kubectl get events -n staging --sort-by='.lastTimestamp'
+      checks:
+        - Look for patterns or recurring errors
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Events are ephemeral (typically 1 hour retention)
+  - Warning events indicate potential issues
+  - Normal events show routine operations
+  - Use for troubleshooting recent failures
+  - Combine with describe for detailed pod diagnostics
+
+references:
+  - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#events

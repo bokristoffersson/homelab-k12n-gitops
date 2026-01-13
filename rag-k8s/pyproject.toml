@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-k8s"
+version = "0.1.0"
+description = "RAG-powered Kubernetes command assistant with MLX local agent"
+requires-python = ">=3.9"
+dependencies = [
+    "faiss-cpu>=1.7.4",
+    "sentence-transformers>=2.2.2",
+    "pyyaml>=6.0",
+    "mlx-lm>=0.8.0",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "jsonschema>=4.17.0",
+    "pytest>=7.4.0",
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["agent*", "index*", "runtime*"]
+exclude = ["cards*", "org*", "logs*", "docs*", "examples*", "scripts*", "tests*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.yml"]

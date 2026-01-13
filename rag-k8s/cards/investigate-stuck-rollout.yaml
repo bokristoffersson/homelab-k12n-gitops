@@ -1,0 +1,49 @@
+id: investigate-stuck-rollout
+title: Investigate Stuck Rollout
+intent: diagnose
+resource: deployment
+risk_level: none
+
+preconditions:
+  - Deployment rollout is not progressing
+  - User has get and describe permissions
+
+command_template: "kubectl rollout status deployment/{{name}} -n {{namespace}} --timeout=30s"
+
+flags:
+  - name: --timeout
+    default: 30s
+    note: Short timeout to detect stuck rollout
+
+examples:
+  - goal: Check if api deployment is stuck
+    render:
+      command: kubectl rollout status deployment/api -n prod --timeout=30s
+      checks:
+        - If timeout occurs, rollout is stuck
+        - kubectl describe deployment/api -n prod
+        - kubectl get pods -n prod -l app=api
+        - kubectl get events -n prod --field-selector involvedObject.name=api
+
+  - goal: Full stuck rollout investigation
+    render:
+      command: kubectl rollout status deployment/worker -n staging --timeout=30s
+      checks:
+        - kubectl describe deployment/worker -n staging
+        - Look for "ProgressDeadlineExceeded" condition
+        - Check pod status and events
+        - Review resource quotas and limits
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Common causes - insufficient resources, failing health checks, image pull errors
+  - Check deployment conditions for ProgressDeadlineExceeded
+  - Review pod events for scheduling or startup failures
+  - Verify resource requests can be satisfied
+  - Check liveness/readiness probe configuration
+  - May need to rollback with kubectl rollout undo
+
+references:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#failed-deployment

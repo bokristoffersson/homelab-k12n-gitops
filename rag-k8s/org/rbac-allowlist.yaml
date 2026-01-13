@@ -1,0 +1,48 @@
+allowed_verbs:
+  - get
+  - describe
+  - logs
+  - rollout
+  - scale
+  - cordon
+  - uncordon
+  - drain
+
+allowed_resources:
+  - pod
+  - deployment
+  - statefulset
+  - daemonset
+  - node
+  - namespace
+  - service
+  - ingress
+  - configmap
+  - secret
+  - event
+
+namespace_scoped: true
+
+forbidden_combinations:
+  - verb: delete
+    resource: pod
+    reason: Use rollout restart instead
+  - verb: delete
+    resource: namespace
+    reason: Too destructive
+  - verb: drain
+    resource: node
+    reason: Requires explicit confirmation due to high risk
+
+confirmation_required:
+  - verb: drain
+    risk_level: high
+  - verb: scale
+    risk_level: medium
+    conditions:
+      - replicas: 0
+
+notes: |
+  This allow-list defines permitted kubectl operations.
+  Violations will be blocked before execution.
+  High-risk operations require explicit user confirmation.

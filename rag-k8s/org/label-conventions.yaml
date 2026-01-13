@@ -1,0 +1,21 @@
+selectors:
+  app_key: app.kubernetes.io/name
+  component_key: app.kubernetes.io/component
+  instance_key: app.kubernetes.io/instance
+
+fallbacks:
+  - app
+  - name
+  - component
+
+description: |
+  Label conventions for resource selection.
+  Primary keys follow Kubernetes recommended labels.
+  Fallbacks used when recommended labels not present.
+
+examples:
+  - selector: app.kubernetes.io/name=api
+    fallback: app=api
+
+  - selector: app.kubernetes.io/component=database
+    fallback: component=database

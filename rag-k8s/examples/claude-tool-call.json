@@ -1,0 +1,10 @@
+{
+  "intent": "restart",
+  "resource": "deployment",
+  "namespace": "prod",
+  "name": "api",
+  "constraints": {
+    "confirm": false,
+    "dryRun": false
+  }
+}

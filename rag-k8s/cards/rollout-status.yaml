@@ -1,0 +1,47 @@
+id: rollout-status
+title: Check Rollout Status
+intent: status
+resource: deployment
+risk_level: none
+
+preconditions:
+  - Deployment exists
+  - User has get permissions
+
+command_template: "kubectl rollout status deployment/{{name}} -n {{namespace}}"
+
+flags:
+  - name: --timeout
+    default: 5m
+    note: How long to wait for rollout to complete
+  - name: --watch
+    default: "true"
+    note: Watch rollout progress
+
+defaults:
+  timeout: 5m
+
+examples:
+  - goal: Check if api deployment rollout completed
+    render:
+      command: kubectl rollout status deployment/api -n prod
+      checks:
+        - Wait for "successfully rolled out" message
+
+  - goal: Monitor frontend rollout with short timeout
+    render:
+      command: kubectl rollout status deployment/frontend -n staging --timeout=2m
+      checks:
+        - Exit code 0 = success, non-zero = timeout/failure
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Blocks until rollout completes or timeout
+  - Returns non-zero exit code on failure
+  - Useful in CI/CD pipelines
+  - Combine with rollout history to see previous versions
+
+references:
+  - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#rollout-status

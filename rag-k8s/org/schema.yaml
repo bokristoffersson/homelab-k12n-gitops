@@ -1,0 +1,75 @@
+# Machine-readable schema fragments
+
+card_schema:
+  required_fields:
+    - id
+    - title
+    - intent
+    - resource
+    - risk_level
+    - command_template
+
+  enums:
+    intent:
+      - diagnose
+      - logs
+      - restart
+      - scale
+      - cordon
+      - drain
+      - uncordon
+      - status
+      - describe
+      - events
+      - top
+
+    resource:
+      - pod
+      - deployment
+      - statefulset
+      - daemonset
+      - node
+      - service
+      - ingress
+      - pvc
+      - namespace
+
+    risk_level:
+      - none
+      - low
+      - medium
+      - high
+
+  constraints:
+    id:
+      pattern: "^[a-z0-9-]+$"
+      max_length: 64
+
+    command_template:
+      must_start_with: "kubectl"
+      must_include_namespace: true
+
+    examples:
+      min_count: 1
+      max_count: 5
+
+org_config_schema:
+  namespaces:
+    required_fields:
+      - default_namespace
+      - namespaces
+    namespace_entry:
+      - name
+      - allowed_verbs
+
+  rbac_allowlist:
+    required_fields:
+      - allowed_verbs
+      - allowed_resources
+      - namespace_scoped
+
+  label_conventions:
+    required_fields:
+      - app_key
+      - component_key
+      - fallbacks

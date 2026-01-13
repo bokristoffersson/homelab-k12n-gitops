@@ -1,0 +1,43 @@
+id: describe-deployment
+title: Describe a Deployment
+intent: describe
+resource: deployment
+risk_level: none
+
+preconditions:
+  - Deployment exists
+  - User has get permissions
+
+command_template: "kubectl describe deployment/{{name}} -n {{namespace}}"
+
+flags: []
+
+examples:
+  - goal: Get detailed info about api deployment
+    render:
+      command: kubectl describe deployment/api -n prod
+      checks:
+        - Review Replicas, Conditions, Events
+        - Check rollout strategy
+        - Verify resource requests/limits
+
+  - goal: Investigate deployment issues
+    render:
+      command: kubectl describe deployment/worker -n staging
+      checks:
+        - Look for ProgressDeadlineExceeded
+        - Check ReplicaFailure conditions
+        - Review recent events
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Shows full deployment configuration
+  - Includes replica status and conditions
+  - Displays recent events related to deployment
+  - Useful for understanding rollout strategy
+  - Check Conditions section for health status
+
+references:
+  - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#describe

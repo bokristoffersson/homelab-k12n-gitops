@@ -1,0 +1,44 @@
+id: top-nodes
+title: View Node Resource Usage
+intent: top
+resource: node
+risk_level: none
+
+preconditions:
+  - Metrics server is installed
+  - User has get permissions for nodes and metrics
+
+command_template: "kubectl top nodes"
+
+flags:
+  - name: --sort-by
+    default: ""
+    note: Sort by cpu or memory
+
+examples:
+  - goal: Check cluster node utilization
+    render:
+      command: kubectl top nodes
+      checks:
+        - Review CPU and memory percentages
+        - Identify overloaded nodes
+
+  - goal: Sort nodes by memory usage
+    render:
+      command: kubectl top nodes --sort-by=memory
+      checks:
+        - Find nodes near capacity
+        - Plan for scaling or rebalancing
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Shows aggregate node resource usage
+  - Percentages are of allocatable resources
+  - Use for capacity planning
+  - High utilization may indicate need for more nodes
+  - Combine with kubectl describe node for detailed breakdown
+
+references:
+  - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#top

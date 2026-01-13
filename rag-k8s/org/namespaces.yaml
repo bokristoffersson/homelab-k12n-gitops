@@ -1,0 +1,32 @@
+default_namespace: staging
+
+namespaces:
+  - name: prod
+    allowed_verbs:
+      - get
+      - describe
+      - logs
+      - rollout
+    description: Production environment - read-only operations plus safe rollouts
+
+  - name: staging
+    allowed_verbs:
+      - get
+      - describe
+      - logs
+      - rollout
+      - scale
+      - delete
+    description: Staging environment - broader permissions for testing
+
+  - name: dev
+    allowed_verbs:
+      - get
+      - describe
+      - logs
+      - rollout
+      - scale
+      - delete
+      - create
+      - edit
+    description: Development environment - full permissions

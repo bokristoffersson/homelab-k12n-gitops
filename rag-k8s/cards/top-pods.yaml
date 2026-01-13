@@ -1,0 +1,50 @@
+id: top-pods
+title: View Pod Resource Usage
+intent: top
+resource: pod
+risk_level: none
+
+preconditions:
+  - Metrics server is installed
+  - User has get permissions for pods and metrics
+
+command_template: "kubectl top pods -n {{namespace}} --sort-by={{sort_by}}"
+
+flags:
+  - name: --sort-by
+    default: cpu
+    note: Sort by cpu or memory
+  - name: --containers
+    default: ""
+    note: Show per-container metrics
+
+defaults:
+  sort_by: cpu
+
+examples:
+  - goal: Find highest CPU consuming pods in prod
+    render:
+      command: kubectl top pods -n prod --sort-by=cpu
+      checks:
+        - Identify resource-heavy workloads
+        - Compare against limits
+
+  - goal: Check memory usage in staging
+    render:
+      command: kubectl top pods -n staging --sort-by=memory
+      checks:
+        - Look for pods near memory limits
+        - Identify potential OOMKill candidates
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Requires metrics-server to be running
+  - Shows current resource consumption
+  - Use to identify resource bottlenecks
+  - Compare against requests/limits in pod spec
+  - Real-time snapshot, not historical data
+
+references:
+  - https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands#top

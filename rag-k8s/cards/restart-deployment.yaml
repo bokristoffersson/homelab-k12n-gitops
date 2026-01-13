@@ -1,0 +1,45 @@
+id: restart-deployment
+title: Restart a Deployment
+intent: restart
+resource: deployment
+risk_level: low
+
+preconditions:
+  - Deployment must exist in the namespace
+  - User has edit permissions for deployments
+
+command_template: "kubectl rollout restart deployment/{{name}} -n {{namespace}}"
+
+flags:
+  - name: --timeout
+    default: 5m
+    note: Maximum time to wait for rollout
+
+defaults:
+  timeout: 5m
+
+examples:
+  - goal: Restart the api deployment in production
+    render:
+      command: kubectl rollout restart deployment/api -n prod
+      checks:
+        - kubectl rollout status deployment/api -n prod
+        - kubectl get pods -n prod -l app=api
+
+  - goal: Restart frontend with custom timeout
+    render:
+      command: kubectl rollout restart deployment/frontend -n staging --timeout=10m
+      checks:
+        - kubectl rollout status deployment/frontend -n staging
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Triggers a rolling restart without downtime
+  - Creates new pods with updated configuration
+  - Safer than deleting pods directly
+  - Use after ConfigMap or Secret updates
+
+references:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment

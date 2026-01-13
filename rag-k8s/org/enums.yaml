@@ -1,0 +1,34 @@
+environments:
+  - dev
+  - staging
+  - prod
+
+tiers:
+  - frontend
+  - backend
+  - data
+  - platform
+  - monitoring
+
+exposures:
+  - public
+  - internal
+  - private
+
+domains:
+  - api
+  - web
+  - worker
+  - data
+  - auth
+  - monitoring
+
+slo:
+  - critical
+  - high
+  - standard
+  - low
+
+description: |
+  Standard enumerations for resource classification.
+  Used in validation and filtering logic.

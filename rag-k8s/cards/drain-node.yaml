@@ -1,0 +1,61 @@
+id: drain-node
+title: Drain a Node
+intent: drain
+resource: node
+risk_level: high
+
+preconditions:
+  - Node is cordoned
+  - Cluster has capacity on other nodes
+  - User has edit permissions
+  - PodDisruptionBudgets are configured appropriately
+
+command_template: "kubectl drain {{name}} --ignore-daemonsets --delete-emptydir-data --timeout={{timeout}}"
+
+flags:
+  - name: --ignore-daemonsets
+    default: "true"
+    note: Required for nodes running DaemonSets
+  - name: --delete-emptydir-data
+    default: "true"
+    note: Delete pods using emptyDir volumes
+  - name: --timeout
+    default: 5m
+    note: Maximum time to wait
+  - name: --force
+    default: ""
+    note: Force deletion of pods not managed by controllers (dangerous)
+
+defaults:
+  timeout: 5m
+
+examples:
+  - goal: Drain p0.local for OS upgrade
+    render:
+      command: kubectl drain p0.local --ignore-daemonsets --delete-emptydir-data --timeout=10m
+      checks:
+        - kubectl get nodes
+        - kubectl get pods -A --field-selector spec.nodeName=p0.local
+
+  - goal: Safe drain with verification
+    render:
+      command: kubectl drain p1.local --ignore-daemonsets --delete-emptydir-data
+      checks:
+        - Verify no critical pods remain
+        - Check PodDisruptionBudgets are respected
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - HIGH RISK - evicts all pods from node
+  - Always cordon before draining
+  - Respects PodDisruptionBudgets
+  - Pods are rescheduled on other nodes
+  - Do not use --force unless absolutely necessary
+  - Verify cluster has capacity before draining
+  - DaemonSet pods will remain (use --ignore-daemonsets)
+  - emptyDir data will be lost (use --delete-emptydir-data)
+
+references:
+  - https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/

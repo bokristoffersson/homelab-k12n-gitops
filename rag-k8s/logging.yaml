@@ -1,0 +1,48 @@
+# Local logging configuration
+
+local:
+  log_dir: logs/
+  log_file: agent.log
+  format: jsonl
+  max_size_mb: 100
+  rotation: daily
+
+# Example integration with log forwarding
+# Uncomment and configure for production use
+
+# fluent_bit:
+#   enabled: false
+#   config: |
+#     [INPUT]
+#         Name              tail
+#         Path              /app/logs/agent.log
+#         Parser            json
+#         Tag               k8s.agent
+#         Refresh_Interval  5
+#
+#     [OUTPUT]
+#         Name              forward
+#         Match             k8s.agent
+#         Host              fluent-bit.logging.svc.cluster.local
+#         Port              24224
+
+# filebeat:
+#   enabled: false
+#   config: |
+#     filebeat.inputs:
+#       - type: log
+#         enabled: true
+#         paths:
+#           - /app/logs/agent.log
+#         json.keys_under_root: true
+#         json.add_error_key: true
+#
+#     output.elasticsearch:
+#       hosts: ["elasticsearch.logging.svc.cluster.local:9200"]
+#       index: "k8s-agent-%{+yyyy.MM.dd}"
+
+retention:
+  days: 30
+  description: |
+    Agent logs are retained for 30 days locally.
+    Configure external log forwarding for long-term retention.
