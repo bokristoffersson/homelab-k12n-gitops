@@ -294,6 +294,7 @@ docs/
 
 ## Recent Changes
 
+- Added RAG-K8S tool for safe Kubernetes operations with semantic search and RBAC validation (2026-01-13)
 - Deployed heatpump-settings-api service with separate Kafka consumer group (2026-01-11)
 - Replaced Redpanda operator with rpk-based topic management (Job in redpanda-v2 namespace) (2026-01-11)
 - Created comprehensive TechDocs for redpanda-v2 with Backstage integration (2026-01-11)
@@ -302,6 +303,79 @@ docs/
 - Created authentication documentation (2025-12-30)
 - Added Authentik PostgreSQL backup CronJob (2025-12-30)
 - Fixed mqtt-kafka-bridge configuration for Shelly sensor (2025-12-30)
+
+## RAG-K8S Tool
+
+A RAG-powered Kubernetes command assistant is available in `rag-k8s/` directory.
+
+### When to Use
+Use this tool for safe Kubernetes operations with semantic search and RBAC validation:
+- Restarting deployments
+- Diagnosing pod issues
+- Viewing logs
+- Scaling resources
+- Checking rollout status
+
+### Usage Example
+```python
+import sys
+sys.path.insert(0, '/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/rag-k8s')
+from agent.tool import k8s_exec
+
+# Always start with dry-run to preview the command
+result = k8s_exec({
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "prod",
+    "name": "api",
+    "constraints": {"dryRun": True}
+})
+
+# Review the generated command
+print(f"Would execute: {result['plan']['command']}")
+
+# If safe, run with dryRun: False
+# result = k8s_exec({...same..., "constraints": {"dryRun": False}})
+```
+
+### Available Operations
+- **intents**: restart, diagnose, logs, scale, status, describe, events, top, cordon, uncordon, drain
+- **resources**: deployment, pod, statefulset, node
+
+### Safety Features
+- RBAC validation against allow-lists (`rag-k8s/org/rbac-allowlist.yaml`)
+- Namespace enforcement (all commands must specify namespace)
+- Dangerous operation blocking (e.g., `delete pod` → suggests `rollout restart`)
+- Audit logging to `rag-k8s/logs/agent.log`
+
+### Safety Protocol
+1. **Always** use `dryRun: True` first to preview the command
+2. Show the user what command will be executed
+3. Get user confirmation before running with `dryRun: False`
+4. Check `result['validation']['valid']` before executing
+
+### Error Recovery - Namespace Not Found
+When a command fails with "namespace not found", use kubectl directly to discover the correct namespace:
+
+```bash
+# Find namespaces matching a pattern
+kubectl get namespaces | grep -i heatpump
+# Output: heatpump-settings, heatpump-web
+
+# Then retry with the RAG-K8S tool using the correct namespace
+result = k8s_exec({
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",  # Correct namespace discovered above
+    "name": "heatpump-settings-api",
+    "constraints": {"dryRun": False}
+})
+```
+
+**Why use kubectl directly for namespace discovery?**
+- Namespace listing is a simple, safe read-only operation
+- kubectl is faster and more direct than the RAG-K8S workflow
+- Use RAG-K8S for actual operations (restart, logs, etc.) where safety validation matters
 
 ## Notes
 
