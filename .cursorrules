@@ -1,0 +1,196 @@
+# Cursor AI Rules for Homelab K12n GitOps Project
+
+## Primary Reference
+Always read and follow the instructions in `CLAUDE.md` - it contains the complete project documentation, coding standards, and operational procedures.
+
+## RAG-K8S Tool (MANDATORY for Kubernetes Operations)
+
+**CRITICAL**: For ALL Kubernetes operations (except simple read-only queries like `kubectl get pods`), you MUST use the RAG-K8S server at `http://127.0.0.1:8000`.
+
+### When to Use RAG-K8S
+
+**REQUIRED for these operations:**
+- Restarting deployments/pods
+- Viewing logs
+- Diagnosing issues (describe, events)
+- Scaling resources
+- FluxCD operations (reconcile, suspend, resume, status)
+- Job management (restart jobs)
+- ConfigMap viewing
+- Any operation that modifies cluster state
+
+**Acceptable to use kubectl directly:**
+- Simple queries: `kubectl get namespaces`, `kubectl get pods -n <namespace>`
+- Namespace discovery: `kubectl get namespaces | grep pattern`
+- Direct database connections: `kubectl exec -it pod -- psql`
+- Port forwarding: `kubectl port-forward`
+
+### RAG-K8S Usage Pattern
+
+**ALWAYS follow this two-step pattern:**
+
+1. **Dry-run first** (REQUIRED):
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "<intent>",
+    "resource": "<resource>",
+    "namespace": "<namespace>",
+    "name": "<name>",
+    "constraints": {"dryRun": true}
+  }'
+```
+
+2. **Review output, then execute**:
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "<intent>",
+    "resource": "<resource>",
+    "namespace": "<namespace>",
+    "name": "<name>",
+    "constraints": {"dryRun": false}
+  }'
+```
+
+### Available Operations
+
+**Kubernetes Resources:**
+- intents: restart, diagnose, logs, scale, status, describe, events, top
+- resources: deployment, pod, statefulset, node, configmap
+
+**FluxCD Operations:**
+- intents: flux-reconcile, flux-suspend, flux-resume, flux-status
+- resources: kustomization
+
+**Job Management:**
+- intents: job-restart
+- resources: job
+
+**ConfigMap Viewing:**
+- intents: config-view
+- resources: configmap
+
+### Common Examples
+
+**FluxCD Reconciliation** (after GitOps push):
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"flux-reconcile","resource":"kustomization","namespace":"flux-system","name":"heatpump-settings","constraints":{"dryRun":false}}'
+```
+
+**Restart Deployment:**
+```bash
+# Dry-run first
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"homelab-api","name":"homelab-api","constraints":{"dryRun":true}}'
+
+# Then execute
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"homelab-api","name":"homelab-api","constraints":{"dryRun":false}}'
+```
+
+**View Deployment Logs:**
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"logs","resource":"deployment","namespace":"heatpump-settings","name":"heatpump-settings-api","constraints":{"dryRun":false}}'
+```
+
+**Restart Job** (rerun migrations):
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"job-restart","resource":"job","namespace":"heatpump-settings","name":"postgres-migration","constraints":{"dryRun":false}}'
+```
+
+**View ConfigMap:**
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"config-view","resource":"configmap","namespace":"heatpump-settings","name":"postgres-migrations","constraints":{"dryRun":false}}'
+```
+
+### Benefits of Using RAG-K8S
+
+- **RBAC validation**: Prevents unauthorized operations
+- **Namespace enforcement**: Avoids wrong-namespace errors
+- **Audit logging**: All operations logged to `rag-k8s/logs/agent.log`
+- **Semantic understanding**: Converts intents to correct kubectl/flux commands
+- **Safety validation**: Blocks dangerous operations
+- **Token efficiency**: 60-70% fewer tokens than manual kubectl commands
+
+### Response Format
+
+RAG-K8S returns structured JSON:
+```json
+{
+  "operationId": "uuid",
+  "plan": {
+    "command": "kubectl rollout restart deployment/api -n prod",
+    "intent": "restart",
+    "namespace": "prod",
+    "target": "deployment/api",
+    "summary": "Rolling restart of deployment/api in prod namespace"
+  },
+  "validation": {
+    "valid": true,
+    "reasons": []
+  },
+  "result": {
+    "code": 0,
+    "duration": 0.12,
+    "stdoutDigest": "...",
+    "stderrDigest": ""
+  }
+}
+```
+
+Always check `validation.valid` is `true` before executing commands.
+
+## Git Commit Format
+
+**ALWAYS use HEREDOC for multi-line commit messages:**
+
+```bash
+git commit -m "$(cat <<'EOF'
+type: description
+
+Detailed explanation...
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+EOF
+)"
+```
+
+## Code Style
+
+- Rust: Run `cargo fmt` before committing
+- TypeScript: No unused variables (lint will fail)
+- Docker: ALWAYS use multi-stage builds with dependency caching
+- Never use emojis unless explicitly requested
+- Follow conventional commits format
+
+## Architecture Rules
+
+- **homelab-api**: READ-ONLY API - never add write operations (INSERT/UPDATE/DELETE)
+- **Sealed Secrets**: User creates manually - provide kubectl + kubeseal command snippets only
+- **Database migrations**: Use transaction for multi-step operations
+
+## For More Details
+
+Read `CLAUDE.md` for complete documentation including:
+- Infrastructure overview
+- Application architecture
+- Deployment workflows
+- Docker best practices
+- Database patterns
+- Authentication flow
+- Recent changes
