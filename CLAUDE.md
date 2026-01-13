@@ -112,36 +112,66 @@ kubeseal \
   --format=yaml > <secret-name>-sealed.yaml
 ```
 
-### Kubernetes
-- Use full commands: `kubectl get pods -n namespace`
-- Prefer `kubectl` over shell aliases
-- Check pod status with `-l app=<name>` labels
-- Always specify namespace explicitly
+### Kubernetes Operations
+
+**CRITICAL**: Always use the RAG-K8S tool for Kubernetes operations instead of direct kubectl commands.
+
+**RAG-K8S Server**: Running at `http://127.0.0.1:8000`
+
+**When to use RAG-K8S** (REQUIRED for these operations):
+- Restarting deployments/pods
+- Viewing logs
+- Diagnosing issues (describe, events)
+- Scaling resources
+- Checking rollout status
+- Any operation that modifies cluster state
+
+**When kubectl is acceptable**:
+- Simple read-only queries (get namespaces, get pods)
+- Namespace discovery (`kubectl get namespaces | grep pattern`)
+- Direct database connections (`kubectl exec -it pod -- psql`)
+- Port forwarding (`kubectl port-forward`)
+
+**RAG-K8S Usage Pattern**:
+```bash
+# 1. Always start with dry-run
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"prod","name":"api","constraints":{"dryRun":true}}'
+
+# 2. Review the generated command in the response
+# 3. Execute with dryRun:false if safe
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"prod","name":"api","constraints":{"dryRun":false}}'
+```
 
 ### Deployment Workflow
-**IMPORTANT**: After certain changes, deployments must be manually restarted:
+**IMPORTANT**: After certain changes, deployments must be manually restarted using RAG-K8S.
 
-1. **After GitHub Actions builds**: When a new application image is built and pushed to GHCR, Kubernetes doesn't automatically detect it. You must:
-   ```bash
-   kubectl rollout restart deployment/<app-name> -n <namespace>
-   ```
+1. **After GitHub Actions builds**: When a new application image is built and pushed to GHCR, Kubernetes doesn't automatically detect it.
 
-2. **After ConfigMap updates**: When ConfigMaps are modified via GitOps, pods don't automatically reload. You must:
-   ```bash
-   kubectl rollout restart deployment/<app-name> -n <namespace>
-   ```
+2. **After ConfigMap updates**: When ConfigMaps are modified via GitOps, pods don't automatically reload.
 
-**Example workflow**:
+**Example workflow with RAG-K8S**:
 ```bash
 # 1. Wait for GitHub Actions to complete
 gh run watch
 
-# 2. Restart deployment to pick up new image
-kubectl rollout restart deployment/homelab-api -n homelab-api
-kubectl rollout restart deployment/heatpump-web -n heatpump-web
+# 2. Restart deployment using RAG-K8S (dry-run first)
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"homelab-api","name":"homelab-api","constraints":{"dryRun":true}}'
 
-# 3. Verify rollout
-kubectl rollout status deployment/homelab-api -n homelab-api
+# 3. Review output, then execute
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"homelab-api","name":"homelab-api","constraints":{"dryRun":false}}'
+
+# 4. Check rollout status
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"status","resource":"deployment","namespace":"homelab-api","name":"homelab-api","constraints":{"dryRun":false}}'
 ```
 
 **Note**: k3s pulls images directly from GHCR, so no manual image import is needed (unlike k3d).
@@ -249,19 +279,52 @@ flux reconcile kustomization <app-name>
 flux get kustomizations
 ```
 
-### Kubernetes
+### Kubernetes (using RAG-K8S)
+
+**View logs**:
 ```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"logs","resource":"deployment","namespace":"<namespace>","name":"<app-name>","constraints":{"dryRun":false}}'
+```
+
+**Restart deployment**:
+```bash
+# Dry-run first
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"<namespace>","name":"<app-name>","constraints":{"dryRun":true}}'
+
+# Then execute
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"restart","resource":"deployment","namespace":"<namespace>","name":"<app-name>","constraints":{"dryRun":false}}'
+```
+
+**Diagnose deployment issues**:
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"diagnose","resource":"deployment","namespace":"<namespace>","name":"<app-name>","constraints":{"dryRun":false}}'
+```
+
+**Check deployment status**:
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"status","resource":"deployment","namespace":"<namespace>","name":"<app-name>","constraints":{"dryRun":false}}'
+```
+
+**Simple queries (kubectl acceptable)**:
+```bash
+# List namespaces
+kubectl get namespaces
+
 # Get pods in namespace
 kubectl get pods -n <namespace>
 
-# View logs
-kubectl logs -n <namespace> -l app=<app-name> --tail=50
-
-# Restart deployment
-kubectl rollout restart deployment/<name> -n <namespace>
-
-# Check deployment status
-kubectl rollout status deployment/<name> -n <namespace>
+# Direct database connection
+kubectl exec -it -n <namespace> <pod-name> -- psql -U postgres
 ```
 
 ### GitHub Actions
@@ -304,55 +367,86 @@ docs/
 - Added Authentik PostgreSQL backup CronJob (2025-12-30)
 - Fixed mqtt-kafka-bridge configuration for Shelly sensor (2025-12-30)
 
-## RAG-K8S Tool
+## RAG-K8S Tool (PRIMARY METHOD)
 
-A RAG-powered Kubernetes command assistant is available in `rag-k8s/` directory.
+**CRITICAL**: A RAG-powered Kubernetes command assistant is running at `http://127.0.0.1:8000`. This is the REQUIRED method for all Kubernetes operations except simple read-only queries.
 
-### When to Use
-Use this tool for safe Kubernetes operations with semantic search and RBAC validation:
-- Restarting deployments
-- Diagnosing pod issues
-- Viewing logs
-- Scaling resources
-- Checking rollout status
+### Server Status
+- **Endpoint**: `http://127.0.0.1:8000`
+- **Health Check**: `curl http://127.0.0.1:8000/health`
+- **Model**: Mistral-7B-Instruct-v0.3-4bit (pre-loaded in memory)
+- **Startup**: Already running as background service
 
-### Usage Example
-```python
-import sys
-sys.path.insert(0, '/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/rag-k8s')
-from agent.tool import k8s_exec
+### Required Usage Pattern
 
-# Always start with dry-run to preview the command
-result = k8s_exec({
-    "intent": "restart",
-    "resource": "deployment",
-    "namespace": "prod",
-    "name": "api",
-    "constraints": {"dryRun": True}
-})
+**ALWAYS follow this pattern for Kubernetes operations**:
 
-# Review the generated command
-print(f"Would execute: {result['plan']['command']}")
+```bash
+# 1. Dry-run first (REQUIRED)
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "<intent>",
+    "resource": "<resource>",
+    "namespace": "<namespace>",
+    "name": "<name>",
+    "constraints": {"dryRun": true}
+  }'
 
-# If safe, run with dryRun: False
-# result = k8s_exec({...same..., "constraints": {"dryRun": False}})
+# 2. Review the generated command and validation status
+# 3. Execute if validation.valid is true
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "<intent>",
+    "resource": "<resource>",
+    "namespace": "<namespace>",
+    "name": "<name>",
+    "constraints": {"dryRun": false}
+  }'
 ```
 
 ### Available Operations
 - **intents**: restart, diagnose, logs, scale, status, describe, events, top, cordon, uncordon, drain
 - **resources**: deployment, pod, statefulset, node
 
-### Safety Features
-- RBAC validation against allow-lists (`rag-k8s/org/rbac-allowlist.yaml`)
-- Namespace enforcement (all commands must specify namespace)
-- Dangerous operation blocking (e.g., `delete pod` → suggests `rollout restart`)
-- Audit logging to `rag-k8s/logs/agent.log`
+### Response Format
+```json
+{
+  "operationId": "uuid",
+  "plan": {
+    "command": "kubectl ...",
+    "intent": "restart",
+    "namespace": "prod",
+    "target": "deployment/api",
+    "summary": "Rolling restart of deployment/api in prod namespace"
+  },
+  "validation": {
+    "valid": true,
+    "reasons": []
+  },
+  "result": {
+    "code": 0,
+    "duration": 0.12,
+    "stdoutDigest": "...",
+    "stderrDigest": ""
+  }
+}
+```
 
-### Safety Protocol
-1. **Always** use `dryRun: True` first to preview the command
-2. Show the user what command will be executed
-3. Get user confirmation before running with `dryRun: False`
-4. Check `result['validation']['valid']` before executing
+### Safety Features
+- **RBAC validation** against allow-lists (`rag-k8s/org/rbac-allowlist.yaml`)
+- **Namespace enforcement** (all commands must specify namespace)
+- **Dangerous operation blocking** (e.g., `delete pod` → suggests `rollout restart`)
+- **Audit logging** to `rag-k8s/logs/agent.log` (JSONL format)
+- **Semantic understanding** (converts intents to correct kubectl commands)
+
+### Safety Protocol (MANDATORY)
+1. **Always** use `dryRun: true` first to preview the command
+2. **Check** `validation.valid` is `true` in response
+3. **Review** the generated command in `plan.command`
+4. **Execute** with `dryRun: false` only if safe
+5. **Never** skip dry-run for state-changing operations
 
 ### Error Recovery - Namespace Not Found
 When a command fails with "namespace not found", use kubectl directly to discover the correct namespace:
@@ -363,19 +457,27 @@ kubectl get namespaces | grep -i heatpump
 # Output: heatpump-settings, heatpump-web
 
 # Then retry with the RAG-K8S tool using the correct namespace
-result = k8s_exec({
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
     "intent": "restart",
     "resource": "deployment",
-    "namespace": "heatpump-settings",  # Correct namespace discovered above
+    "namespace": "heatpump-settings",
     "name": "heatpump-settings-api",
-    "constraints": {"dryRun": False}
-})
+    "constraints": {"dryRun": false}
+  }'
 ```
 
-**Why use kubectl directly for namespace discovery?**
-- Namespace listing is a simple, safe read-only operation
-- kubectl is faster and more direct than the RAG-K8S workflow
-- Use RAG-K8S for actual operations (restart, logs, etc.) where safety validation matters
+### Audit Trail
+All operations are logged to `rag-k8s/logs/agent.log`:
+```bash
+tail -f rag-k8s/logs/agent.log
+```
+
+Each log entry includes:
+- `operation_id`, `timestamp`, `intent`, `namespace`, `target`
+- Actual `command` executed
+- `exit_code`, `duration`, `stdout_digest`, `stderr_digest`
 
 ## Notes
 
