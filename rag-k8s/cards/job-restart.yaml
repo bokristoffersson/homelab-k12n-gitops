@@ -1,0 +1,53 @@
+id: job-restart
+title: Restart a Kubernetes Job
+intent: job-restart
+resource: job
+risk_level: medium
+
+preconditions:
+  - Job must exist in the namespace
+  - User has delete and create permissions for jobs
+  - Understanding that running job instances will be terminated
+
+command_template: "kubectl delete job {{name}} -n {{namespace}} && kubectl get job {{name}} -n {{namespace}}"
+
+flags:
+  - name: --wait
+    default: true
+    note: Wait for job deletion before returning
+
+defaults:
+  wait: true
+
+examples:
+  - goal: Restart migration job to rerun migrations
+    render:
+      command: kubectl delete job postgres-migration -n heatpump-settings && kubectl get job postgres-migration -n heatpump-settings
+      checks:
+        - kubectl get job postgres-migration -n heatpump-settings
+        - kubectl logs -n heatpump-settings job/postgres-migration --tail=50
+        - Verify new job is created by FluxCD
+
+  - goal: Restart backup job after fixing configuration
+    render:
+      command: kubectl delete job postgres-backup -n database && kubectl get job postgres-backup -n database
+      checks:
+        - flux reconcile kustomization database
+        - kubectl wait --for=condition=complete job/postgres-backup -n database --timeout=5m
+        - kubectl logs job/postgres-backup -n database
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Deletes existing job to allow recreation
+  - Useful when job has annotation kustomize.toolkit.fluxcd.io/force=true
+  - FluxCD will automatically recreate the job after deletion
+  - Running pods from the job will be terminated
+  - New job will start with fresh state
+  - Common pattern for one-time migration or backup jobs
+  - Use flux reconcile after deletion for immediate recreation
+
+references:
+  - https://kubernetes.io/docs/concepts/workloads/controllers/job/
+  - https://fluxcd.io/flux/faq/#how-do-i-force-a-job-to-re-run

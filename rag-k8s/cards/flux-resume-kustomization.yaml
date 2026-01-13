@@ -1,0 +1,43 @@
+id: flux-resume-kustomization
+title: Resume a Flux Kustomization
+intent: flux-resume
+resource: kustomization
+risk_level: low
+
+preconditions:
+  - Kustomization must exist and be suspended
+  - User has edit permissions for flux-system namespace
+
+command_template: "flux resume kustomization {{name}}"
+
+flags: []
+
+examples:
+  - goal: Resume reconciliation after maintenance
+    render:
+      command: flux resume kustomization heatpump-settings
+      checks:
+        - flux get kustomizations heatpump-settings
+        - Verify SUSPENDED column shows False
+        - flux reconcile kustomization heatpump-settings
+
+  - goal: Resume and immediately reconcile
+    render:
+      command: flux resume kustomization apps && flux reconcile kustomization apps
+      checks:
+        - flux get kustomizations
+        - kubectl get pods --all-namespaces
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Restores automatic reconciliation of the Kustomization
+  - FluxCD will immediately check for drift and reconcile
+  - Use after completing maintenance or debugging
+  - Safe to resume - will only apply declarative configs
+  - Consider running flux reconcile after resume for immediate sync
+
+references:
+  - https://fluxcd.io/flux/cmd/flux_resume_kustomization/
+  - https://fluxcd.io/flux/components/kustomize/kustomization/#suspend

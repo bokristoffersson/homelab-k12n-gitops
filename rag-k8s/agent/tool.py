@@ -22,11 +22,11 @@ K8S_EXEC_SCHEMA = {
     "properties": {
         "intent": {
             "type": "string",
-            "enum": ["diagnose", "restart", "scale", "logs", "status", "describe", "events", "top", "cordon", "uncordon", "drain"]
+            "enum": ["diagnose", "restart", "scale", "logs", "status", "describe", "events", "top", "cordon", "uncordon", "drain", "flux-reconcile", "flux-suspend", "flux-resume", "flux-status", "job-restart", "config-view"]
         },
         "resource": {
             "type": "string",
-            "enum": ["deployment", "pod", "statefulset", "node", "service", "namespace"]
+            "enum": ["deployment", "pod", "statefulset", "node", "service", "namespace", "kustomization", "job", "configmap"]
         },
         "namespace": {"type": "string"},
         "name": {"type": "string"},

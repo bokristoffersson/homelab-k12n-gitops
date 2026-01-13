@@ -49,9 +49,10 @@ class CommandValidator:
         reasons = []
         modified_command = command
 
-        # Must start with kubectl
-        if not command.strip().startswith("kubectl"):
-            return ValidationResult(False, ["Command must start with 'kubectl'"])
+        # Must start with kubectl or flux
+        cmd_start = command.strip()
+        if not (cmd_start.startswith("kubectl") or cmd_start.startswith("flux")):
+            return ValidationResult(False, ["Command must start with 'kubectl' or 'flux'"])
 
         # Extract verb and resource
         verb, resource = self._extract_verb_resource(command)
@@ -87,9 +88,13 @@ class CommandValidator:
         return ValidationResult(valid, reasons, modified_command if modified_command != command else None)
 
     def _extract_verb_resource(self, command: str) -> tuple:
-        """Extract verb and resource from kubectl command."""
-        # Remove kubectl prefix
-        cmd = command.strip().replace("kubectl", "", 1).strip()
+        """Extract verb and resource from kubectl or flux command."""
+        # Remove kubectl or flux prefix
+        cmd = command.strip()
+        if cmd.startswith("kubectl"):
+            cmd = cmd.replace("kubectl", "", 1).strip()
+        elif cmd.startswith("flux"):
+            cmd = cmd.replace("flux", "", 1).strip()
 
         # Handle compound verbs (rollout restart, rollout status, etc.)
         if cmd.startswith("rollout"):

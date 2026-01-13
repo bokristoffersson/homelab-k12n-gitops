@@ -7,6 +7,11 @@ allowed_verbs:
   - cordon
   - uncordon
   - drain
+  - flux
+  - delete
+  - reconcile
+  - suspend
+  - resume
 
 allowed_resources:
   - pod
@@ -20,6 +25,8 @@ allowed_resources:
   - configmap
   - secret
   - event
+  - kustomization
+  - job
 
 namespace_scoped: true
 

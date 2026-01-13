@@ -1,0 +1,56 @@
+id: flux-reconcile-kustomization
+title: Reconcile a Flux Kustomization
+intent: flux-reconcile
+resource: kustomization
+risk_level: low
+
+preconditions:
+  - Kustomization must exist in flux-system namespace
+  - User has access to flux-system namespace
+  - FluxCD controllers are running
+
+command_template: "flux reconcile kustomization {{name}}"
+
+flags:
+  - name: --with-source
+    default: false
+    note: Reconcile the source (GitRepository) before reconciling the Kustomization
+
+defaults:
+  with_source: false
+
+examples:
+  - goal: Reconcile heatpump-settings after GitOps commit
+    render:
+      command: flux reconcile kustomization heatpump-settings
+      checks:
+        - flux get kustomizations heatpump-settings
+        - kubectl get pods -n heatpump-settings
+
+  - goal: Reconcile with source to pull latest Git changes
+    render:
+      command: flux reconcile kustomization heatpump-settings --with-source
+      checks:
+        - flux get source git flux-system
+        - flux get kustomizations
+
+  - goal: Force reconcile all infrastructure
+    render:
+      command: flux reconcile kustomization infrastructure --with-source
+      checks:
+        - flux get kustomizations
+        - kubectl get pods --all-namespaces
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Triggers immediate reconciliation instead of waiting for interval
+  - Use after pushing GitOps changes to apply them immediately
+  - --with-source pulls latest from Git before reconciling
+  - Safe operation - only applies declarative configs
+  - Common workflow after git push to see changes quickly
+
+references:
+  - https://fluxcd.io/flux/cmd/flux_reconcile_kustomization/
+  - https://fluxcd.io/flux/components/kustomize/kustomization/

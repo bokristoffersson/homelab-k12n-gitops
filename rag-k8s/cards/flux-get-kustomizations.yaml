@@ -1,0 +1,61 @@
+id: flux-get-kustomizations
+title: Get Flux Kustomization Status
+intent: flux-status
+resource: kustomization
+risk_level: none
+
+preconditions:
+  - User has read access to flux-system namespace
+  - FluxCD is installed and running
+
+command_template: "flux get kustomizations {{name}}"
+
+flags:
+  - name: --all-namespaces
+    default: false
+    note: Get kustomizations across all namespaces
+  - name: --watch
+    default: false
+    note: Watch for changes in real-time
+
+defaults:
+  all_namespaces: false
+
+examples:
+  - goal: Check status of specific kustomization
+    render:
+      command: flux get kustomizations heatpump-settings
+      checks:
+        - Verify READY column shows True
+        - Check REVISION for latest Git SHA
+        - Review MESSAGE column for errors
+
+  - goal: List all kustomizations
+    render:
+      command: flux get kustomizations
+      checks:
+        - Review all kustomizations status
+        - Look for any with READY=False
+        - Check for suspended kustomizations
+
+  - goal: Watch kustomization status in real-time
+    render:
+      command: flux get kustomizations heatpump-settings --watch
+      checks:
+        - Monitor reconciliation progress
+        - Watch for status changes
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Shows current state of all Flux Kustomizations
+  - READY column indicates if reconciliation succeeded
+  - REVISION shows Git commit SHA currently applied
+  - SUSPENDED column shows if auto-reconciliation is paused
+  - Use to verify GitOps changes have been applied
+  - Check MESSAGE column for errors or warnings
+
+references:
+  - https://fluxcd.io/flux/cmd/flux_get_kustomizations/
+  - https://fluxcd.io/flux/components/kustomize/kustomization/#status
