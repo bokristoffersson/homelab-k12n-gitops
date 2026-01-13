@@ -1,6 +1,9 @@
 -- Migration 003: Create outbox table for transactional outbox pattern
 -- This table stores commands to be published to MQTT in a separate process
 
+-- Connect to heatpump_settings database
+\c heatpump_settings
+
 CREATE TABLE IF NOT EXISTS outbox (
     id BIGSERIAL PRIMARY KEY,
 
@@ -35,3 +38,7 @@ CREATE INDEX idx_outbox_aggregate ON outbox(aggregate_type, aggregate_id);
 COMMENT ON TABLE outbox IS 'Transactional outbox for heatpump setting commands. Commands are inserted atomically with settings updates, then processed asynchronously.';
 COMMENT ON COLUMN outbox.status IS 'pending: awaiting publish | published: sent to MQTT | confirmed: heatpump responded | failed: max retries exceeded';
 COMMENT ON COLUMN outbox.payload IS 'JSON object containing the setting changes to be applied';
+
+-- Record migration
+INSERT INTO schema_migrations (version, name) VALUES (3, 'create_outbox_table')
+ON CONFLICT (version) DO NOTHING;
