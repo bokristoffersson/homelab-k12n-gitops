@@ -267,16 +267,34 @@ RUN npm run build
 
 ## Common Commands
 
-### Flux
+### FluxCD (using RAG-K8S)
+
+**Reconcile kustomization** (after GitOps push):
 ```bash
-# Reconcile all apps
-flux reconcile kustomization apps
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"flux-reconcile","resource":"kustomization","namespace":"flux-system","name":"<app-name>","constraints":{"dryRun":false}}'
+```
 
-# Reconcile specific app
-flux reconcile kustomization <app-name>
+**Check Flux status**:
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"flux-status","resource":"kustomization","namespace":"flux-system","name":"<app-name>","constraints":{"dryRun":false}}'
+```
 
-# Check Flux status
-flux get kustomizations
+**Suspend during maintenance**:
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"flux-suspend","resource":"kustomization","namespace":"flux-system","name":"<app-name>","constraints":{"dryRun":false}}'
+```
+
+**Resume after maintenance**:
+```bash
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"flux-resume","resource":"kustomization","namespace":"flux-system","name":"<app-name>","constraints":{"dryRun":false}}'
 ```
 
 ### Kubernetes (using RAG-K8S)
@@ -357,6 +375,7 @@ docs/
 
 ## Recent Changes
 
+- Enhanced RAG-K8S with Phase 1 features: FluxCD operations, Job management, ConfigMap viewing (2026-01-13)
 - Added RAG-K8S tool for safe Kubernetes operations with semantic search and RBAC validation (2026-01-13)
 - Deployed heatpump-settings-api service with separate Kafka consumer group (2026-01-11)
 - Replaced Redpanda operator with rpk-based topic management (Job in redpanda-v2 namespace) (2026-01-11)
@@ -407,8 +426,22 @@ curl -s -X POST http://127.0.0.1:8000/k8s-exec \
 ```
 
 ### Available Operations
-- **intents**: restart, diagnose, logs, scale, status, describe, events, top, cordon, uncordon, drain
-- **resources**: deployment, pod, statefulset, node
+
+**Kubernetes Resources**:
+- **intents**: restart, diagnose, logs, scale, status, describe, events, top
+- **resources**: deployment, pod, statefulset, node, configmap
+
+**FluxCD Operations** (NEW):
+- **intents**: flux-reconcile, flux-suspend, flux-resume, flux-status
+- **resources**: kustomization
+
+**Job Management** (NEW):
+- **intents**: job-restart
+- **resources**: job
+
+**ConfigMap Viewing** (NEW):
+- **intents**: config-view
+- **resources**: configmap
 
 ### Response Format
 ```json
@@ -447,6 +480,40 @@ curl -s -X POST http://127.0.0.1:8000/k8s-exec \
 3. **Review** the generated command in `plan.command`
 4. **Execute** with `dryRun: false` only if safe
 5. **Never** skip dry-run for state-changing operations
+
+### Common Use Cases
+
+**FluxCD Reconciliation** (after GitOps push):
+```bash
+# Reconcile kustomization to apply Git changes immediately
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"flux-reconcile","resource":"kustomization","namespace":"flux-system","name":"heatpump-settings","constraints":{"dryRun":false}}'
+```
+
+**Job Restart** (rerun migrations):
+```bash
+# Delete and recreate job to rerun
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"job-restart","resource":"job","namespace":"heatpump-settings","name":"postgres-migration","constraints":{"dryRun":false}}'
+```
+
+**View ConfigMap** (debug configuration):
+```bash
+# View full ConfigMap YAML
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"config-view","resource":"configmap","namespace":"heatpump-settings","name":"postgres-migrations","constraints":{"dryRun":false}}'
+```
+
+**Suspend FluxCD** (during maintenance):
+```bash
+# Pause automatic reconciliation
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{"intent":"flux-suspend","resource":"kustomization","namespace":"flux-system","name":"heatpump-settings","constraints":{"dryRun":false}}'
+```
 
 ### Error Recovery - Namespace Not Found
 When a command fails with "namespace not found", use kubectl directly to discover the correct namespace:
