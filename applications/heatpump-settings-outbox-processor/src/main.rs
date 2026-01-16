@@ -39,7 +39,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Set MQTT credentials if provided
     info!("MQTT username from config: {:?}", config.mqtt_username);
-    info!("MQTT password from config: {:?}", config.mqtt_password.as_ref().map(|p| format!("{}***", &p[..3.min(p.len())])));
+    info!(
+        "MQTT password from config: {:?}",
+        config
+            .mqtt_password
+            .as_ref()
+            .map(|p| format!("{}***", &p[..3.min(p.len())]))
+    );
 
     if let (Some(username), Some(password)) = (&config.mqtt_username, &config.mqtt_password) {
         info!("Setting MQTT credentials for user: {}", username);
