@@ -19,9 +19,37 @@ def _load_env_file(path: Path) -> None:
         os.environ.setdefault(key, value)
 
 
-def _get_env_model_id() -> str | None:
+def _resolve_model_id(raw_value: str, repo_root: Path) -> str:
+    """Resolve local path-like model IDs relative to repo root."""
+    if not raw_value:
+        return raw_value
+
+    looks_like_path = raw_value.startswith((".", "/", "~"))
+    candidate = Path(raw_value).expanduser()
+    if not candidate.is_absolute():
+        candidate = (repo_root / candidate).resolve()
+
+    if looks_like_path or candidate.exists():
+        return str(candidate)
+
+    return raw_value
+
+
+def _get_env_model_id(repo_root: Path) -> str | None:
     """Read model id from environment if present."""
-    return os.environ.get("MODEL_ID")
+    raw_value = os.environ.get("MODEL_ID")
+    if not raw_value:
+        return None
+
+    resolved = _resolve_model_id(raw_value, repo_root)
+    if raw_value.startswith((".", "/", "~")) and not Path(resolved).exists():
+        print(
+            f"MODEL_ID path not found: {resolved}. "
+            f"Falling back to default model."
+        )
+        return None
+
+    return resolved
 
 
 def _default_model_id() -> str:
@@ -29,10 +57,11 @@ def _default_model_id() -> str:
 
 
 # Load .env from repo root if present
-_load_env_file(Path(__file__).parent.parent / ".env")
+_repo_root = Path(__file__).parent.parent
+_load_env_file(_repo_root / ".env")
 
 # Model configuration
-MODEL_ID = _get_env_model_id() or _default_model_id()
+MODEL_ID = _get_env_model_id(_repo_root) or _default_model_id()
 
 # Alternative models (uncomment to use):
 # MODEL_ID = "mlx-community/Llama-3.2-3B-Instruct-4bit"  # Faster, lower quality
