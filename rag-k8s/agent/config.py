@@ -1,10 +1,38 @@
 """Configuration for MLX planner and performance settings."""
 
 from pathlib import Path
+import os
 
+
+def _load_env_file(path: Path) -> None:
+    """Load simple KEY=VALUE pairs from .env into process env (if unset)."""
+    if not path.exists():
+        return
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        os.environ.setdefault(key, value)
+
+
+def _get_env_model_id() -> str | None:
+    """Read model id from environment if present."""
+    return os.environ.get("MODEL_ID")
+
+
+def _default_model_id() -> str:
+    return "mlx-community/Mistral-7B-Instruct-v0.3-4bit"
+
+
+# Load .env from repo root if present
+_load_env_file(Path(__file__).parent.parent / ".env")
 
 # Model configuration
-MODEL_ID = "mlx-community/Mistral-7B-Instruct-v0.3-4bit"
+MODEL_ID = _get_env_model_id() or _default_model_id()
 
 # Alternative models (uncomment to use):
 # MODEL_ID = "mlx-community/Llama-3.2-3B-Instruct-4bit"  # Faster, lower quality
