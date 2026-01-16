@@ -19,6 +19,18 @@ def _load_env_file(path: Path) -> None:
         os.environ.setdefault(key, value)
 
 
+def _resolve_kubeconfig(raw_value: str, repo_root: Path) -> str:
+    """Resolve KUBECONFIG entries to absolute paths."""
+    paths = [p for p in raw_value.split(os.pathsep) if p]
+    resolved = []
+    for entry in paths:
+        candidate = Path(entry).expanduser()
+        if not candidate.is_absolute():
+            candidate = (repo_root / candidate).resolve()
+        resolved.append(str(candidate))
+    return os.pathsep.join(resolved)
+
+
 def _resolve_model_id(raw_value: str, repo_root: Path) -> str:
     """Resolve local path-like model IDs relative to repo root."""
     if not raw_value:
@@ -61,6 +73,12 @@ _repo_root = Path(__file__).parent.parent
 _rag_root = Path(__file__).parent
 _load_env_file(_repo_root / ".env")
 _load_env_file(_rag_root / ".env")
+
+# Normalize KUBECONFIG if provided in .env
+if "KUBECONFIG" in os.environ:
+    os.environ["KUBECONFIG"] = _resolve_kubeconfig(
+        os.environ["KUBECONFIG"], _repo_root
+    )
 
 # Model configuration
 MODEL_ID = _get_env_model_id(_repo_root) or _default_model_id()
