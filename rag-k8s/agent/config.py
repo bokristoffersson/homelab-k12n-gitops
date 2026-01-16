@@ -56,9 +56,11 @@ def _default_model_id() -> str:
     return "mlx-community/Mistral-7B-Instruct-v0.3-4bit"
 
 
-# Load .env from repo root if present
+# Load .env from repo root and rag-k8s directory if present
 _repo_root = Path(__file__).parent.parent
+_rag_root = Path(__file__).parent
 _load_env_file(_repo_root / ".env")
+_load_env_file(_rag_root / ".env")
 
 # Model configuration
 MODEL_ID = _get_env_model_id(_repo_root) or _default_model_id()
