@@ -5,7 +5,7 @@ Always read and follow the instructions in `CLAUDE.md` - it contains the complet
 
 ## RAG-K8S Tool (MANDATORY for Kubernetes Operations)
 
-**CRITICAL**: For ALL Kubernetes operations (except simple read-only queries like `kubectl get pods`), you MUST use the RAG-K8S server at `http://127.0.0.1:8000`.
+**CRITICAL**: For ALL Kubernetes operations (except simple read-only queries like `kubectl get pods`), you MUST use the RAG-K8S tool via Python direct calls (do not run the HTTP server).
 
 ### When to Use RAG-K8S
 
@@ -25,34 +25,36 @@ Always read and follow the instructions in `CLAUDE.md` - it contains the complet
 - Direct database connections: `kubectl exec -it pod -- psql`
 - Port forwarding: `kubectl port-forward`
 
-### RAG-K8S Usage Pattern
+### RAG-K8S Usage Pattern (Python direct)
 
 **ALWAYS follow this two-step pattern:**
 
 1. **Dry-run first** (REQUIRED):
-```bash
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{
-    "intent": "<intent>",
-    "resource": "<resource>",
-    "namespace": "<namespace>",
-    "name": "<name>",
-    "constraints": {"dryRun": true}
-  }'
+```python
+import sys
+sys.path.insert(0, '/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/rag-k8s')
+from agent.tool import k8s_exec
+
+result = k8s_exec({
+  "intent": "<intent>",
+  "resource": "<resource>",
+  "namespace": "<namespace>",
+  "name": "<name>",
+  "constraints": {"dryRun": True}
+})
+print(result["plan"]["command"])
 ```
 
 2. **Review output, then execute**:
-```bash
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{
-    "intent": "<intent>",
-    "resource": "<resource>",
-    "namespace": "<namespace>",
-    "name": "<name>",
-    "constraints": {"dryRun": false}
-  }'
+```python
+from agent.tool import k8s_exec
+k8s_exec({
+  "intent": "<intent>",
+  "resource": "<resource>",
+  "namespace": "<namespace>",
+  "name": "<name>",
+  "constraints": {"dryRun": False}
+})
 ```
 
 ### Available Operations
@@ -76,44 +78,70 @@ curl -s -X POST http://127.0.0.1:8000/k8s-exec \
 ### Common Examples
 
 **FluxCD Reconciliation** (after GitOps push):
-```bash
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{"intent":"flux-reconcile","resource":"kustomization","namespace":"flux-system","name":"heatpump-settings","constraints":{"dryRun":false}}'
+```python
+from agent.tool import k8s_exec
+k8s_exec({
+  "intent": "flux-reconcile",
+  "resource": "kustomization",
+  "namespace": "flux-system",
+  "name": "heatpump-settings",
+  "constraints": {"dryRun": False}
+})
 ```
 
 **Restart Deployment:**
-```bash
-# Dry-run first
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{"intent":"restart","resource":"deployment","namespace":"homelab-api","name":"homelab-api","constraints":{"dryRun":true}}'
-
-# Then execute
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{"intent":"restart","resource":"deployment","namespace":"homelab-api","name":"homelab-api","constraints":{"dryRun":false}}'
+```python
+from agent.tool import k8s_exec
+k8s_exec({
+  "intent": "restart",
+  "resource": "deployment",
+  "namespace": "homelab-api",
+  "name": "homelab-api",
+  "constraints": {"dryRun": True}
+})
+k8s_exec({
+  "intent": "restart",
+  "resource": "deployment",
+  "namespace": "homelab-api",
+  "name": "homelab-api",
+  "constraints": {"dryRun": False}
+})
 ```
 
 **View Deployment Logs:**
-```bash
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{"intent":"logs","resource":"deployment","namespace":"heatpump-settings","name":"heatpump-settings-api","constraints":{"dryRun":false}}'
+```python
+from agent.tool import k8s_exec
+k8s_exec({
+  "intent": "logs",
+  "resource": "deployment",
+  "namespace": "heatpump-settings",
+  "name": "heatpump-settings-api",
+  "constraints": {"dryRun": False}
+})
 ```
 
 **Restart Job** (rerun migrations):
-```bash
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{"intent":"job-restart","resource":"job","namespace":"heatpump-settings","name":"postgres-migration","constraints":{"dryRun":false}}'
+```python
+from agent.tool import k8s_exec
+k8s_exec({
+  "intent": "job-restart",
+  "resource": "job",
+  "namespace": "heatpump-settings",
+  "name": "postgres-migration",
+  "constraints": {"dryRun": False}
+})
 ```
 
 **View ConfigMap:**
-```bash
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{"intent":"config-view","resource":"configmap","namespace":"heatpump-settings","name":"postgres-migrations","constraints":{"dryRun":false}}'
+```python
+from agent.tool import k8s_exec
+k8s_exec({
+  "intent": "config-view",
+  "resource": "configmap",
+  "namespace": "heatpump-settings",
+  "name": "postgres-migrations",
+  "constraints": {"dryRun": False}
+})
 ```
 
 ### Benefits of Using RAG-K8S
