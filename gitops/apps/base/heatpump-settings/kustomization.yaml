@@ -9,6 +9,7 @@ resources:
   - migration-job.yaml
   - redpanda-connect-deployment.yaml
   - heatpump-settings-api-deployment.yaml
+  - outbox-processor-deployment.yaml
   - backup-cronjob.yaml
   - backup-aws-credentials-sealed.yaml
   - postgres-credentials-sealed.yaml
