@@ -41,6 +41,12 @@ spec:
               value: "5"
             - name: RUST_LOG
               value: "info"
+            - name: KAFKA_BROKERS
+              value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "homelab-heatpump-telemetry"
+            - name: KAFKA_GROUP_ID
+              value: "heatpump-settings-outbox-processor"
           resources:
             requests:
               cpu: 10m

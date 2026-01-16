@@ -1,5 +1,6 @@
 mod config;
 mod db;
+mod kafka;
 mod outbox;
 
 use rumqttc::{AsyncClient, MqttOptions, QoS};
@@ -19,6 +20,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_env()?;
     info!("Configuration loaded successfully");
     info!("MQTT broker: {}", config.mqtt_broker);
+    info!("Kafka brokers: {}", config.kafka_brokers);
+    info!("Kafka topic: {}", config.kafka_topic);
+    info!("Kafka group: {}", config.kafka_group_id);
     info!("Poll interval: {}s", config.poll_interval_secs);
 
     // Connect to database
@@ -70,6 +74,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     });
+
+    // Spawn Kafka confirmation listener
+    let pool_clone = pool.clone();
+    let kafka_brokers = config.kafka_brokers.clone();
+    let kafka_topic = config.kafka_topic.clone();
+    let kafka_group_id = config.kafka_group_id.clone();
+    tokio::spawn(async move {
+        kafka::start_confirmation_listener(pool_clone, kafka_brokers, kafka_topic, kafka_group_id)
+            .await;
+    });
+    info!("Kafka confirmation listener spawned");
 
     // Main processing loop
     loop {

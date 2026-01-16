@@ -96,3 +96,24 @@ pub async fn increment_retry(
     .await?;
     Ok(())
 }
+
+/// Mark an outbox entry as confirmed (when telemetry received from device)
+pub async fn mark_confirmed(
+    pool: &Pool<Postgres>,
+    aggregate_id: &str,
+) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        UPDATE outbox
+        SET status = 'confirmed',
+            confirmed_at = NOW()
+        WHERE aggregate_id = $1
+          AND status = 'published'
+          AND confirmed_at IS NULL
+        "#,
+    )
+    .bind(aggregate_id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}

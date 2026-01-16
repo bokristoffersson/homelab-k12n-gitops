@@ -7,10 +7,9 @@ pub struct Config {
     pub mqtt_broker: String,
     pub mqtt_username: Option<String>,
     pub mqtt_password: Option<String>,
-    // TODO: Add in Milestone 4 (Kafka)
-    // pub kafka_brokers: String,
-    // pub kafka_topic: String,
-    // pub kafka_group_id: String,
+    pub kafka_brokers: String,
+    pub kafka_topic: String,
+    pub kafka_group_id: String,
 }
 
 impl Config {
@@ -26,13 +25,12 @@ impl Config {
                 .unwrap_or_else(|_| "mosquitto.mosquitto.svc.cluster.local:1883".to_string()),
             mqtt_username: env::var("MQTT_USERNAME").ok(),
             mqtt_password: env::var("MQTT_PASSWORD").ok(),
-            // TODO: Add in Milestone 4
-            // kafka_brokers: env::var("KAFKA_BROKERS")
-            //     .unwrap_or_else(|_| "redpanda-v2.redpanda-v2.svc.cluster.local:9092".to_string()),
-            // kafka_topic: env::var("KAFKA_TOPIC")
-            //     .unwrap_or_else(|_| "homelab-heatpump-telemetry".to_string()),
-            // kafka_group_id: env::var("KAFKA_GROUP_ID")
-            //     .unwrap_or_else(|_| "heatpump-settings-outbox-processor".to_string()),
+            kafka_brokers: env::var("KAFKA_BROKERS")
+                .unwrap_or_else(|_| "redpanda-v2.redpanda-v2.svc.cluster.local:9092".to_string()),
+            kafka_topic: env::var("KAFKA_TOPIC")
+                .unwrap_or_else(|_| "homelab-heatpump-telemetry".to_string()),
+            kafka_group_id: env::var("KAFKA_GROUP_ID")
+                .unwrap_or_else(|_| "heatpump-settings-outbox-processor".to_string()),
         })
     }
 }
