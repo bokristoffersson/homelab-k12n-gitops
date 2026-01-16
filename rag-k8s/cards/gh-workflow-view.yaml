@@ -1,0 +1,54 @@
+id: gh-workflow-view
+title: View GitHub Actions Workflow Configuration
+intent: gh-workflow-view
+resource: workflow
+risk_level: low
+
+preconditions:
+  - gh CLI must be authenticated
+  - Workflow file must exist in repository
+  - User has read access to repository
+
+command_template: "gh workflow view {{workflow}} --repo {{repo}}"
+
+flags:
+  - name: --ref
+    default: null
+    note: Branch or tag to view workflow from
+  - name: --yaml
+    default: false
+    note: Output workflow YAML content
+
+defaults:
+  yaml: false
+
+examples:
+  - goal: View workflow details
+    render:
+      command: gh workflow view heatpump-settings-api.yml --repo bokristoffersson/homelab-k12n-gitops
+      checks:
+        - gh workflow list --repo bokristoffersson/homelab-k12n-gitops
+
+  - goal: View workflow YAML
+    render:
+      command: gh workflow view heatpump-settings-api.yml --repo bokristoffersson/homelab-k12n-gitops --yaml
+      checks:
+        - gh workflow view heatpump-settings-api.yml --repo bokristoffersson/homelab-k12n-gitops
+
+  - goal: View workflow from specific branch
+    render:
+      command: gh workflow view heatpump-settings-api.yml --repo bokristoffersson/homelab-k12n-gitops --ref main
+      checks:
+        - gh workflow list --repo bokristoffersson/homelab-k12n-gitops
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Shows workflow configuration and recent runs
+  - Use --yaml to see the actual workflow definition
+  - Helpful for understanding workflow triggers and jobs
+  - Can view workflows from different branches with --ref
+
+references:
+  - https://cli.github.com/manual/gh_workflow_view

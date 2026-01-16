@@ -1,0 +1,65 @@
+id: gh-run-view
+title: View GitHub Actions Workflow Run Details
+intent: gh-run-view
+resource: workflow
+risk_level: low
+
+preconditions:
+  - gh CLI must be authenticated
+  - Workflow run ID must exist
+  - User has read access to repository
+
+command_template: "gh run view {{run_id}} --repo {{repo}}"
+
+flags:
+  - name: --job
+    default: null
+    note: View specific job ID within the run
+  - name: --log
+    default: false
+    note: View full log output
+  - name: --log-failed
+    default: false
+    note: View failed steps log output only
+
+defaults:
+  log: false
+  log_failed: false
+
+examples:
+  - goal: View workflow run summary
+    render:
+      command: gh run view 21068039747 --repo bokristoffersson/homelab-k12n-gitops
+      checks:
+        - gh run list --repo bokristoffersson/homelab-k12n-gitops --limit 1
+
+  - goal: View failed steps logs
+    render:
+      command: gh run view 21068039747 --repo bokristoffersson/homelab-k12n-gitops --log-failed
+      checks:
+        - gh run view 21068039747 --repo bokristoffersson/homelab-k12n-gitops --json conclusion
+
+  - goal: View full workflow logs
+    render:
+      command: gh run view 21068039747 --repo bokristoffersson/homelab-k12n-gitops --log
+      checks:
+        - gh run view 21068039747 --repo bokristoffersson/homelab-k12n-gitops
+
+  - goal: View specific job details
+    render:
+      command: gh run view --job 60590118184 --repo bokristoffersson/homelab-k12n-gitops
+      checks:
+        - gh run view 21068039747 --repo bokristoffersson/homelab-k12n-gitops
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Shows detailed run status, jobs, and annotations
+  - Use --log-failed to quickly see failure reasons
+  - --log shows complete output (can be very long)
+  - Job IDs can be found in run view output
+  - Annotations show errors, warnings, and notices
+
+references:
+  - https://cli.github.com/manual/gh_run_view

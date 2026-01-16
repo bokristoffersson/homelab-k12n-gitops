@@ -546,6 +546,97 @@ Each log entry includes:
 - Actual `command` executed
 - `exit_code`, `duration`, `stdout_digest`, `stderr_digest`
 
+### GitHub Operations (NEW)
+
+RAG-K8S now supports GitHub CLI (`gh`) operations for workflow and PR management:
+
+**GitHub Workflow Operations**:
+- **intents**: gh-run-watch, gh-run-list, gh-run-view, gh-workflow-view
+- **resources**: workflow
+
+**GitHub Pull Request Operations**:
+- **intents**: gh-pr-list, gh-pr-view
+- **resources**: pull-request
+
+**Example - Watch Workflow Run**:
+```bash
+# Watch latest workflow run
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "gh-run-watch",
+    "resource": "workflow",
+    "repo": "bokristoffersson/homelab-k12n-gitops",
+    "constraints": {"dryRun": false}
+  }'
+```
+
+**Example - List Workflow Runs**:
+```bash
+# List recent workflow runs for specific workflow
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "gh-run-list",
+    "resource": "workflow",
+    "repo": "bokristoffersson/homelab-k12n-gitops",
+    "workflow": "heatpump-settings-api.yml",
+    "limit": 5,
+    "constraints": {"dryRun": false}
+  }'
+```
+
+**Example - View PR Details**:
+```bash
+# View pull request with comments
+curl -s -X POST http://127.0.0.1:8000/k8s-exec \
+  -H "Content-Type: application/json" \
+  -d '{
+    "intent": "gh-pr-view",
+    "resource": "pull-request",
+    "repo": "bokristoffersson/homelab-k12n-gitops",
+    "pr_number": 123,
+    "comments": true,
+    "constraints": {"dryRun": false}
+  }'
+```
+
+### Python Direct Method (Alternative)
+
+When the HTTP server is not running, use the Python function directly:
+
+```python
+import sys
+sys.path.insert(0, '/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/rag-k8s')
+from agent.tool import k8s_exec
+
+# Always start with dry-run
+result = k8s_exec({
+    "intent": "restart",
+    "resource": "deployment",
+    "namespace": "heatpump-settings",
+    "name": "heatpump-settings-api",
+    "constraints": {"dryRun": True}
+})
+
+# Review the generated command
+print(f"Would execute: {result['plan']['command']}")
+print(f"Valid: {result['validation']['valid']}")
+
+# If safe, execute with dryRun: False
+# result = k8s_exec({...same..., "constraints": {"dryRun": False}})
+```
+
+**Benefits of Python Method**:
+- No HTTP server dependency
+- Direct Python function call
+- Same safety features (RBAC, audit logging)
+- Useful when server is unavailable
+
+**When to Use Which Method**:
+- **HTTP API**: When server is running (default, preferred)
+- **Python Direct**: When server is down or for scripting
+
 ## Notes
 
 - Don't commit `node_modules/` (already in .gitignore)

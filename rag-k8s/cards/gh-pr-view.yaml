@@ -1,0 +1,55 @@
+id: gh-pr-view
+title: View GitHub Pull Request Details
+intent: gh-pr-view
+resource: pull-request
+risk_level: low
+
+preconditions:
+  - gh CLI must be authenticated
+  - Pull request must exist
+  - User has read access to repository
+
+command_template: "gh pr view {{pr_number}} --repo {{repo}}"
+
+flags:
+  - name: --comments
+    default: false
+    note: Show PR comments
+  - name: --json
+    default: null
+    note: Output specific fields as JSON
+
+defaults:
+  comments: false
+
+examples:
+  - goal: View pull request details
+    render:
+      command: gh pr view 123 --repo bokristoffersson/homelab-k12n-gitops
+      checks:
+        - gh pr list --repo bokristoffersson/homelab-k12n-gitops
+
+  - goal: View PR with comments
+    render:
+      command: gh pr view 123 --repo bokristoffersson/homelab-k12n-gitops --comments
+      checks:
+        - gh pr view 123 --repo bokristoffersson/homelab-k12n-gitops
+
+  - goal: View PR status as JSON
+    render:
+      command: gh pr view 123 --repo bokristoffersson/homelab-k12n-gitops --json state,title,statusCheckRollup
+      checks:
+        - gh pr list --repo bokristoffersson/homelab-k12n-gitops --json number,state
+
+postprocess:
+  summarize_to_json: false
+
+notes:
+  - Shows PR title, description, status, and checks
+  - Use --comments to see review comments
+  - --json useful for scripting and automation
+  - Shows CI/CD check status
+  - Displays merge status and conflicts
+
+references:
+  - https://cli.github.com/manual/gh_pr_view
