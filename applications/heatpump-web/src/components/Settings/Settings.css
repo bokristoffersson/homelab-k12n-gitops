@@ -94,6 +94,48 @@
   background: var(--bg-primary);
 }
 
+.setting-item.adjustable {
+  border-left: 3px solid var(--accent);
+}
+
+.setting-value-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.adjust-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adjust-button:hover:not(:disabled) {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.adjust-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.adjust-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .setting-label {
   color: var(--text-primary);
   font-weight: 500;

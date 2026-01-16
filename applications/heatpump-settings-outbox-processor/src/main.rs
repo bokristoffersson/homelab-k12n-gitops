@@ -109,6 +109,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
+/// Map database field names to ThermIQ "d" parameter names
+fn map_field_to_thermiq_param(field_name: &str) -> Option<String> {
+    match field_name {
+        "indoor_target_temp" => Some("d50".to_string()),
+        "mode" => Some("d51".to_string()),
+        "curve" => Some("d52".to_string()),
+        "curve_min" => Some("d53".to_string()),
+        "curve_max" => Some("d54".to_string()),
+        "curve_plus_5" => Some("d55".to_string()),
+        "curve_zero" => Some("d56".to_string()),
+        "curve_minus_5" => Some("d57".to_string()),
+        "heatstop" => Some("d58".to_string()),
+        _ => None,
+    }
+}
+
 async fn process_pending_entries(
     pool: &sqlx::PgPool,
     mqtt_client: &AsyncClient,
@@ -122,65 +138,87 @@ async fn process_pending_entries(
     info!("Found {} pending entries to process", entries.len());
 
     for entry in &entries {
-        // Build MQTT topic: heatpump/{device_id}/command
-        let topic = format!("heatpump/{}/command", entry.aggregate_id);
-        let payload = entry.payload.to_string();
+        // Use fixed topic for ThermIQ write commands
+        let topic = "thermiq_heatpump/write";
 
-        info!(
-            "Publishing outbox entry {} to topic '{}': {}",
-            entry.id, topic, payload
-        );
+        // Parse the payload JSON
+        let payload_obj = entry.payload.as_object().ok_or("Payload is not a JSON object")?;
 
-        // Publish to MQTT
-        match mqtt_client
-            .publish(&topic, QoS::AtLeastOnce, false, payload.as_bytes())
-            .await
-        {
-            Ok(_) => {
-                // Mark as published
-                match outbox::mark_published(pool, entry.id).await {
+        // Convert each field to ThermIQ "d" parameter and publish separately
+        let mut all_published = true;
+        for (field_name, field_value) in payload_obj {
+            if let Some(thermiq_param) = map_field_to_thermiq_param(field_name) {
+                // Build single-field payload: {"d50": 21}
+                let thermiq_payload = serde_json::json!({
+                    thermiq_param: field_value
+                });
+                let payload_str = thermiq_payload.to_string();
+
+                info!(
+                    "Publishing outbox entry {} field '{}' to topic '{}': {}",
+                    entry.id, field_name, topic, payload_str
+                );
+
+                // Publish to MQTT
+                match mqtt_client
+                    .publish(topic, QoS::AtLeastOnce, false, payload_str.as_bytes())
+                    .await
+                {
                     Ok(_) => {
-                        info!("✓ Published outbox entry {}", entry.id);
+                        info!("✓ Published field '{}'", field_name);
                     }
                     Err(e) => {
-                        error!("Failed to mark entry {} as published: {}", entry.id, e);
+                        error!("Failed to publish field '{}': {}", field_name, e);
+                        all_published = false;
+                        break;
                     }
                 }
+            } else {
+                warn!("Unknown field '{}' in payload, skipping", field_name);
             }
-            Err(e) => {
-                error!("Failed to publish entry {}: {}", entry.id, e);
+        }
 
-                // Check if max retries exceeded
-                if entry.retry_count + 1 >= entry.max_retries {
-                    warn!(
-                        "Entry {} exceeded max retries ({}), marking as failed",
-                        entry.id, entry.max_retries
-                    );
-                    match outbox::mark_failed(pool, entry.id, &e.to_string()).await {
-                        Ok(_) => {
-                            error!("✗ Marked outbox entry {} as failed", entry.id);
-                        }
-                        Err(db_err) => {
-                            error!("Failed to mark entry {} as failed: {}", entry.id, db_err);
-                        }
+        // Mark as published only if all fields were successfully published
+        if all_published {
+            match outbox::mark_published(pool, entry.id).await {
+                Ok(_) => {
+                    info!("✓ Published outbox entry {}", entry.id);
+                }
+                Err(e) => {
+                    error!("Failed to mark entry {} as published: {}", entry.id, e);
+                }
+            }
+        } else {
+            // Failed to publish - handle retry logic
+            if entry.retry_count + 1 >= entry.max_retries {
+                warn!(
+                    "Entry {} exceeded max retries ({}), marking as failed",
+                    entry.id, entry.max_retries
+                );
+                match outbox::mark_failed(pool, entry.id, "Failed to publish to MQTT").await {
+                    Ok(_) => {
+                        error!("✗ Marked outbox entry {} as failed", entry.id);
                     }
-                } else {
-                    // Increment retry count
-                    match outbox::increment_retry(pool, entry.id, &e.to_string()).await {
-                        Ok(_) => {
-                            warn!(
-                                "↻ Incremented retry count for entry {} ({}/{})",
-                                entry.id,
-                                entry.retry_count + 1,
-                                entry.max_retries
-                            );
-                        }
-                        Err(db_err) => {
-                            error!(
-                                "Failed to increment retry for entry {}: {}",
-                                entry.id, db_err
-                            );
-                        }
+                    Err(db_err) => {
+                        error!("Failed to mark entry {} as failed: {}", entry.id, db_err);
+                    }
+                }
+            } else {
+                // Increment retry count
+                match outbox::increment_retry(pool, entry.id, "MQTT publish failed").await {
+                    Ok(_) => {
+                        warn!(
+                            "↻ Incremented retry count for entry {} ({}/{})",
+                            entry.id,
+                            entry.retry_count + 1,
+                            entry.max_retries
+                        );
+                    }
+                    Err(db_err) => {
+                        error!(
+                            "Failed to increment retry for entry {}: {}",
+                            entry.id, db_err
+                        );
                     }
                 }
             }
