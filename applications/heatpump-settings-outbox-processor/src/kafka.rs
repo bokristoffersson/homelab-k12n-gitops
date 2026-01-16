@@ -50,9 +50,7 @@ pub async fn start_confirmation_listener(
                 if let Some(payload) = message.payload() {
                     match std::str::from_utf8(payload) {
                         Ok(payload_str) => {
-                            if let Err(e) =
-                                process_telemetry_message(&pool, payload_str).await
-                            {
+                            if let Err(e) = process_telemetry_message(&pool, payload_str).await {
                                 error!("Error processing telemetry message: {}", e);
                             }
                         }

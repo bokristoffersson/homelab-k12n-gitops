@@ -98,10 +98,7 @@ pub async fn increment_retry(
 }
 
 /// Mark an outbox entry as confirmed (when telemetry received from device)
-pub async fn mark_confirmed(
-    pool: &Pool<Postgres>,
-    aggregate_id: &str,
-) -> Result<u64, sqlx::Error> {
+pub async fn mark_confirmed(pool: &Pool<Postgres>, aggregate_id: &str) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         r#"
         UPDATE outbox
