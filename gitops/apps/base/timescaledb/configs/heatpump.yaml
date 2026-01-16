@@ -15,7 +15,7 @@ pipeline:
         let outdoor_temp = this.fields.outdoor_temp.number() | null
         
         if $ts == null || $outdoor_temp == null {
-          root = deleted()
+          deleted()
         } else {
           root = this
           root.time = $ts
