@@ -1,0 +1,4 @@
+[advisories]
+ignore = [
+  "RUSTSEC-2023-0071", # sqlx-mysql pulls rsa; MySQL driver unused in this service
+]
