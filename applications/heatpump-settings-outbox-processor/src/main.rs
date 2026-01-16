@@ -142,7 +142,10 @@ async fn process_pending_entries(
         let topic = "thermiq_heatpump/write";
 
         // Parse the payload JSON
-        let payload_obj = entry.payload.as_object().ok_or("Payload is not a JSON object")?;
+        let payload_obj = entry
+            .payload
+            .as_object()
+            .ok_or("Payload is not a JSON object")?;
 
         // Convert each field to ThermIQ "d" parameter and publish separately
         let mut all_published = true;
