@@ -21,6 +21,7 @@ spec:
       containers:
         - name: outbox-processor
           image: ghcr.io/bokristoffersson/heatpump-settings-outbox-processor:main
+          imagePullPolicy: Always
           env:
             - name: DATABASE_URL
               value: "postgresql://postgres:postgres@postgres.heatpump-settings.svc.cluster.local:5432/heatpump_settings"
