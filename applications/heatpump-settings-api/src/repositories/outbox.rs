@@ -83,6 +83,24 @@ impl OutboxRepository {
         Ok(entry)
     }
 
+    /// Get outbox entries by device ID (aggregate_id), ordered by created_at DESC
+    pub async fn get_by_device_id(&self, device_id: &str, limit: i64) -> Result<Vec<OutboxEntry>> {
+        let entries = sqlx::query_as::<_, OutboxEntry>(
+            r#"
+            SELECT * FROM outbox
+            WHERE aggregate_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(device_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(entries)
+    }
+
     /// Get pending outbox entries (for processor)
     #[allow(dead_code)]
     pub async fn get_pending(&self, limit: i64) -> Result<Vec<OutboxEntry>> {

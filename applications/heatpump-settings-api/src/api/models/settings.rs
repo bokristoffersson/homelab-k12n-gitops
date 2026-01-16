@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 pub use crate::repositories::settings::Setting;
+pub use crate::repositories::outbox::OutboxEntry;
 
 #[derive(Debug, Serialize)]
 pub struct SettingsListResponse {
@@ -27,4 +28,9 @@ pub struct OutboxStatusResponse {
     pub confirmed_at: Option<DateTime<Utc>>,
     pub error_message: Option<String>,
     pub retry_count: i32,
+}
+
+#[derive(Debug, Serialize)]
+pub struct OutboxEntriesResponse {
+    pub data: Vec<OutboxEntry>,
 }

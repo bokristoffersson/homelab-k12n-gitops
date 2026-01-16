@@ -7,7 +7,9 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 use crate::{
-    api::models::{OutboxStatusResponse, SettingResponse, SettingsListResponse},
+    api::models::{
+        OutboxEntriesResponse, OutboxStatusResponse, SettingResponse, SettingsListResponse,
+    },
     error::Result,
     repositories::{outbox::OutboxRepository, settings::SettingPatch, SettingsRepository},
 };
@@ -165,6 +167,17 @@ async fn update_setting_in_tx(
         .ok_or_else(|| AppError::NotFound(format!("Device {} not found", device_id)))?;
 
     Ok(setting)
+}
+
+/// GET /api/v1/heatpump/settings/:device_id/outbox
+/// Get outbox entries for a specific device
+pub async fn get_outbox_entries_by_device(
+    State(state): State<AppState>,
+    Path(device_id): Path<String>,
+) -> Result<Json<OutboxEntriesResponse>> {
+    let entries = state.outbox_repository.get_by_device_id(&device_id, 10).await?;
+
+    Ok(Json(OutboxEntriesResponse { data: entries }))
 }
 
 /// GET /api/v1/heatpump/settings/outbox/:id
