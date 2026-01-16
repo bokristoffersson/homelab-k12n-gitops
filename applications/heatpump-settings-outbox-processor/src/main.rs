@@ -38,8 +38,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .to_string();
     let port = parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(1883);
 
-    let mut mqtt_options = MqttOptions::new("heatpump-settings-outbox-processor", host, port);
+    // Use hostname as unique client ID to prevent duplicate connections
+    let client_id = std::env::var("HOSTNAME")
+        .unwrap_or_else(|_| format!("outbox-processor-{}", std::process::id()));
+    info!("MQTT client ID: {}", client_id);
+
+    let mut mqtt_options = MqttOptions::new(client_id, host, port);
     mqtt_options.set_keep_alive(Duration::from_secs(30));
+    mqtt_options.set_clean_session(true);
 
     // Set MQTT credentials if provided
     info!("MQTT username from config: {:?}", config.mqtt_username);
