@@ -175,7 +175,10 @@ pub async fn get_outbox_entries_by_device(
     State(state): State<AppState>,
     Path(device_id): Path<String>,
 ) -> Result<Json<OutboxEntriesResponse>> {
-    let entries = state.outbox_repository.get_by_device_id(&device_id, 10).await?;
+    let entries = state
+        .outbox_repository
+        .get_by_device_id(&device_id, 10)
+        .await?;
 
     Ok(Json(OutboxEntriesResponse { data: entries }))
 }
