@@ -22,11 +22,47 @@ K8S_EXEC_SCHEMA = {
     "properties": {
         "intent": {
             "type": "string",
-            "enum": ["diagnose", "restart", "scale", "logs", "status", "describe", "events", "top", "cordon", "uncordon", "drain", "flux-reconcile", "flux-suspend", "flux-resume", "flux-status", "job-restart", "config-view"]
+            "enum": [
+                "diagnose",
+                "restart",
+                "scale",
+                "logs",
+                "status",
+                "describe",
+                "events",
+                "top",
+                "cordon",
+                "uncordon",
+                "drain",
+                "flux-reconcile",
+                "flux-suspend",
+                "flux-resume",
+                "flux-status",
+                "job-restart",
+                "config-view",
+                "gh-run-watch",
+                "gh-run-list",
+                "gh-run-view",
+                "gh-workflow-view",
+                "gh-pr-list",
+                "gh-pr-view"
+            ]
         },
         "resource": {
             "type": "string",
-            "enum": ["deployment", "pod", "statefulset", "node", "service", "namespace", "kustomization", "job", "configmap"]
+            "enum": [
+                "deployment",
+                "pod",
+                "statefulset",
+                "node",
+                "service",
+                "namespace",
+                "kustomization",
+                "job",
+                "configmap",
+                "workflow",
+                "pull-request"
+            ]
         },
         "namespace": {"type": "string"},
         "name": {"type": "string"},

@@ -49,8 +49,10 @@ class CommandValidator:
         reasons = []
         modified_command = command
 
-        # Must start with kubectl or flux
+        # Must start with kubectl, flux, or gh
         cmd_start = command.strip()
+        if cmd_start.startswith("gh"):
+            return ValidationResult(True, [])
         if not (cmd_start.startswith("kubectl") or cmd_start.startswith("flux")):
             return ValidationResult(False, ["Command must start with 'kubectl' or 'flux'"])
 
