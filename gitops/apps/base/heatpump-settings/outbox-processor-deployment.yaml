@@ -26,6 +26,16 @@ spec:
               value: "postgresql://postgres:postgres@postgres.heatpump-settings.svc.cluster.local:5432/heatpump_settings"
             - name: MQTT_BROKER
               value: "mosquitto.mosquitto.svc.cluster.local:1883"
+            - name: MQTT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mqtt-credentials
+                  key: username
+            - name: MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mqtt-credentials
+                  key: password
             - name: POLL_INTERVAL_SECS
               value: "5"
             - name: RUST_LOG

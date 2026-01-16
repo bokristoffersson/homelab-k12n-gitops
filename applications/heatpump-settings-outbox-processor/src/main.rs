@@ -37,6 +37,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut mqtt_options = MqttOptions::new("heatpump-settings-outbox-processor", host, port);
     mqtt_options.set_keep_alive(Duration::from_secs(30));
 
+    // Set MQTT credentials if provided
+    if let (Some(username), Some(password)) = (&config.mqtt_username, &config.mqtt_password) {
+        mqtt_options.set_credentials(username, password);
+        info!("MQTT authentication enabled");
+    } else {
+        info!("MQTT authentication disabled (anonymous)");
+    }
+
     let (mqtt_client, mut eventloop) = AsyncClient::new(mqtt_options, 10);
     info!("MQTT client created");
 

@@ -5,6 +5,8 @@ pub struct Config {
     pub database_url: String,
     pub poll_interval_secs: u64,
     pub mqtt_broker: String,
+    pub mqtt_username: Option<String>,
+    pub mqtt_password: Option<String>,
     // TODO: Add in Milestone 4 (Kafka)
     // pub kafka_brokers: String,
     // pub kafka_topic: String,
@@ -22,6 +24,8 @@ impl Config {
                 .parse()?,
             mqtt_broker: env::var("MQTT_BROKER")
                 .unwrap_or_else(|_| "mosquitto.mosquitto.svc.cluster.local:1883".to_string()),
+            mqtt_username: env::var("MQTT_USERNAME").ok(),
+            mqtt_password: env::var("MQTT_PASSWORD").ok(),
             // TODO: Add in Milestone 4
             // kafka_brokers: env::var("KAFKA_BROKERS")
             //     .unwrap_or_else(|_| "redpanda-v2.redpanda-v2.svc.cluster.local:9092".to_string()),
