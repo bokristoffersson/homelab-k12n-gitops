@@ -1,0 +1,3 @@
+[advisories]
+# sqlx-mysql is not used, but cargo audit scans it from the lockfile.
+ignore = ["RUSTSEC-2023-0071"]
