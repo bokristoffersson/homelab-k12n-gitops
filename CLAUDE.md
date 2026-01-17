@@ -287,6 +287,55 @@ RUN npm run build
 - Use continuous aggregates for summaries
 - Always use transactions for multi-step operations
 
+### Testing Philosophy
+
+**Pragmatic Homelab Approach**: Test critical paths that could cause data loss, security issues, or system downtime. Manual testing is acceptable for UI and non-critical flows.
+
+#### What to Test
+
+**CRITICAL (must have tests)**:
+- **Data writes**: redpanda-sink's Kafka → TimescaleDB pipeline
+- **Authentication**: JWT validation in all APIs
+- **Message processing**: Kafka consumer logic (deserialization, business rules)
+- **Database migrations**: Schema changes must be validated
+
+**IMPORTANT (should have tests)**:
+- **API contracts**: REST endpoints returning correct data shapes
+- **Settings mutations**: heatpump-settings-api state changes
+- **Time-series queries**: TimescaleDB aggregations and date ranges
+
+**OPTIONAL (manual testing OK)**:
+- Frontend components and styling
+- Dashboard visualizations
+- Non-critical UI flows
+
+#### Testing Guidelines
+
+**Rust services**:
+- Unit tests for business logic (parsing, validation, transformations)
+- Integration tests for external systems using testcontainers (PostgreSQL, Redpanda)
+- Run tests in CI - builds must pass tests before image push
+
+**TypeScript/Frontend**:
+- Tests for critical user flows only (login, data fetching)
+- Manual testing acceptable for UI components
+
+**CI/CD**:
+- GitHub Actions runs tests before building images
+- Failing tests block deployment
+- Manual testing during staging (port-forward to cluster)
+
+**Test data**:
+- Use fixtures for known sensor payloads (Shelly H&T messages)
+- Testcontainers for isolated DB/Kafka environments
+- Never test against production TimescaleDB
+
+#### When Tests Run
+
+- **Pre-push**: Optional (developer choice)
+- **CI**: Required for all Rust services
+- **Pre-deployment**: Manual smoke test after image restart
+
 ## Common Commands
 
 ### FluxCD (using RAG-K8S Python direct)
