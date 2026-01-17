@@ -42,7 +42,7 @@ jobs:
         run: cargo install cargo-audit --locked
 
       - name: Check for vulnerabilities (cargo audit)
-        run: cargo audit -c audit.toml
+        run: cargo audit --config audit.toml
         continue-on-error: false
 
       - name: Check formatting
