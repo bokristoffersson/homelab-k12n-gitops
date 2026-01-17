@@ -16,6 +16,13 @@ pub struct EnergyHourly {
 }
 
 #[derive(Debug, Clone, FromRow)]
+pub struct EnergyPeakHour {
+    pub hour_start: DateTime<Utc>,
+    pub hour_end: DateTime<Utc>,
+    pub total_energy_kwh: Option<f64>,
+}
+
+#[derive(Debug, Clone, FromRow)]
 pub struct EnergySummary {
     pub day_start: Option<DateTime<Utc>>,
     pub day_end: Option<DateTime<Utc>>,
@@ -143,6 +150,40 @@ impl EnergyRepository {
             {
                 // View doesn't exist (TimescaleDB not available), return empty vector
                 Ok(Vec::new())
+            }
+            Err(e) => Err(AppError::Db(e)),
+        }
+    }
+
+    pub async fn get_peak_hour_for_day(
+        pool: &DbPool,
+        day_start: DateTime<Utc>,
+        day_end: DateTime<Utc>,
+    ) -> Result<Option<EnergyPeakHour>, AppError> {
+        match sqlx::query_as::<_, EnergyPeakHour>(
+            r#"
+            SELECT
+                hour_start,
+                hour_end,
+                CAST(COALESCE(total_energy_actual_kwh, total_energy_kwh) AS DOUBLE PRECISION)
+                    AS total_energy_kwh
+            FROM energy_hourly
+            WHERE hour_start >= $1 AND hour_start < $2
+            ORDER BY COALESCE(total_energy_actual_kwh, total_energy_kwh) DESC NULLS LAST
+            LIMIT 1
+            "#,
+        )
+        .bind(day_start)
+        .bind(day_end)
+        .fetch_optional(pool)
+        .await
+        {
+            Ok(result) => Ok(result),
+            Err(sqlx::Error::Database(db_err))
+                if db_err.code().as_deref() == Some("42P01")
+                    || db_err.message().contains("does not exist") =>
+            {
+                Ok(None)
             }
             Err(e) => Err(AppError::Db(e)),
         }

@@ -1,6 +1,7 @@
 use crate::api::handlers::{auth, energy, health, heatpump, temperature};
 use crate::config::Config;
 use crate::db::DbPool;
+use crate::mcp::handlers as mcp;
 use axum::{extract::Request, routing::get, Router};
 use tower_http::trace::TraceLayer;
 use tracing::Level;
@@ -11,6 +12,7 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
 
     // API routes (authentication handled by oauth2-proxy/Authentik at ingress level)
     let api_routes = Router::new()
+        .route("/mcp", get(mcp::sse_handler).post(mcp::rpc_handler))
         .route("/api/v1/user/info", get(auth::user_info))
         .route("/api/v1/energy/latest", get(energy::get_latest))
         .route("/api/v1/energy/hourly-total", get(energy::get_hourly_total))

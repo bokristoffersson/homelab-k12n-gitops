@@ -4,13 +4,107 @@ Complete reference for all Homelab API endpoints.
 
 ## Authentication
 
-All endpoints require JWT authentication via Authentik OIDC.
+All `/api/v1` endpoints require JWT authentication via Authentik OIDC.
+The MCP endpoint (`/mcp`) is internal-only and does not require auth.
+Do not expose `/mcp` on public ingress.
 
 ```http
 Authorization: Bearer <jwt_token>
 ```
 
 The API validates JWT signatures using Authentik's JWKS endpoint.
+
+## MCP (Model Context Protocol)
+
+MCP is available over HTTP+SSE for internal clients like Cursor or Claude.
+
+### SSE Connection
+
+```http
+GET /mcp
+```
+
+Returns a Server-Sent Events stream with a ready event and periodic keep-alives.
+
+### JSON-RPC Calls
+
+```http
+POST /mcp
+Content-Type: application/json
+```
+
+Initialize:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "clientInfo": { "name": "cursor", "version": "1.0.0" }
+  }
+}
+```
+
+List tools:
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list"
+}
+```
+
+Call a tool (hourly energy):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "energy_hourly_consumption",
+    "arguments": {
+      "from": "2026-01-15T00:00:00Z",
+      "to": "2026-01-16T00:00:00Z"
+    }
+  }
+}
+```
+
+Call a tool (daily peak hour):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "energy_peak_hour_day",
+    "arguments": {
+      "day": "2026-01-15T00:00:00Z"
+    }
+  }
+}
+```
+
+Call a tool (heatpump summary):
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "heatpump_daily_summary",
+    "arguments": {
+      "from": "2026-01-01T00:00:00Z",
+      "to": "2026-01-08T00:00:00Z",
+      "device_id": "heatpump-01"
+    }
+  }
+}
+```
+
+Notes:
+- All timestamps are interpreted as UTC unless an offset is included.
+- Tools return JSON payloads in `content[].json`.
 
 ## Energy Endpoints
 
