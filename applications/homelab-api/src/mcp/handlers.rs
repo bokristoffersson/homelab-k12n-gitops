@@ -79,6 +79,7 @@ pub async fn rpc_handler(
     Ok(Json(result))
 }
 
+#[derive(Debug)]
 struct ToolError {
     code: i64,
     message: String,
