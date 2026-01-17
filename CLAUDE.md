@@ -336,6 +336,21 @@ RUN npm run build
 - **CI**: Required for all Rust services
 - **Pre-deployment**: Manual smoke test after image restart
 
+### AI Architectural Review
+
+All PRs are automatically reviewed by an AI agent (Claude Sonnet 4.5) for compliance with these principles. The agent:
+- Posts a summary comment with violations and suggestions
+- Blocks merge if architectural violations are found
+- Re-reviews automatically when PR is updated
+
+The review covers:
+- Code changes (database operations, auth patterns, over-engineering)
+- Dockerfiles (layered builds, dependency caching)
+- Tests (coverage for critical paths)
+- GitOps configs (sealed secrets, resource limits, FluxCD best practices)
+
+See `docs/ARCH_REVIEW.md` for complete details.
+
 ## Common Commands
 
 ### FluxCD (using RAG-K8S Python direct)

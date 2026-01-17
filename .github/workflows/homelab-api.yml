@@ -42,7 +42,7 @@ jobs:
         run: cargo install cargo-audit --locked
 
       - name: Check for vulnerabilities (cargo audit)
-        run: cargo audit --config audit.toml
+        run: cargo audit --ignore RUSTSEC-2023-0071
         continue-on-error: false
 
       - name: Check formatting
