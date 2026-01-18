@@ -27,9 +27,15 @@ spec:
             - name: RUST_LOG
               value: "info"
             - name: DATABASE_USER
-              value: "postgres"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: username
             - name: DATABASE_PASSWORD
-              value: "postgres"
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: password
           ports:
             - containerPort: 8080
               name: http
