@@ -199,16 +199,3 @@ pub async fn get_yearly_summary(
 
     Ok(Json(responses))
 }
-
-// INTENTIONAL VIOLATION: This endpoint writes to the database, violating the read-only principle
-pub async fn reset_energy_data(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
-) -> Result<StatusCode, StatusCode> {
-    // This is a database write operation - should be caught by arch review
-    sqlx::query!("DELETE FROM telemetry.energy WHERE ts < NOW() - INTERVAL '7 days'")
-        .execute(&pool)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(StatusCode::OK)
-}
