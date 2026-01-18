@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::auth::AppState;
 use crate::db::DbPool;
 use crate::mcp::types::{JsonRpcRequest, ToolCallParams, ToolDefinition};
 use crate::repositories::{EnergyRepository, HeatpumpRepository};
@@ -14,7 +14,7 @@ use std::{convert::Infallible, time::Duration};
 use tokio_stream::{wrappers::IntervalStream, StreamExt};
 
 pub async fn sse_handler(
-    State((_pool, _config)): State<(DbPool, Config)>,
+    State((_pool, _config, _validator)): State<AppState>,
 ) -> Sse<impl tokio_stream::Stream<Item = Result<Event, Infallible>>> {
     let ready_event = json!({
         "status": "ready",
@@ -38,7 +38,7 @@ pub async fn sse_handler(
 }
 
 pub async fn rpc_handler(
-    State((pool, _config)): State<(DbPool, Config)>,
+    State((pool, _config, _validator)): State<AppState>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
     let request: JsonRpcRequest = match serde_json::from_value(payload) {

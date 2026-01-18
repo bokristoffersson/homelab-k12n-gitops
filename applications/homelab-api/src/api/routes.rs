@@ -1,12 +1,11 @@
 use crate::api::handlers::{auth, energy, health, heatpump, temperature};
-use crate::config::Config;
-use crate::db::DbPool;
+use crate::auth::AppState;
 use crate::mcp::handlers as mcp;
 use axum::{extract::Request, routing::get, Router};
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 
-pub fn create_router(pool: DbPool, config: Config) -> Router {
+pub fn create_router(state: AppState) -> Router {
     // Public routes (no authentication required)
     let public_routes = Router::new().route("/health", get(health::health));
 
@@ -45,7 +44,7 @@ pub fn create_router(pool: DbPool, config: Config) -> Router {
     Router::new()
         .merge(public_routes)
         .merge(api_routes)
-        .with_state((pool, config))
+        .with_state(state)
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(
             TraceLayer::new_for_http()

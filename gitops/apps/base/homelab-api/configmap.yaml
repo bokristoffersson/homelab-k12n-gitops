@@ -14,9 +14,9 @@ data:
       port: 8080
 
     auth:
-      # JWKS-based validation (RS256) for Authentik tokens
-      jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
-      issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+      # JWKS-based validation (RS256) for Authentik tokens - Claude MCP client credentials
+      jwks_url: "https://authentik.k12n.com/application/o/claude-mcp/jwks/"
+      issuer: "https://authentik.k12n.com/application/o/claude-mcp/"
 
       # Placeholder for config parsing compatibility
       jwt_secret: "placeholder"

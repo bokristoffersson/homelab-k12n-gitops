@@ -1,0 +1,51 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blueprint-claude-mcp
+  namespace: authentik
+  labels:
+    app.kubernetes.io/name: authentik-blueprints
+data:
+  claude-mcp.yaml: |
+    version: 1
+    metadata:
+      name: claude-mcp
+    entries:
+      # Service Account for Claude MCP client credentials
+      - model: authentik_core.user
+        identifiers:
+          username: claude-mcp-service
+        attrs:
+          name: Claude MCP Service Account
+          is_active: true
+          type: service_account
+          path: services
+
+      # OAuth2 Provider for Client Credentials
+      - model: authentik_providers_oauth2.oauth2provider
+        identifiers:
+          name: claude-mcp
+        attrs:
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          client_type: confidential
+          client_id: claude-mcp-client
+          redirect_uris: []
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          access_token_validity: hours=24
+          refresh_token_validity: days=30
+          issuer_mode: per_provider
+          sub_mode: hashed_user_id
+          include_claims_in_id_token: true
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+
+      # Application
+      - model: authentik_core.application
+        identifiers:
+          slug: claude-mcp
+        attrs:
+          name: Claude MCP
+          provider: !Find [authentik_providers_oauth2.oauth2provider, [name, claude-mcp]]

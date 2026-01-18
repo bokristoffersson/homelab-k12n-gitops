@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use tracing::{error, warn};
 
 pub async fn get_latest(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<HeatpumpLatestResponse>, StatusCode> {
     let device_id = params.get("device_id").map(|s| s.as_str());
@@ -55,7 +55,7 @@ pub async fn get_latest(
 }
 
 pub async fn get_daily_summary(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<HeatpumpDailySummaryResponse>>, StatusCode> {
     let from = params

@@ -9,7 +9,7 @@ use axum::{
 use std::collections::HashMap;
 
 pub async fn get_latest(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Option<TemperatureLatest>>, StatusCode> {
     let location = params.get("location").ok_or(StatusCode::BAD_REQUEST)?;
@@ -22,7 +22,7 @@ pub async fn get_latest(
 }
 
 pub async fn get_all_latest(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
 ) -> Result<Json<Vec<TemperatureLatest>>, StatusCode> {
     let readings = TemperatureRepository::get_all_latest(&pool)
         .await
@@ -32,7 +32,7 @@ pub async fn get_all_latest(
 }
 
 pub async fn get_history(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<TemperatureReading>>, StatusCode> {
     let location = params.get("location").ok_or(StatusCode::BAD_REQUEST)?;

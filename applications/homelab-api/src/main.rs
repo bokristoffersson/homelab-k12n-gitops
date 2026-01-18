@@ -29,7 +29,28 @@ async fn main() -> Result<(), anyhow::Error> {
     sqlx::query("SELECT 1").execute(&pool).await?;
     info!("Connected to database");
 
-    let router = api::create_router(pool.clone(), cfg.clone());
+    // Initialize JWT validator if auth is configured
+    let jwt_validator = if let Some(ref auth_cfg) = cfg.auth {
+        if let (Some(jwks_url), Some(issuer)) = (&auth_cfg.jwks_url, &auth_cfg.issuer) {
+            match auth::JwtValidator::new(jwks_url, issuer.clone()).await {
+                Ok(validator) => {
+                    info!("JWT validator initialized with JWKS from {}", jwks_url);
+                    Some(validator)
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to initialize JWT validator: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let state = (pool.clone(), cfg.clone(), jwt_validator);
+    let router = api::create_router(state);
     let addr = format!("{}:{}", cfg.api.host, cfg.api.port);
 
     let listener = tokio::net::TcpListener::bind(&addr)

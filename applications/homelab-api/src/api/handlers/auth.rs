@@ -10,7 +10,7 @@ use axum::{
 use tracing;
 
 pub async fn login(
-    State((_pool, config)): State<(DbPool, Config)>,
+    State((_pool, config, _validator)): State<crate::auth::AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, StatusCode> {
     let auth = config
@@ -49,7 +49,7 @@ pub async fn login(
 /// This endpoint returns the Authentik OIDC access token for WebSocket authentication
 /// OAuth2-proxy sets X-Forwarded-Access-Token header with the original OIDC token
 pub async fn user_info(
-    State((_pool, _config)): State<(DbPool, Config)>,
+    State((_pool, _config, _validator)): State<crate::auth::AppState>,
     headers: HeaderMap,
 ) -> Result<Json<UserInfoResponse>, StatusCode> {
     // Extract username from X-Auth-Request-User header (set by oauth2-proxy)

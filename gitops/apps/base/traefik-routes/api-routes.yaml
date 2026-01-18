@@ -42,13 +42,11 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Homelab API MCP (protected by OAuth2 Proxy ForwardAuth)
+    # Homelab API MCP (JWT Bearer token auth)
     - match: Host(`api.k12n.com`) && PathPrefix(`/mcp`)
       kind: Rule
       middlewares:
         - name: https-scheme
-          namespace: traefik
-        - name: oauth2-proxy-auth-claude-mcp
           namespace: traefik
         - name: cors
           namespace: traefik

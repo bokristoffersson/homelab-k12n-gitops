@@ -12,7 +12,7 @@ use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
 pub async fn get_latest(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
 ) -> Result<Json<EnergyLatestResponse>, StatusCode> {
     let reading = EnergyRepository::get_latest(&pool)
         .await
@@ -29,7 +29,7 @@ pub async fn get_latest(
 }
 
 pub async fn get_hourly_total(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
 ) -> Result<Json<HourlyTotalResponse>, StatusCode> {
     let now = Utc::now();
     // Align to hour boundary using same origin as aggregate
@@ -53,7 +53,7 @@ pub async fn get_hourly_total(
 }
 
 pub async fn get_history(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<EnergyHourlyResponse>>, StatusCode> {
     let from = params
@@ -90,7 +90,7 @@ pub async fn get_history(
 }
 
 pub async fn get_daily_summary(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<EnergySummaryResponse>>, StatusCode> {
     let from = params
@@ -127,7 +127,7 @@ pub async fn get_daily_summary(
 }
 
 pub async fn get_monthly_summary(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<EnergySummaryResponse>>, StatusCode> {
     let from = params
@@ -164,7 +164,7 @@ pub async fn get_monthly_summary(
 }
 
 pub async fn get_yearly_summary(
-    State((pool, _config)): State<(DbPool, crate::config::Config)>,
+    State((pool, _config, _validator)): State<crate::auth::AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<EnergySummaryResponse>>, StatusCode> {
     let from = params
