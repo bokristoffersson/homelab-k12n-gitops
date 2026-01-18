@@ -97,3 +97,5 @@ spec:
                   name: blueprint-oauth2-proxy
               - configMap:
                   name: blueprint-backstage
+              - configMap:
+                  name: blueprint-claude-mcp
