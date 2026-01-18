@@ -219,7 +219,8 @@ def main():
 
     # Check for violations
     violations_section = review.split("### ❌ Violations")[1].split("###")[0] if "### ❌ Violations" in review else ""
-    has_violations = violations_section.strip() not in ["", "None found.", "None found"]
+    # Check if violations section contains "None found" (case-insensitive, handles "(BLOCKING)" suffix)
+    has_violations = "none found" not in violations_section.lower() and violations_section.strip() != ""
 
     # Post to PR
     print("💬 Posting review comment to PR...")
