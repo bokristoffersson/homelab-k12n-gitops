@@ -219,7 +219,10 @@ def main():
 
     # Check for violations
     violations_section = review.split("### ❌ Violations")[1].split("###")[0] if "### ❌ Violations" in review else ""
-    has_violations = violations_section.strip() not in ["", "None found.", "None found"]
+    # Normalize violations section for exact matching (handle "(BLOCKING)" suffix)
+    violations_clean = violations_section.strip().lower()
+    violations_clean = violations_clean.replace("(blocking)", "").strip()
+    has_violations = violations_clean not in ["", "none found.", "none found"]
 
     # Post to PR
     print("💬 Posting review comment to PR...")
