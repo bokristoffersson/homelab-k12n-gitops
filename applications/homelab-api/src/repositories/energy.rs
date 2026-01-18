@@ -1,9 +1,9 @@
 use crate::db::DbPool;
 use crate::error::AppError;
 use chrono::{DateTime, Utc};
-use sqlx::{postgres::PgRow, FromRow, Row};
+use sqlx::FromRow;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct EnergyHourly {
     pub hour_start: DateTime<Utc>,
     pub hour_end: DateTime<Utc>,
@@ -15,14 +15,14 @@ pub struct EnergyHourly {
     pub measurement_count: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct EnergyPeakHour {
     pub hour_start: DateTime<Utc>,
     pub hour_end: DateTime<Utc>,
     pub total_energy_kwh: Option<f64>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct EnergySummary {
     pub day_start: Option<DateTime<Utc>>,
     pub day_end: Option<DateTime<Utc>>,
@@ -34,7 +34,7 @@ pub struct EnergySummary {
     pub measurement_count: i64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct EnergyLatest {
     pub ts: DateTime<Utc>,
     pub consumption_total_w: Option<i32>,
@@ -45,59 +45,6 @@ pub struct EnergyLatest {
 }
 
 pub struct EnergyRepository;
-
-impl<'r> FromRow<'r, PgRow> for EnergyHourly {
-    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            hour_start: row.try_get("hour_start")?,
-            hour_end: row.try_get("hour_end")?,
-            total_energy_kwh: row.try_get("total_energy_kwh")?,
-            total_energy_l1_kwh: row.try_get("total_energy_l1_kwh")?,
-            total_energy_l2_kwh: row.try_get("total_energy_l2_kwh")?,
-            total_energy_l3_kwh: row.try_get("total_energy_l3_kwh")?,
-            total_energy_actual_kwh: row.try_get("total_energy_actual_kwh")?,
-            measurement_count: row.try_get("measurement_count")?,
-        })
-    }
-}
-
-impl<'r> FromRow<'r, PgRow> for EnergyPeakHour {
-    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            hour_start: row.try_get("hour_start")?,
-            hour_end: row.try_get("hour_end")?,
-            total_energy_kwh: row.try_get("total_energy_kwh")?,
-        })
-    }
-}
-
-impl<'r> FromRow<'r, PgRow> for EnergySummary {
-    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            day_start: row.try_get("day_start")?,
-            day_end: row.try_get("day_end")?,
-            month_start: row.try_get("month_start")?,
-            month_end: row.try_get("month_end")?,
-            year_start: row.try_get("year_start")?,
-            year_end: row.try_get("year_end")?,
-            energy_consumption_w: row.try_get("energy_consumption_w")?,
-            measurement_count: row.try_get("measurement_count")?,
-        })
-    }
-}
-
-impl<'r> FromRow<'r, PgRow> for EnergyLatest {
-    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            ts: row.try_get("ts")?,
-            consumption_total_w: row.try_get("consumption_total_w")?,
-            consumption_total_actual_w: row.try_get("consumption_total_actual_w")?,
-            consumption_l1_actual_w: row.try_get("consumption_l1_actual_w")?,
-            consumption_l2_actual_w: row.try_get("consumption_l2_actual_w")?,
-            consumption_l3_actual_w: row.try_get("consumption_l3_actual_w")?,
-        })
-    }
-}
 
 impl EnergyRepository {
     pub async fn get_latest(pool: &DbPool) -> Result<EnergyLatest, AppError> {

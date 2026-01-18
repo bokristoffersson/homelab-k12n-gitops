@@ -1,9 +1,9 @@
 use crate::db::DbPool;
 use crate::error::AppError;
 use chrono::{DateTime, Utc};
-use sqlx::{postgres::PgRow, FromRow, Row};
+use sqlx::FromRow;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct HeatpumpLatest {
     pub time: DateTime<Utc>,
     pub device_id: Option<String>,
@@ -21,7 +21,7 @@ pub struct HeatpumpLatest {
     pub brine_in_temp: Option<i16>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow)]
 pub struct HeatpumpDailySummary {
     pub day: DateTime<Utc>,
     pub daily_runtime_compressor_increase: Option<i64>,
@@ -37,45 +37,6 @@ pub struct HeatpumpDailySummary {
 }
 
 pub struct HeatpumpRepository;
-
-impl<'r> FromRow<'r, PgRow> for HeatpumpLatest {
-    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            time: row.try_get("time")?,
-            device_id: row.try_get("device_id")?,
-            compressor_on: row.try_get("compressor_on")?,
-            hotwater_production: row.try_get("hotwater_production")?,
-            flowlinepump_on: row.try_get("flowlinepump_on")?,
-            brinepump_on: row.try_get("brinepump_on")?,
-            aux_heater_3kw_on: row.try_get("aux_heater_3kw_on")?,
-            aux_heater_6kw_on: row.try_get("aux_heater_6kw_on")?,
-            outdoor_temp: row.try_get("outdoor_temp")?,
-            supplyline_temp: row.try_get("supplyline_temp")?,
-            returnline_temp: row.try_get("returnline_temp")?,
-            hotwater_temp: row.try_get("hotwater_temp")?,
-            brine_out_temp: row.try_get("brine_out_temp")?,
-            brine_in_temp: row.try_get("brine_in_temp")?,
-        })
-    }
-}
-
-impl<'r> FromRow<'r, PgRow> for HeatpumpDailySummary {
-    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            day: row.try_get("day")?,
-            daily_runtime_compressor_increase: row.try_get("daily_runtime_compressor_increase")?,
-            daily_runtime_hotwater_increase: row.try_get("daily_runtime_hotwater_increase")?,
-            daily_runtime_3kw_increase: row.try_get("daily_runtime_3kw_increase")?,
-            daily_runtime_6kw_increase: row.try_get("daily_runtime_6kw_increase")?,
-            avg_outdoor_temp: row.try_get("avg_outdoor_temp")?,
-            avg_supplyline_temp: row.try_get("avg_supplyline_temp")?,
-            avg_returnline_temp: row.try_get("avg_returnline_temp")?,
-            avg_hotwater_temp: row.try_get("avg_hotwater_temp")?,
-            avg_brine_out_temp: row.try_get("avg_brine_out_temp")?,
-            avg_brine_in_temp: row.try_get("avg_brine_in_temp")?,
-        })
-    }
-}
 
 impl HeatpumpRepository {
     pub async fn get_latest(
