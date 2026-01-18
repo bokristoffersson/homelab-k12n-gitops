@@ -30,12 +30,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: postgres-credentials
-                  key: username
+                  key: DATABASE_USERNAME
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: postgres-credentials
-                  key: password
+                  key: DATABASE_PASSWORD
           ports:
             - containerPort: 8080
               name: http
