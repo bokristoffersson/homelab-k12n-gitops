@@ -10,6 +10,7 @@ spec:
     trustForwardHeader: true
     authRequestHeaders:
       - Cookie
+      - Authorization
       - X-Forwarded-Proto
       - X-Forwarded-Host
       - X-Forwarded-Uri
@@ -30,6 +31,7 @@ spec:
     trustForwardHeader: true
     authRequestHeaders:
       - Cookie
+      - Authorization
       - X-Forwarded-Proto
       - X-Forwarded-Host
       - X-Forwarded-Uri
