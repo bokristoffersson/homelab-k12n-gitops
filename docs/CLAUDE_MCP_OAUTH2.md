@@ -177,34 +177,53 @@ curl -X POST https://api.k12n.com/mcp \
 
 ## Claude Desktop Configuration
 
-### MCP Settings JSON
+Claude Desktop uses **stdio transport** for MCP servers, which means it expects to run a local command/script. Since your MCP server is remote (HTTPS), you need a proxy script that handles OAuth2 and forwards requests.
 
-Add this to your Claude Desktop MCP configuration file:
+### Step 1: Set Up Environment Variable
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+Add your client secret to your shell profile (`~/.zshrc` or `~/.bash_profile`):
+
+```bash
+export HOMELAB_MCP_CLIENT_SECRET="your-client-secret-here"
+```
+
+Then reload:
+```bash
+source ~/.zshrc  # or source ~/.bash_profile
+```
+
+### Step 2: Install Python Dependencies
+
+The proxy script requires the `requests` library:
+
+```bash
+pip3 install requests
+```
+
+### Step 3: Configure Claude Desktop
+
+**Config file location**:
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+**Configuration**:
 
 ```json
 {
   "mcpServers": {
     "homelab": {
-      "url": "https://api.k12n.com/mcp",
-      "transport": {
-        "type": "sse"
-      },
-      "authorization": {
-        "type": "oauth2",
-        "tokenUrl": "https://authentik.k12n.com/application/o/token/",
-        "clientId": "claude-mcp-client",
-        "clientSecret": "YOUR_CLIENT_SECRET_HERE",
-        "grantType": "client_credentials"
-      }
+      "command": "python3",
+      "args": [
+        "/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/scripts/mcp-homelab-proxy.py"
+      ]
     }
   }
 }
 ```
 
-### Restart Claude Desktop
+**Note**: Update the path in `args` to match your actual path to the proxy script.
+
+### Step 4: Restart Claude Desktop
 
 After updating the configuration, restart Claude Desktop to load the new MCP server.
 
