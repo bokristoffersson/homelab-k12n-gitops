@@ -5,5 +5,8 @@ namespace: oauth2-proxy
 resources:
   - namespace.yaml
   - deployment.yaml
+  - deployment-claude-mcp.yaml
   - service.yaml
-  - secrets-sealed.yaml  # TODO: Create this sealed secret
+  - service-claude-mcp.yaml
+  - secrets-sealed.yaml
+  - oauth2-proxy-claude-mcp-secrets-sealed.yaml

@@ -42,6 +42,23 @@ spec:
           namespace: homelab-api
           port: 8080
 
+    # Homelab API MCP (protected by OAuth2 Proxy ForwardAuth)
+    - match: Host(`api.k12n.com`) && PathPrefix(`/mcp`)
+      kind: Rule
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth-claude-mcp
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
     # Energy WebSocket (JWT auth via query parameter)
     - match: Host(`api.k12n.com`) && PathPrefix(`/ws`)
       kind: Rule
@@ -63,5 +80,18 @@ spec:
           namespace: traefik
       services:
         - name: oauth2-proxy
+          namespace: oauth2-proxy
+          port: 4180
+
+    # OAuth2 Proxy Callbacks (Claude MCP)
+    - match: Host(`api.k12n.com`) && PathPrefix(`/oauth2/claude`)
+      kind: Rule
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+      services:
+        - name: oauth2-proxy-claude-mcp
           namespace: oauth2-proxy
           port: 4180
