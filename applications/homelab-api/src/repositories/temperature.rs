@@ -1,9 +1,9 @@
 use crate::db::DbPool;
 use crate::error::AppError;
 use chrono::{DateTime, Utc};
-use sqlx::FromRow;
+use sqlx::{postgres::PgRow, FromRow, Row};
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub struct TemperatureReading {
     pub time: DateTime<Utc>,
     pub device_id: Option<String>,
@@ -17,7 +17,7 @@ pub struct TemperatureReading {
     pub battery_percent: Option<f64>,
 }
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub struct TemperatureLatest {
     pub time: DateTime<Utc>,
     pub location: Option<String>,
@@ -27,6 +27,35 @@ pub struct TemperatureLatest {
 }
 
 pub struct TemperatureRepository;
+
+impl<'r> FromRow<'r, PgRow> for TemperatureReading {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(Self {
+            time: row.try_get("time")?,
+            device_id: row.try_get("device_id")?,
+            mac_address: row.try_get("mac_address")?,
+            location: row.try_get("location")?,
+            temperature_c: row.try_get("temperature_c")?,
+            temperature_f: row.try_get("temperature_f")?,
+            humidity: row.try_get("humidity")?,
+            wifi_rssi: row.try_get("wifi_rssi")?,
+            battery_voltage: row.try_get("battery_voltage")?,
+            battery_percent: row.try_get("battery_percent")?,
+        })
+    }
+}
+
+impl<'r> FromRow<'r, PgRow> for TemperatureLatest {
+    fn from_row(row: &'r PgRow) -> Result<Self, sqlx::Error> {
+        Ok(Self {
+            time: row.try_get("time")?,
+            location: row.try_get("location")?,
+            temperature_c: row.try_get("temperature_c")?,
+            humidity: row.try_get("humidity")?,
+            battery_percent: row.try_get("battery_percent")?,
+        })
+    }
+}
 
 impl TemperatureRepository {
     pub async fn get_latest_by_location(
