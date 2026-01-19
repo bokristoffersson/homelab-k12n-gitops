@@ -27,4 +27,5 @@ configMapGenerator:
       - migrations/001_initial_schema.sql
       - migrations/002_fix_indoor_target_temp_type.sql
       - migrations/003_create_outbox_table.sql
+      - migrations/004_add_integral_setting.sql
       - migrations/run_migrations.sh

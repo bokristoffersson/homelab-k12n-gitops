@@ -22,4 +22,6 @@ configMapGenerator:
     files:
       - migrations/001_initial_schema.sql
       - migrations/002_fix_energy_hourly.sql
+      - migrations/003_fix_energy_actual_calculation.sql
+      - migrations/004_add_integral_to_heatpump.sql
       - migrations/run_migrations.sh
