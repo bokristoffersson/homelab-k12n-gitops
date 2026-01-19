@@ -13,6 +13,7 @@ export interface HeatpumpStatus {
   hotwater_temp: number | null;
   brine_out_temp: number | null;
   brine_in_temp: number | null;
+  integral: number | null;
 }
 
 
