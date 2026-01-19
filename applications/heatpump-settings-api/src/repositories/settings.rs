@@ -113,14 +113,17 @@ impl SettingsRepository {
 
     /// Upsert settings (used by Kafka consumer)
     ///
-    /// Note: This method performs a full upsert, including NULL values for fields not present
-    /// in the Kafka message. During feature rollouts where IoT devices are updated incrementally,
-    /// some messages may lack new fields (e.g., integral_setting). This is expected behavior:
-    /// - Initial deployment: Devices send full state snapshots periodically
-    /// - Feature rollout: New fields arrive as devices are updated
-    /// - Partial updates: Fields not in message are set to NULL (expected during rollout)
+    /// Uses COALESCE strategy to prevent data loss during feature rollouts:
+    /// - If field is present in Kafka message (non-NULL): Update to new value
+    /// - If field is missing from Kafka message (NULL): Keep existing database value
     ///
-    /// This differs from the PATCH endpoint which only updates present fields.
+    /// This protects against:
+    /// - Partial messages from IoT devices during firmware updates
+    /// - Corrupt messages missing previously-set fields
+    /// - Gradual rollouts where not all devices send new fields yet
+    ///
+    /// This differs from the PATCH endpoint which uses dynamic SQL to only update
+    /// fields explicitly provided in the request.
     pub async fn upsert(&self, update: &SettingUpdate) -> Result<()> {
         sqlx::query(
             r#"
@@ -129,16 +132,16 @@ impl SettingsRepository {
                 curve_plus_5, curve_zero, curve_minus_5, heatstop, integral_setting, updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
             ON CONFLICT (device_id) DO UPDATE SET
-                indoor_target_temp = EXCLUDED.indoor_target_temp,
-                mode = EXCLUDED.mode,
-                curve = EXCLUDED.curve,
-                curve_min = EXCLUDED.curve_min,
-                curve_max = EXCLUDED.curve_max,
-                curve_plus_5 = EXCLUDED.curve_plus_5,
-                curve_zero = EXCLUDED.curve_zero,
-                curve_minus_5 = EXCLUDED.curve_minus_5,
-                heatstop = EXCLUDED.heatstop,
-                integral_setting = EXCLUDED.integral_setting,
+                indoor_target_temp = COALESCE(EXCLUDED.indoor_target_temp, settings.indoor_target_temp),
+                mode = COALESCE(EXCLUDED.mode, settings.mode),
+                curve = COALESCE(EXCLUDED.curve, settings.curve),
+                curve_min = COALESCE(EXCLUDED.curve_min, settings.curve_min),
+                curve_max = COALESCE(EXCLUDED.curve_max, settings.curve_max),
+                curve_plus_5 = COALESCE(EXCLUDED.curve_plus_5, settings.curve_plus_5),
+                curve_zero = COALESCE(EXCLUDED.curve_zero, settings.curve_zero),
+                curve_minus_5 = COALESCE(EXCLUDED.curve_minus_5, settings.curve_minus_5),
+                heatstop = COALESCE(EXCLUDED.heatstop, settings.heatstop),
+                integral_setting = COALESCE(EXCLUDED.integral_setting, settings.integral_setting),
                 updated_at = NOW()
             "#,
         )

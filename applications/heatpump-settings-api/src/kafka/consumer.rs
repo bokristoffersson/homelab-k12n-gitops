@@ -127,6 +127,7 @@ fn extract_f64(data: &Value, field_names: &[&str]) -> Option<f64> {
 
 /// Generic extraction function for numeric types from JSON
 /// Tries multiple field names (for camelCase/snake_case compatibility)
+/// Logs a warning if a value is found but out of range for the target type
 fn extract_number<T>(data: &Value, field_names: &[&str]) -> Option<T>
 where
     T: TryFrom<i64>,
@@ -135,8 +136,17 @@ where
         if let Some(value) = data.get(field_name) {
             if let Some(num) = value.as_i64() {
                 // Try to convert i64 to target type
-                if let Ok(converted) = T::try_from(num) {
-                    return Some(converted);
+                match T::try_from(num) {
+                    Ok(converted) => return Some(converted),
+                    Err(_) => {
+                        tracing::warn!(
+                            field = field_name,
+                            value = num,
+                            type_name = std::any::type_name::<T>(),
+                            "Value out of range for type"
+                        );
+                        // Continue to next field name - maybe device uses different convention
+                    }
                 }
             }
         }
