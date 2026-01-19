@@ -216,9 +216,9 @@ export default function Settings() {
                 />
                 <AdjustableField
                   label="Integral (d73)"
-                  value={setting.integral}
+                  value={setting.integral_setting}
                   deviceId={setting.device_id}
-                  fieldName="integral"
+                  fieldName="integral_setting"
                 />
               </div>
 
