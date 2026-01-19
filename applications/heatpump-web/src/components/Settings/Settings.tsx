@@ -214,6 +214,12 @@ export default function Settings() {
                   deviceId={setting.device_id}
                   fieldName="heatstop"
                 />
+                <AdjustableField
+                  label="Integral (d73)"
+                  value={setting.integral}
+                  deviceId={setting.device_id}
+                  fieldName="integral"
+                />
               </div>
 
               <OutboxStatus deviceId={setting.device_id} />
