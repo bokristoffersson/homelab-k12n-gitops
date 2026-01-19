@@ -28,6 +28,7 @@ data:
           name: claude-mcp
         attrs:
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
           client_type: confidential
           client_id: claude-mcp-client
           redirect_uris: []
