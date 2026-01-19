@@ -191,16 +191,10 @@ mod tests {
         });
 
         // Test snake_case extraction
-        assert_eq!(
-            extract_f64(&data, &["indoor_target_temp"]),
-            Some(21.5)
-        );
+        assert_eq!(extract_f64(&data, &["indoor_target_temp"]), Some(21.5));
 
         // Test camelCase extraction
-        assert_eq!(
-            extract_f64(&data, &["indoorTargetTemp"]),
-            Some(22.0)
-        );
+        assert_eq!(extract_f64(&data, &["indoorTargetTemp"]), Some(22.0));
 
         // Test field alias priority (first match wins)
         assert_eq!(
@@ -209,10 +203,7 @@ mod tests {
         );
 
         // Test missing field
-        assert_eq!(
-            extract_f64(&data, &["missing_field"]),
-            None
-        );
+        assert_eq!(extract_f64(&data, &["missing_field"]), None);
     }
 
     #[test]
@@ -246,22 +237,13 @@ mod tests {
         });
 
         // Test snake_case extraction
-        assert_eq!(
-            extract_i16(&data, &["integral_setting"]),
-            Some(10)
-        );
+        assert_eq!(extract_i16(&data, &["integral_setting"]), Some(10));
 
         // Test camelCase extraction
-        assert_eq!(
-            extract_i16(&data, &["integralSetting"]),
-            Some(15)
-        );
+        assert_eq!(extract_i16(&data, &["integralSetting"]), Some(15));
 
         // Test device parameter name (d73)
-        assert_eq!(
-            extract_i16(&data, &["d73"]),
-            Some(20)
-        );
+        assert_eq!(extract_i16(&data, &["d73"]), Some(20));
 
         // Test field alias priority (first match wins)
         assert_eq!(
@@ -270,10 +252,7 @@ mod tests {
         );
 
         // Test missing field
-        assert_eq!(
-            extract_i16(&data, &["missing"]),
-            None
-        );
+        assert_eq!(extract_i16(&data, &["missing"]), None);
 
         // Test value range for i16
         let data_max = json!({"value": 32767}); // i16::MAX
@@ -300,7 +279,10 @@ mod tests {
         assert_eq!(extract_number::<i16>(&data_overflow, &["value"]), None);
 
         // i32 should handle this value
-        assert_eq!(extract_number::<i32>(&data_overflow, &["value"]), Some(40000));
+        assert_eq!(
+            extract_number::<i32>(&data_overflow, &["value"]),
+            Some(40000)
+        );
     }
 
     #[test]
