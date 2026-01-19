@@ -263,17 +263,17 @@ fn tools_list_result() -> Value {
     let tools = vec![
         ToolDefinition {
             name: "energy_hourly_consumption".to_string(),
-            description: "Return hourly energy totals for a time range.".to_string(),
+            description: "Get hourly electricity consumption data for a specified time range. Returns energy totals in kWh for each hour, broken down by L1/L2/L3 phases. Negative values indicate energy exported to the grid (e.g., from solar panels). Use this to analyze energy usage patterns, compare consumption across hours/days, or answer questions about electricity usage.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "from": {
                         "type": "string",
-                        "description": "RFC3339 timestamp (inclusive)."
+                        "description": "RFC3339 timestamp (inclusive). Start of the time range to query."
                     },
                     "to": {
                         "type": "string",
-                        "description": "RFC3339 timestamp (exclusive). Defaults to now."
+                        "description": "RFC3339 timestamp (exclusive). End of the time range. Defaults to current time if not specified."
                     }
                 },
                 "required": ["from"],
@@ -282,13 +282,13 @@ fn tools_list_result() -> Value {
         },
         ToolDefinition {
             name: "energy_peak_hour_day".to_string(),
-            description: "Return the highest energy usage hour within a day.".to_string(),
+            description: "Find the hour with the highest electricity consumption for a specific day. Returns the hour_start, hour_end, and total_energy_kwh for the peak usage hour. Useful for identifying when energy usage is highest during the day.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "day": {
                         "type": "string",
-                        "description": "RFC3339 timestamp; date portion is used as the day."
+                        "description": "RFC3339 timestamp representing any time during the day you want to analyze. Only the date portion is used."
                     }
                 },
                 "required": ["day"],
@@ -297,21 +297,21 @@ fn tools_list_result() -> Value {
         },
         ToolDefinition {
             name: "heatpump_daily_summary".to_string(),
-            description: "Return daily heatpump summaries for a time range.".to_string(),
+            description: "Get daily heat pump performance summaries including runtime statistics (compressor, hot water, electric heating elements) and temperature averages (outdoor, supply line, return line, hot water, brine). Runtime values are cumulative daily increases in minutes. Use this to track heat pump efficiency, analyze heating patterns, or troubleshoot performance issues.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "from": {
                         "type": "string",
-                        "description": "RFC3339 timestamp (inclusive)."
+                        "description": "RFC3339 timestamp (inclusive). Start of the time range to query."
                     },
                     "to": {
                         "type": "string",
-                        "description": "RFC3339 timestamp (exclusive). Defaults to now."
+                        "description": "RFC3339 timestamp (exclusive). End of the time range. Defaults to current time if not specified."
                     },
                     "device_id": {
                         "type": "string",
-                        "description": "Optional heatpump device id."
+                        "description": "Optional heat pump device identifier to filter results for a specific device."
                     }
                 },
                 "required": ["from"],

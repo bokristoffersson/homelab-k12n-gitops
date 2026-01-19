@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/Users/bo/Development/homelab/Cursor_Workspace/homelab-k12n-gitops/scripts/.venv-mcp/bin/python3
 """
 MCP Proxy for Claude Desktop
 Acts as a stdio bridge between Claude Desktop and the remote homelab MCP server
@@ -29,6 +29,9 @@ def get_oauth_token() -> Optional[str]:
         log_error("ERROR: HOMELAB_MCP_CLIENT_SECRET environment variable not set")
         return None
 
+    log_error(f"DEBUG: Attempting OAuth2 token fetch from {TOKEN_URL}")
+    log_error(f"DEBUG: Client ID: {CLIENT_ID}")
+
     try:
         response = requests.post(
             TOKEN_URL,
@@ -40,9 +43,19 @@ def get_oauth_token() -> Optional[str]:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=10,
         )
+        log_error(f"DEBUG: OAuth2 response status: {response.status_code}")
         response.raise_for_status()
         data = response.json()
-        return data.get("access_token")
+        log_error(f"DEBUG: OAuth2 response data: {data}")
+        access_token = data.get("access_token")
+        if access_token:
+            log_error("DEBUG: OAuth2 token obtained successfully")
+        else:
+            log_error("DEBUG: OAuth2 response missing access_token")
+        return access_token
+    except requests.exceptions.HTTPError as e:
+        log_error(f"ERROR: OAuth2 HTTP error {e.response.status_code}: {e.response.text}")
+        return None
     except Exception as e:
         log_error(f"ERROR: Failed to obtain OAuth2 token: {e}")
         return None
@@ -76,19 +89,9 @@ def send_request(token: str, request_data: dict) -> dict:
 
 def main():
     """Main loop: read from stdin, forward to remote server, write to stdout"""
-    # Get OAuth token
-    token = get_oauth_token()
-    if not token:
-        error_response = {
-            "jsonrpc": "2.0",
-            "id": None,
-            "error": {
-                "code": -32603,
-                "message": "Failed to obtain OAuth2 token",
-            },
-        }
-        print(json.dumps(error_response))
-        sys.exit(1)
+    # Get OAuth token (lazily, so we can respond to first request with proper ID)
+    token = None
+    token_error = None
 
     # Process JSON-RPC requests from stdin
     for line in sys.stdin:
@@ -98,6 +101,29 @@ def main():
 
         try:
             request_data = json.loads(line)
+            request_id = request_data.get("id", 0)
+
+            # Lazy token fetch on first request
+            if token is None and token_error is None:
+                token = get_oauth_token()
+                if not token:
+                    token_error = "Failed to obtain OAuth2 token"
+
+            # If we have a token error, return it with the proper request ID
+            if token_error:
+                error_response = {
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32603,
+                        "message": token_error,
+                    },
+                }
+                print(json.dumps(error_response))
+                sys.stdout.flush()
+                continue
+
+            # Forward request to remote MCP server
             response = send_request(token, request_data)
             print(json.dumps(response))
             sys.stdout.flush()
@@ -105,7 +131,7 @@ def main():
             log_error(f"ERROR: Invalid JSON: {e}")
             error_response = {
                 "jsonrpc": "2.0",
-                "id": None,
+                "id": 0,  # Use 0 as default if we can't parse the request
                 "error": {
                     "code": -32700,
                     "message": "Parse error",
