@@ -7,8 +7,7 @@ use testcontainers::{clients::Cli, images::postgres::Postgres, RunnableImage};
 
 async fn setup_test_db() -> PgPool {
     let docker = Cli::default();
-    let postgres_image = RunnableImage::from(Postgres::default())
-        .with_tag("16-alpine");
+    let postgres_image = RunnableImage::from(Postgres::default()).with_tag("16-alpine");
 
     let node = docker.run(postgres_image);
     let connection_string = format!(
@@ -67,11 +66,11 @@ async fn insert_test_energy_data(pool: &PgPool, start: DateTime<Utc>, hours: usi
                 "#,
             )
             .bind(measurement_time)
-            .bind(5.0 + (hour as f64))  // Predictable test values
+            .bind(5.0 + (hour as f64)) // Predictable test values
             .bind(1.5 + (hour as f64 * 0.3))
             .bind(1.7 + (hour as f64 * 0.3))
             .bind(1.8 + (hour as f64 * 0.4))
-            .bind(-2.0 + (hour as f64))  // Negative = export
+            .bind(-2.0 + (hour as f64)) // Negative = export
             .execute(pool)
             .await
             .expect("Failed to insert test data");
@@ -124,8 +123,14 @@ async fn test_energy_hourly_consumption_returns_correct_data() {
 
     // Verify first hour (00:00-01:00)
     assert_eq!(readings[0].hour_start, start_time);
-    assert_eq!(readings[0].hour_end, start_time + chrono::Duration::hours(1));
-    assert_eq!(readings[0].measurement_count, 60, "Expected 60 measurements per hour");
+    assert_eq!(
+        readings[0].hour_end,
+        start_time + chrono::Duration::hours(1)
+    );
+    assert_eq!(
+        readings[0].measurement_count, 60,
+        "Expected 60 measurements per hour"
+    );
 
     // Each measurement had total_energy_kwh = 5.0 for hour 0
     // With 60 measurements, we expect aggregated value
