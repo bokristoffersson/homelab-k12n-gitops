@@ -7,6 +7,8 @@
 --                   Deployment restarts. This ensures the column exists when the
 --                   application starts and prevents startup failures.
 
+\c heatpump_settings
+
 -- Add integral_setting column to settings table
 ALTER TABLE settings
 ADD COLUMN IF NOT EXISTS integral_setting smallint;
