@@ -112,8 +112,8 @@ async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value,
     Ok(json!({
         "content": [
             {
-                "type": "json",
-                "json": result
+                "type": "text",
+                "text": serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string())
             }
         ],
         "isError": false
