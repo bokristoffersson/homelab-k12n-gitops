@@ -23,6 +23,7 @@ pipeline:
         root.fields.hotwater_temp = this.d7
         root.fields.brine_out_temp = this.d8
         root.fields.brine_in_temp = this.d9
+        root.fields.integral = this.d25
         root.fields.flowlinepump_speed = this.d30
         root.fields.runtime_compressor = this.d104
         root.fields.runtime_hotwater = this.d108
@@ -39,6 +40,7 @@ pipeline:
         root.fields.curve_zero = this.d56 | null
         root.fields.curve_minus_5 = this.d57 | null
         root.fields.heatstop = this.d58 | null
+        root.fields.integral_setting = this.d73
         # Extract bit flags from d16
         let d16 = this.d16 | 0
         root.fields.brinepump_on = $d16.bitwise_and(1) > 0
