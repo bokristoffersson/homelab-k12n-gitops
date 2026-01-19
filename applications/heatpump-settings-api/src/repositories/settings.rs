@@ -112,6 +112,15 @@ impl SettingsRepository {
     }
 
     /// Upsert settings (used by Kafka consumer)
+    ///
+    /// Note: This method performs a full upsert, including NULL values for fields not present
+    /// in the Kafka message. During feature rollouts where IoT devices are updated incrementally,
+    /// some messages may lack new fields (e.g., integral_setting). This is expected behavior:
+    /// - Initial deployment: Devices send full state snapshots periodically
+    /// - Feature rollout: New fields arrive as devices are updated
+    /// - Partial updates: Fields not in message are set to NULL (expected during rollout)
+    ///
+    /// This differs from the PATCH endpoint which only updates present fields.
     pub async fn upsert(&self, update: &SettingUpdate) -> Result<()> {
         sqlx::query(
             r#"

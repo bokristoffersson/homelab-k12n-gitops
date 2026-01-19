@@ -1,6 +1,11 @@
 -- Migration: 004_add_integral_setting
 -- Description: Add integral_setting (d73) column to settings table
 --              This represents the configurable integral setting for the heat pump
+--
+-- FluxCD Ordering: This migration runs via postgres-migration Job which has
+--                   dependencies configured to run BEFORE the heatpump-settings-api
+--                   Deployment restarts. This ensures the column exists when the
+--                   application starts and prevents startup failures.
 
 -- Add integral_setting column to settings table
 ALTER TABLE settings
