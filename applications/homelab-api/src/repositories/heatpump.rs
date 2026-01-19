@@ -36,6 +36,14 @@ pub struct HeatpumpDailySummary {
     pub avg_brine_in_temp: Option<f64>,
 }
 
+#[derive(Debug, Clone, FromRow)]
+pub struct HeatpumpCycleCount {
+    pub compressor_starts: Option<i64>,
+    pub hotwater_starts: Option<i64>,
+    pub aux_3kw_starts: Option<i64>,
+    pub aux_6kw_starts: Option<i64>,
+}
+
 pub struct HeatpumpRepository;
 
 impl HeatpumpRepository {
@@ -178,6 +186,81 @@ impl HeatpumpRepository {
                 Err(e) => Err(AppError::Db(e)),
             }
         }
+    }
+
+    pub async fn get_cycle_counts(
+        pool: &DbPool,
+        from: DateTime<Utc>,
+        to: DateTime<Utc>,
+        device_id: Option<&str>,
+    ) -> Result<HeatpumpCycleCount, AppError> {
+        // Count state changes from false to true (starts) using LAG window function
+        let query = if let Some(device_id) = device_id {
+            sqlx::query_as::<_, HeatpumpCycleCount>(
+                r#"
+                WITH state_changes AS (
+                    SELECT
+                        time,
+                        compressor_on,
+                        LAG(compressor_on) OVER (ORDER BY time) AS prev_compressor,
+                        hotwater_production,
+                        LAG(hotwater_production) OVER (ORDER BY time) AS prev_hotwater,
+                        aux_heater_3kw_on,
+                        LAG(aux_heater_3kw_on) OVER (ORDER BY time) AS prev_3kw,
+                        aux_heater_6kw_on,
+                        LAG(aux_heater_6kw_on) OVER (ORDER BY time) AS prev_6kw
+                    FROM heatpump_status
+                    WHERE time >= $1 AND time < $2 AND device_id = $3
+                    ORDER BY time
+                )
+                SELECT
+                    COUNT(*) FILTER (WHERE prev_compressor = false AND compressor_on = true) AS compressor_starts,
+                    COUNT(*) FILTER (WHERE prev_hotwater = false AND hotwater_production = true) AS hotwater_starts,
+                    COUNT(*) FILTER (WHERE prev_3kw = false AND aux_heater_3kw_on = true) AS aux_3kw_starts,
+                    COUNT(*) FILTER (WHERE prev_6kw = false AND aux_heater_6kw_on = true) AS aux_6kw_starts
+                FROM state_changes
+                "#,
+            )
+            .bind(from)
+            .bind(to)
+            .bind(device_id)
+            .fetch_one(pool)
+            .await
+            .map_err(AppError::Db)
+        } else {
+            sqlx::query_as::<_, HeatpumpCycleCount>(
+                r#"
+                WITH state_changes AS (
+                    SELECT
+                        time,
+                        compressor_on,
+                        LAG(compressor_on) OVER (ORDER BY time) AS prev_compressor,
+                        hotwater_production,
+                        LAG(hotwater_production) OVER (ORDER BY time) AS prev_hotwater,
+                        aux_heater_3kw_on,
+                        LAG(aux_heater_3kw_on) OVER (ORDER BY time) AS prev_3kw,
+                        aux_heater_6kw_on,
+                        LAG(aux_heater_6kw_on) OVER (ORDER BY time) AS prev_6kw
+                    FROM heatpump_status
+                    WHERE time >= $1 AND time < $2
+                    ORDER BY time
+                )
+                SELECT
+                    COUNT(*) FILTER (WHERE prev_compressor = false AND compressor_on = true) AS compressor_starts,
+                    COUNT(*) FILTER (WHERE prev_hotwater = false AND hotwater_production = true) AS hotwater_starts,
+                    COUNT(*) FILTER (WHERE prev_3kw = false AND aux_heater_3kw_on = true) AS aux_3kw_starts,
+                    COUNT(*) FILTER (WHERE prev_6kw = false AND aux_heater_6kw_on = true) AS aux_6kw_starts
+                FROM state_changes
+                "#,
+            )
+            .bind(from)
+            .bind(to)
+            .fetch_one(pool)
+            .await
+            .map_err(AppError::Db)
+        };
+
+        query
     }
 }
 

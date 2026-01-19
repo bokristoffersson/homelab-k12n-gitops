@@ -8,7 +8,7 @@ use axum::{
     response::sse::{Event, KeepAlive, Sse},
     Json,
 };
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 use serde_json::{json, Value};
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::{wrappers::IntervalStream, StreamExt};
@@ -101,6 +101,7 @@ async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value,
         "energy_hourly_consumption" => energy_hourly_consumption(pool, &arguments).await?,
         "energy_peak_hour_day" => energy_peak_hour_day(pool, &arguments).await?,
         "heatpump_daily_summary" => heatpump_daily_summary(pool, &arguments).await?,
+        "heatpump_cycle_counts" => heatpump_cycle_counts(pool, &arguments).await?,
         _ => {
             return Err(ToolError {
                 code: -32601,
@@ -123,12 +124,22 @@ async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value,
 
 fn get_server_time() -> Value {
     let now = Utc::now();
+    // Europe/Stockholm is UTC+1 (CET) or UTC+2 (CEST)
+    // For simplicity, we'll use UTC+1 offset. For full DST support, use chrono-tz crate.
+    let stockholm_offset = chrono::FixedOffset::east_opt(3600).unwrap(); // UTC+1
+    let stockholm_time = now.with_timezone(&stockholm_offset);
+
     json!({
-        "current_time": now.to_rfc3339(),
+        "server_time_utc": now.to_rfc3339(),
+        "server_time_local": stockholm_time.to_rfc3339(),
+        "timezone": "Europe/Stockholm (CET/CEST)",
+        "utc_offset_hours": 1,
         "timestamp": now.timestamp(),
-        "year": now.year(),
-        "month": now.month(),
-        "day": now.day()
+        "year": stockholm_time.year(),
+        "month": stockholm_time.month(),
+        "day": stockholm_time.day(),
+        "hour": stockholm_time.hour(),
+        "note": "All timestamps in API responses are in UTC. Use server_time_local for current local time."
     })
 }
 
@@ -245,6 +256,30 @@ async fn heatpump_daily_summary(pool: &DbPool, args: &Value) -> Result<Value, To
     }))
 }
 
+async fn heatpump_cycle_counts(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
+    let from = parse_required_datetime(args, "from")?;
+    let to = parse_optional_datetime(args, "to").unwrap_or_else(Utc::now);
+    let device_id = args.get("device_id").and_then(|value| value.as_str());
+
+    let counts = HeatpumpRepository::get_cycle_counts(pool, from, to, device_id)
+        .await
+        .map_err(|e| ToolError {
+            code: -32603,
+            message: "Database error".to_string(),
+            data: Some(json!({ "detail": e.to_string() })),
+        })?;
+
+    Ok(json!({
+        "from": from,
+        "to": to,
+        "device_id": device_id,
+        "compressor_starts": counts.compressor_starts,
+        "hotwater_starts": counts.hotwater_starts,
+        "aux_heater_3kw_starts": counts.aux_3kw_starts,
+        "aux_heater_6kw_starts": counts.aux_6kw_starts
+    }))
+}
+
 fn parse_required_datetime(args: &Value, field: &str) -> Result<DateTime<Utc>, ToolError> {
     let value = args
         .get(field)
@@ -275,7 +310,7 @@ fn tools_list_result() -> Value {
     let tools = vec![
         ToolDefinition {
             name: "get_server_time".to_string(),
-            description: "Get the current server time. IMPORTANT: Always call this tool first before querying energy or heatpump data to know the correct current date and time. Use the returned 'current_time' field (RFC3339 format) to construct date ranges for other queries. This ensures you query the correct year and dates.".to_string(),
+            description: "Get the current server time in both UTC and local time (Europe/Stockholm). CRITICAL: Always call this tool first before querying energy or heatpump data. All API timestamps are in UTC, but users expect local time. Use 'server_time_local' to understand current local date/time, then convert to UTC for queries. Example: If user asks for 'yesterday' and local time is 2026-01-19 14:00 CET, query from 2026-01-17T23:00:00Z to 2026-01-18T23:00:00Z (UTC).".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {},
@@ -319,6 +354,29 @@ fn tools_list_result() -> Value {
         ToolDefinition {
             name: "heatpump_daily_summary".to_string(),
             description: "Get daily heat pump performance summaries including runtime statistics (compressor, hot water, electric heating elements) and temperature averages (outdoor, supply line, return line, hot water, brine). Runtime values are cumulative daily increases in minutes. Use this to track heat pump efficiency, analyze heating patterns, or troubleshoot performance issues.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "from": {
+                        "type": "string",
+                        "description": "RFC3339 timestamp (inclusive). Start of the time range to query."
+                    },
+                    "to": {
+                        "type": "string",
+                        "description": "RFC3339 timestamp (exclusive). End of the time range. Defaults to current time if not specified."
+                    },
+                    "device_id": {
+                        "type": "string",
+                        "description": "Optional heat pump device identifier to filter results for a specific device."
+                    }
+                },
+                "required": ["from"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "heatpump_cycle_counts".to_string(),
+            description: "Count how many times the heat pump compressor, hot water production, and auxiliary heaters started during a time period. Detects state changes from off to on (start events). Use this to analyze compressor cycling frequency, hot water production patterns, and auxiliary heater usage. High cycle counts may indicate short-cycling issues.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
