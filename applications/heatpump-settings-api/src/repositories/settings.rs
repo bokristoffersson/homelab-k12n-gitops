@@ -16,6 +16,7 @@ pub struct Setting {
     pub curve_zero: Option<i32>,
     pub curve_minus_5: Option<i32>,
     pub heatstop: Option<i32>,
+    pub integral_setting: Option<i16>,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -31,6 +32,7 @@ pub struct SettingUpdate {
     pub curve_zero: Option<i32>,
     pub curve_minus_5: Option<i32>,
     pub heatstop: Option<i32>,
+    pub integral_setting: Option<i16>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -44,6 +46,7 @@ pub struct SettingPatch {
     pub curve_zero: Option<i32>,
     pub curve_minus_5: Option<i32>,
     pub heatstop: Option<i32>,
+    pub integral_setting: Option<i16>,
 }
 
 pub struct SettingsRepository {
@@ -79,7 +82,7 @@ impl SettingsRepository {
         let settings = sqlx::query_as::<_, Setting>(
             r#"
             SELECT device_id, indoor_target_temp, mode, curve, curve_min, curve_max,
-                   curve_plus_5, curve_zero, curve_minus_5, heatstop, updated_at
+                   curve_plus_5, curve_zero, curve_minus_5, heatstop, integral_setting, updated_at
             FROM settings
             ORDER BY device_id
             "#,
@@ -95,7 +98,7 @@ impl SettingsRepository {
         let setting = sqlx::query_as::<_, Setting>(
             r#"
             SELECT device_id, indoor_target_temp, mode, curve, curve_min, curve_max,
-                   curve_plus_5, curve_zero, curve_minus_5, heatstop, updated_at
+                   curve_plus_5, curve_zero, curve_minus_5, heatstop, integral_setting, updated_at
             FROM settings
             WHERE device_id = $1
             "#,
@@ -109,23 +112,36 @@ impl SettingsRepository {
     }
 
     /// Upsert settings (used by Kafka consumer)
+    ///
+    /// Uses COALESCE strategy to prevent data loss during feature rollouts:
+    /// - If field is present in Kafka message (non-NULL): Update to new value
+    /// - If field is missing from Kafka message (NULL): Keep existing database value
+    ///
+    /// This protects against:
+    /// - Partial messages from IoT devices during firmware updates
+    /// - Corrupt messages missing previously-set fields
+    /// - Gradual rollouts where not all devices send new fields yet
+    ///
+    /// This differs from the PATCH endpoint which uses dynamic SQL to only update
+    /// fields explicitly provided in the request.
     pub async fn upsert(&self, update: &SettingUpdate) -> Result<()> {
         sqlx::query(
             r#"
             INSERT INTO settings (
                 device_id, indoor_target_temp, mode, curve, curve_min, curve_max,
-                curve_plus_5, curve_zero, curve_minus_5, heatstop, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                curve_plus_5, curve_zero, curve_minus_5, heatstop, integral_setting, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
             ON CONFLICT (device_id) DO UPDATE SET
-                indoor_target_temp = EXCLUDED.indoor_target_temp,
-                mode = EXCLUDED.mode,
-                curve = EXCLUDED.curve,
-                curve_min = EXCLUDED.curve_min,
-                curve_max = EXCLUDED.curve_max,
-                curve_plus_5 = EXCLUDED.curve_plus_5,
-                curve_zero = EXCLUDED.curve_zero,
-                curve_minus_5 = EXCLUDED.curve_minus_5,
-                heatstop = EXCLUDED.heatstop,
+                indoor_target_temp = COALESCE(EXCLUDED.indoor_target_temp, settings.indoor_target_temp),
+                mode = COALESCE(EXCLUDED.mode, settings.mode),
+                curve = COALESCE(EXCLUDED.curve, settings.curve),
+                curve_min = COALESCE(EXCLUDED.curve_min, settings.curve_min),
+                curve_max = COALESCE(EXCLUDED.curve_max, settings.curve_max),
+                curve_plus_5 = COALESCE(EXCLUDED.curve_plus_5, settings.curve_plus_5),
+                curve_zero = COALESCE(EXCLUDED.curve_zero, settings.curve_zero),
+                curve_minus_5 = COALESCE(EXCLUDED.curve_minus_5, settings.curve_minus_5),
+                heatstop = COALESCE(EXCLUDED.heatstop, settings.heatstop),
+                integral_setting = COALESCE(EXCLUDED.integral_setting, settings.integral_setting),
                 updated_at = NOW()
             "#,
         )
@@ -139,6 +155,7 @@ impl SettingsRepository {
         .bind(update.curve_zero)
         .bind(update.curve_minus_5)
         .bind(update.heatstop)
+        .bind(update.integral_setting)
         .execute(&self.pool)
         .await?;
 
@@ -189,6 +206,10 @@ impl SettingsRepository {
             bind_count += 1;
             query.push_str(&format!(", heatstop = ${}", bind_count));
         }
+        if patch.integral_setting.is_some() {
+            bind_count += 1;
+            query.push_str(&format!(", integral_setting = ${}", bind_count));
+        }
 
         query.push_str(" WHERE device_id = $1 RETURNING *");
 
@@ -219,6 +240,9 @@ impl SettingsRepository {
             query_builder = query_builder.bind(val);
         }
         if let Some(val) = patch.heatstop {
+            query_builder = query_builder.bind(val);
+        }
+        if let Some(val) = patch.integral_setting {
             query_builder = query_builder.bind(val);
         }
 
