@@ -8,10 +8,10 @@ pub struct EnergyHourly {
     pub hour_start: DateTime<Utc>,
     pub hour_end: DateTime<Utc>,
     pub total_energy_kwh: Option<f64>,
-    pub total_energy_l1_kwh: Option<f64>,
-    pub total_energy_l2_kwh: Option<f64>,
-    pub total_energy_l3_kwh: Option<f64>,
-    pub total_energy_actual_kwh: Option<f64>,
+    pub avg_power_l1_kw: Option<f64>,
+    pub avg_power_l2_kw: Option<f64>,
+    pub avg_power_l3_kw: Option<f64>,
+    pub avg_power_total_kw: Option<f64>,
     pub measurement_count: i64,
 }
 
@@ -128,10 +128,10 @@ impl EnergyRepository {
                 hour_start,
                 hour_end,
                 CAST(total_energy_kwh AS DOUBLE PRECISION) AS total_energy_kwh,
-                CAST(total_energy_L1_actual_kwh AS DOUBLE PRECISION) AS total_energy_l1_kwh,
-                CAST(total_energy_L2_actual_kwh AS DOUBLE PRECISION) AS total_energy_l2_kwh,
-                CAST(total_energy_L3_actual_kwh AS DOUBLE PRECISION) AS total_energy_l3_kwh,
-                CAST(total_energy_actual_kwh AS DOUBLE PRECISION) AS total_energy_actual_kwh,
+                CAST(avg_power_l1_kw AS DOUBLE PRECISION) AS avg_power_l1_kw,
+                CAST(avg_power_l2_kw AS DOUBLE PRECISION) AS avg_power_l2_kw,
+                CAST(avg_power_l3_kw AS DOUBLE PRECISION) AS avg_power_l3_kw,
+                CAST(avg_power_total_kw AS DOUBLE PRECISION) AS avg_power_total_kw,
                 measurement_count
             FROM energy_hourly
             WHERE hour_start >= $1 AND hour_start < $2
@@ -165,11 +165,10 @@ impl EnergyRepository {
             SELECT
                 hour_start,
                 hour_end,
-                CAST(COALESCE(total_energy_actual_kwh, total_energy_kwh) AS DOUBLE PRECISION)
-                    AS total_energy_kwh
+                CAST(total_energy_kwh AS DOUBLE PRECISION) AS total_energy_kwh
             FROM energy_hourly
             WHERE hour_start >= $1 AND hour_start < $2
-            ORDER BY COALESCE(total_energy_actual_kwh, total_energy_kwh) DESC NULLS LAST
+            ORDER BY total_energy_kwh DESC NULLS LAST
             LIMIT 1
             "#,
         )

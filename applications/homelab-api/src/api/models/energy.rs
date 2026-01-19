@@ -23,10 +23,10 @@ pub struct EnergyHourlyResponse {
     pub hour_start: DateTime<Utc>,
     pub hour_end: DateTime<Utc>,
     pub total_energy_kwh: Option<f64>,
-    pub total_energy_l1_kwh: Option<f64>,
-    pub total_energy_l2_kwh: Option<f64>,
-    pub total_energy_l3_kwh: Option<f64>,
-    pub total_energy_actual_kwh: Option<f64>,
+    pub avg_power_l1_kw: Option<f64>,
+    pub avg_power_l2_kw: Option<f64>,
+    pub avg_power_l3_kw: Option<f64>,
+    pub avg_power_total_kw: Option<f64>,
     pub measurement_count: i64,
 }
 
@@ -117,10 +117,10 @@ mod tests {
             hour_start,
             hour_end,
             total_energy_kwh: Some(15.5),
-            total_energy_l1_kwh: Some(5.0),
-            total_energy_l2_kwh: Some(5.0),
-            total_energy_l3_kwh: Some(5.5),
-            total_energy_actual_kwh: Some(15.5),
+            avg_power_l1_kw: Some(5.0),
+            avg_power_l2_kw: Some(5.0),
+            avg_power_l3_kw: Some(5.5),
+            avg_power_total_kw: Some(15.5),
             measurement_count: 3600,
         };
 
@@ -138,10 +138,10 @@ mod tests {
             hour_start,
             hour_end,
             total_energy_kwh: None,
-            total_energy_l1_kwh: None,
-            total_energy_l2_kwh: None,
-            total_energy_l3_kwh: None,
-            total_energy_actual_kwh: None,
+            avg_power_l1_kw: None,
+            avg_power_l2_kw: None,
+            avg_power_l3_kw: None,
+            avg_power_total_kw: None,
             measurement_count: 0,
         };
 
@@ -160,10 +160,10 @@ mod tests {
             hour_start,
             hour_end,
             total_energy_kwh: Some(20.0),
-            total_energy_l1_kwh: Some(7.0),
-            total_energy_l2_kwh: Some(7.0),
-            total_energy_l3_kwh: Some(6.0),
-            total_energy_actual_kwh: Some(20.0),
+            avg_power_l1_kw: Some(7.0),
+            avg_power_l2_kw: Some(7.0),
+            avg_power_l3_kw: Some(6.0),
+            avg_power_total_kw: Some(20.0),
             measurement_count: 7200,
         };
 

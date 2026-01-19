@@ -37,3 +37,4 @@ secrets/
 *.tmp
 tmp/
 temp/
+scripts/.venv-mcp/

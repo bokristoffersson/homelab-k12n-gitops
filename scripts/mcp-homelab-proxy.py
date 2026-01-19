@@ -29,9 +29,6 @@ def get_oauth_token() -> Optional[str]:
         log_error("ERROR: HOMELAB_MCP_CLIENT_SECRET environment variable not set")
         return None
 
-    log_error(f"DEBUG: Attempting OAuth2 token fetch from {TOKEN_URL}")
-    log_error(f"DEBUG: Client ID: {CLIENT_ID}")
-
     try:
         response = requests.post(
             TOKEN_URL,
@@ -43,16 +40,9 @@ def get_oauth_token() -> Optional[str]:
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             timeout=10,
         )
-        log_error(f"DEBUG: OAuth2 response status: {response.status_code}")
         response.raise_for_status()
         data = response.json()
-        log_error(f"DEBUG: OAuth2 response data: {data}")
-        access_token = data.get("access_token")
-        if access_token:
-            log_error("DEBUG: OAuth2 token obtained successfully")
-        else:
-            log_error("DEBUG: OAuth2 response missing access_token")
-        return access_token
+        return data.get("access_token")
     except requests.exceptions.HTTPError as e:
         log_error(f"ERROR: OAuth2 HTTP error {e.response.status_code}: {e.response.text}")
         return None
@@ -79,7 +69,7 @@ def send_request(token: str, request_data: dict) -> dict:
         log_error(f"ERROR: Failed to send request: {e}")
         return {
             "jsonrpc": "2.0",
-            "id": request_data.get("id"),
+            "id": request_data.get("id", 0),
             "error": {
                 "code": -32603,
                 "message": f"Internal error: {str(e)}",

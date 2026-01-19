@@ -139,10 +139,10 @@ async fn energy_hourly_consumption(pool: &DbPool, args: &Value) -> Result<Value,
                 "hour_start": r.hour_start,
                 "hour_end": r.hour_end,
                 "total_energy_kwh": r.total_energy_kwh,
-                "total_energy_l1_kwh": r.total_energy_l1_kwh,
-                "total_energy_l2_kwh": r.total_energy_l2_kwh,
-                "total_energy_l3_kwh": r.total_energy_l3_kwh,
-                "total_energy_actual_kwh": r.total_energy_actual_kwh,
+                "avg_power_l1_kw": r.avg_power_l1_kw,
+                "avg_power_l2_kw": r.avg_power_l2_kw,
+                "avg_power_l3_kw": r.avg_power_l3_kw,
+                "avg_power_total_kw": r.avg_power_total_kw,
                 "measurement_count": r.measurement_count
             })
         })
@@ -263,7 +263,7 @@ fn tools_list_result() -> Value {
     let tools = vec![
         ToolDefinition {
             name: "energy_hourly_consumption".to_string(),
-            description: "Get hourly electricity consumption data for a specified time range. Returns energy totals in kWh for each hour, broken down by L1/L2/L3 phases. Negative values indicate energy exported to the grid (e.g., from solar panels). Use this to analyze energy usage patterns, compare consumption across hours/days, or answer questions about electricity usage.".to_string(),
+            description: "Get hourly electricity consumption data for a specified time range. Returns total energy consumed (total_energy_kwh) and average power per phase (avg_power_l1/l2/l3_kw) for each hour. Use total_energy_kwh to calculate actual consumption - it represents cumulative meter readings. Average power values show instantaneous load distribution across phases. Use this to analyze energy usage patterns, compare consumption across hours/days, or answer questions about electricity usage.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {

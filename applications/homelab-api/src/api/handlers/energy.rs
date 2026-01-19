@@ -78,10 +78,10 @@ pub async fn get_history(
             hour_start: r.hour_start,
             hour_end: r.hour_end,
             total_energy_kwh: r.total_energy_kwh,
-            total_energy_l1_kwh: r.total_energy_l1_kwh,
-            total_energy_l2_kwh: r.total_energy_l2_kwh,
-            total_energy_l3_kwh: r.total_energy_l3_kwh,
-            total_energy_actual_kwh: r.total_energy_actual_kwh,
+            avg_power_l1_kw: r.avg_power_l1_kw,
+            avg_power_l2_kw: r.avg_power_l2_kw,
+            avg_power_l3_kw: r.avg_power_l3_kw,
+            avg_power_total_kw: r.avg_power_total_kw,
             measurement_count: r.measurement_count,
         })
         .collect();
