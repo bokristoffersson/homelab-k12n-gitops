@@ -97,6 +97,7 @@ async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value,
     let arguments = tool_params.arguments;
 
     let result = match tool_params.name.as_str() {
+        "get_server_time" => get_server_time(),
         "energy_hourly_consumption" => energy_hourly_consumption(pool, &arguments).await?,
         "energy_peak_hour_day" => energy_peak_hour_day(pool, &arguments).await?,
         "heatpump_daily_summary" => heatpump_daily_summary(pool, &arguments).await?,
@@ -118,6 +119,17 @@ async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value,
         ],
         "isError": false
     }))
+}
+
+fn get_server_time() -> Value {
+    let now = Utc::now();
+    json!({
+        "current_time": now.to_rfc3339(),
+        "timestamp": now.timestamp(),
+        "year": now.year(),
+        "month": now.month(),
+        "day": now.day()
+    })
 }
 
 async fn energy_hourly_consumption(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
@@ -261,6 +273,15 @@ fn parse_optional_datetime(args: &Value, field: &str) -> Option<DateTime<Utc>> {
 
 fn tools_list_result() -> Value {
     let tools = vec![
+        ToolDefinition {
+            name: "get_server_time".to_string(),
+            description: "Get the current server time. IMPORTANT: Always call this tool first before querying energy or heatpump data to know the correct current date and time. Use the returned 'current_time' field (RFC3339 format) to construct date ranges for other queries. This ensures you query the correct year and dates.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+            }),
+        },
         ToolDefinition {
             name: "energy_hourly_consumption".to_string(),
             description: "Get hourly electricity consumption data for a specified time range. Returns total energy consumed (total_energy_kwh) and average power per phase (avg_power_l1/l2/l3_kw) for each hour. Use total_energy_kwh to calculate actual consumption - it represents cumulative meter readings. Average power values show instantaneous load distribution across phases. Use this to analyze energy usage patterns, compare consumption across hours/days, or answer questions about electricity usage.".to_string(),
