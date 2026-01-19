@@ -49,6 +49,7 @@ export default function Temperatures({ heatpump, indoorTemp, error, isLoading }:
         <TempItem label="Hot Water" value={heatpump.hotwater_temp} />
         <TempItem label="Brine Out" value={heatpump.brine_out_temp} />
         <TempItem label="Brine In" value={heatpump.brine_in_temp} />
+        <TempItem label="Integral" value={heatpump.integral} />
       </div>
       {indoorTemp?.humidity && (
         <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#888' }}>
