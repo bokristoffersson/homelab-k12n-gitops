@@ -9,7 +9,7 @@ export interface HeatpumpSetting {
   curve_zero: number | null;
   curve_minus_5: number | null;
   heatstop: number | null;
-  integral: number | null;
+  integral_setting: number | null;
   updated_at: string;
 }
 
@@ -29,7 +29,7 @@ export interface SettingPatch {
   curve_zero?: number;
   curve_minus_5?: number;
   heatstop?: number;
-  integral?: number;
+  integral_setting?: number;
 }
 
 // Mode mapping for display
