@@ -50,6 +50,7 @@ pub async fn get_latest(
         hotwater_temp: reading.hotwater_temp,
         brine_out_temp: reading.brine_out_temp,
         brine_in_temp: reading.brine_in_temp,
+        integral: reading.integral,
     }))
 }
 

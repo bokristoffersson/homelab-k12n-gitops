@@ -127,6 +127,10 @@ async fn update_setting_in_tx(
         bind_count += 1;
         query.push_str(&format!(", heatstop = ${}", bind_count));
     }
+    if patch.integral_setting.is_some() {
+        bind_count += 1;
+        query.push_str(&format!(", integral_setting = ${}", bind_count));
+    }
 
     query.push_str(" WHERE device_id = $1 RETURNING *");
 
@@ -158,6 +162,9 @@ async fn update_setting_in_tx(
         query_builder = query_builder.bind(val);
     }
     if let Some(val) = patch.heatstop {
+        query_builder = query_builder.bind(val);
+    }
+    if let Some(val) = patch.integral_setting {
         query_builder = query_builder.bind(val);
     }
 

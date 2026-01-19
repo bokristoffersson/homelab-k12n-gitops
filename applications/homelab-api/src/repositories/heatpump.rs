@@ -19,6 +19,7 @@ pub struct HeatpumpLatest {
     pub hotwater_temp: Option<i16>,
     pub brine_out_temp: Option<i16>,
     pub brine_in_temp: Option<i16>,
+    pub integral: Option<i16>,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -68,7 +69,8 @@ impl HeatpumpRepository {
                     returnline_temp,
                     hotwater_temp,
                     brine_out_temp,
-                    brine_in_temp
+                    brine_in_temp,
+                    integral
                 FROM heatpump_status
                 WHERE device_id = $1
                 ORDER BY time DESC
@@ -93,7 +95,8 @@ impl HeatpumpRepository {
                     returnline_temp,
                     hotwater_temp,
                     brine_out_temp,
-                    brine_in_temp
+                    brine_in_temp,
+                    integral
                 FROM heatpump_status
                 ORDER BY time DESC
                 LIMIT 1
@@ -372,6 +375,7 @@ mod tests {
             hotwater_temp: Some(45),
             brine_out_temp: Some(8),
             brine_in_temp: Some(6),
+            integral: Some(10),
         };
 
         // Verify device_id field is accessible
@@ -396,6 +400,7 @@ mod tests {
             hotwater_temp: Some(45),
             brine_out_temp: Some(8),
             brine_in_temp: Some(6),
+            integral: None,
         };
 
         // Verify device_id can be None

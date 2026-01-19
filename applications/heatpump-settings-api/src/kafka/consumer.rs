@@ -98,6 +98,7 @@ impl KafkaConsumerService {
             curve_zero: extract_i32(&data, &["curve_zero", "curveZero"]),
             curve_minus_5: extract_i32(&data, &["curve_minus_5", "curveMinus5"]),
             heatstop: extract_i32(&data, &["heatstop", "heatStop"]),
+            integral_setting: extract_i16(&data, &["integral_setting", "integralSetting", "d73"]),
         };
 
         // Only upsert if we have at least one setting field
@@ -130,6 +131,17 @@ fn extract_i32(data: &Value, field_names: &[&str]) -> Option<i32> {
         if let Some(value) = data.get(field_name) {
             if let Some(num) = value.as_i64() {
                 return Some(num as i32);
+            }
+        }
+    }
+    None
+}
+
+fn extract_i16(data: &Value, field_names: &[&str]) -> Option<i16> {
+    for field_name in field_names {
+        if let Some(value) = data.get(field_name) {
+            if let Some(num) = value.as_i64() {
+                return Some(num as i16);
             }
         }
     }

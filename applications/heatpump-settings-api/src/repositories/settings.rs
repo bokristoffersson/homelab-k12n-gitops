@@ -16,6 +16,7 @@ pub struct Setting {
     pub curve_zero: Option<i32>,
     pub curve_minus_5: Option<i32>,
     pub heatstop: Option<i32>,
+    pub integral_setting: Option<i16>,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -31,6 +32,7 @@ pub struct SettingUpdate {
     pub curve_zero: Option<i32>,
     pub curve_minus_5: Option<i32>,
     pub heatstop: Option<i32>,
+    pub integral_setting: Option<i16>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -44,6 +46,7 @@ pub struct SettingPatch {
     pub curve_zero: Option<i32>,
     pub curve_minus_5: Option<i32>,
     pub heatstop: Option<i32>,
+    pub integral_setting: Option<i16>,
 }
 
 pub struct SettingsRepository {
@@ -79,7 +82,7 @@ impl SettingsRepository {
         let settings = sqlx::query_as::<_, Setting>(
             r#"
             SELECT device_id, indoor_target_temp, mode, curve, curve_min, curve_max,
-                   curve_plus_5, curve_zero, curve_minus_5, heatstop, updated_at
+                   curve_plus_5, curve_zero, curve_minus_5, heatstop, integral_setting, updated_at
             FROM settings
             ORDER BY device_id
             "#,
@@ -95,7 +98,7 @@ impl SettingsRepository {
         let setting = sqlx::query_as::<_, Setting>(
             r#"
             SELECT device_id, indoor_target_temp, mode, curve, curve_min, curve_max,
-                   curve_plus_5, curve_zero, curve_minus_5, heatstop, updated_at
+                   curve_plus_5, curve_zero, curve_minus_5, heatstop, integral_setting, updated_at
             FROM settings
             WHERE device_id = $1
             "#,
@@ -114,8 +117,8 @@ impl SettingsRepository {
             r#"
             INSERT INTO settings (
                 device_id, indoor_target_temp, mode, curve, curve_min, curve_max,
-                curve_plus_5, curve_zero, curve_minus_5, heatstop, updated_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+                curve_plus_5, curve_zero, curve_minus_5, heatstop, integral_setting, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
             ON CONFLICT (device_id) DO UPDATE SET
                 indoor_target_temp = EXCLUDED.indoor_target_temp,
                 mode = EXCLUDED.mode,
@@ -126,6 +129,7 @@ impl SettingsRepository {
                 curve_zero = EXCLUDED.curve_zero,
                 curve_minus_5 = EXCLUDED.curve_minus_5,
                 heatstop = EXCLUDED.heatstop,
+                integral_setting = EXCLUDED.integral_setting,
                 updated_at = NOW()
             "#,
         )
@@ -139,6 +143,7 @@ impl SettingsRepository {
         .bind(update.curve_zero)
         .bind(update.curve_minus_5)
         .bind(update.heatstop)
+        .bind(update.integral_setting)
         .execute(&self.pool)
         .await?;
 
@@ -189,6 +194,10 @@ impl SettingsRepository {
             bind_count += 1;
             query.push_str(&format!(", heatstop = ${}", bind_count));
         }
+        if patch.integral_setting.is_some() {
+            bind_count += 1;
+            query.push_str(&format!(", integral_setting = ${}", bind_count));
+        }
 
         query.push_str(" WHERE device_id = $1 RETURNING *");
 
@@ -219,6 +228,9 @@ impl SettingsRepository {
             query_builder = query_builder.bind(val);
         }
         if let Some(val) = patch.heatstop {
+            query_builder = query_builder.bind(val);
+        }
+        if let Some(val) = patch.integral_setting {
             query_builder = query_builder.bind(val);
         }
 

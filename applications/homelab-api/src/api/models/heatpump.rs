@@ -17,6 +17,7 @@ pub struct HeatpumpLatestResponse {
     pub hotwater_temp: Option<i16>,
     pub brine_out_temp: Option<i16>,
     pub brine_in_temp: Option<i16>,
+    pub integral: Option<i16>,
 }
 
 #[derive(Debug, Serialize)]
@@ -55,6 +56,7 @@ mod tests {
             hotwater_temp: Some(45),
             brine_out_temp: Some(8),
             brine_in_temp: Some(6),
+            integral: Some(10),
         };
 
         assert_eq!(response.device_id.as_ref().unwrap(), "hp-01");
@@ -79,6 +81,7 @@ mod tests {
             hotwater_temp: None,
             brine_out_temp: None,
             brine_in_temp: None,
+            integral: None,
         };
 
         assert!(response.device_id.is_none());
@@ -105,6 +108,7 @@ mod tests {
             hotwater_temp: Some(50),
             brine_out_temp: Some(10),
             brine_in_temp: Some(8),
+            integral: Some(15),
         };
 
         let json = serde_json::to_string(&response).unwrap();
@@ -140,6 +144,7 @@ mod tests {
                 hotwater_temp: Some(0),
                 brine_out_temp: Some(0),
                 brine_in_temp: Some(0),
+                integral: Some(0),
             };
 
             assert_eq!(response.compressor_on.unwrap(), compressor);
