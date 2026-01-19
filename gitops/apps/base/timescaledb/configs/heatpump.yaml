@@ -37,7 +37,8 @@ pipeline:
             "flowlinepump_on": this.fields.flowlinepump_on.bool() | null,
             "hotwater_production": this.fields.hotwater_production.bool() | null,
             "aux_heater_3kw_on": this.fields.aux_heater_3kw_on.bool() | null,
-            "aux_heater_6kw_on": this.fields.aux_heater_6kw_on.bool() | null
+            "aux_heater_6kw_on": this.fields.aux_heater_6kw_on.bool() | null,
+            "integral": this.fields.integral.number() | null
           }
         }
 
@@ -67,6 +68,7 @@ output:
       - hotwater_production
       - aux_heater_3kw_on
       - aux_heater_6kw_on
+      - integral
     args_mapping: |
       root = [
         this.time,
@@ -88,5 +90,6 @@ output:
         this.flowlinepump_on,
         this.hotwater_production,
         this.aux_heater_3kw_on,
-        this.aux_heater_6kw_on
+        this.aux_heater_6kw_on,
+        this.integral
       ]
