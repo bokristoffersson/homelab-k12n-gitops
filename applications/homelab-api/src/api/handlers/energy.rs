@@ -1,7 +1,6 @@
 use crate::api::models::energy::{
     EnergyHourlyResponse, EnergyLatestResponse, EnergySummaryResponse, HourlyTotalResponse,
 };
-use crate::db::DbPool;
 use crate::repositories::EnergyRepository;
 use axum::{
     extract::{Query, State},

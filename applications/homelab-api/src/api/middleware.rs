@@ -2,6 +2,7 @@ use crate::auth::jwt::validate_token;
 use crate::config::Config;
 use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
 
+#[allow(dead_code)]
 pub async fn require_auth(request: Request, next: Next) -> Result<Response, StatusCode> {
     // Extract config from extensions (set by router layer)
     let config = request

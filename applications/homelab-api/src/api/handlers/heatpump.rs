@@ -1,5 +1,4 @@
 use crate::api::models::heatpump::{HeatpumpDailySummaryResponse, HeatpumpLatestResponse};
-use crate::db::DbPool;
 use crate::repositories::HeatpumpRepository;
 use axum::{
     extract::{Query, State},

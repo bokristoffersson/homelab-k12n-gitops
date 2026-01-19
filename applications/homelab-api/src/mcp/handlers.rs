@@ -8,7 +8,7 @@ use axum::{
     response::sse::{Event, KeepAlive, Sse},
     Json,
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use serde_json::{json, Value};
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::{wrappers::IntervalStream, StreamExt};

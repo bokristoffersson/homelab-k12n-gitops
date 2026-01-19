@@ -1,5 +1,4 @@
 use crate::api::models::temperature::{TemperatureLatest, TemperatureReading};
-use crate::db::DbPool;
 use crate::repositories::TemperatureRepository;
 use axum::{
     extract::{Query, State},

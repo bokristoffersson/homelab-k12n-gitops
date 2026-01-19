@@ -1,12 +1,14 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
 }
 
 #[derive(Debug, Serialize)]
+#[allow(dead_code)]
 pub struct LoginResponse {
     pub token: String,
     pub username: String,
