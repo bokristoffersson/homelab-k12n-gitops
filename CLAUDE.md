@@ -76,22 +76,52 @@ IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → Timesca
 - Only add error handling at system boundaries
 
 ### Git Workflow
-- **IMPORTANT**: Always use multi-line HEREDOC for commit messages:
-  ```bash
-  git commit -m "$(cat <<'EOF'
-  type: description
 
-  Detailed explanation...
+**CRITICAL - Development Workflow**:
+1. **Always create feature branches** - Never commit directly to `main`
+2. **Create Pull Requests** - Push feature branch and create PR on GitHub
+3. **AI Architectural Review** - PRs are automatically reviewed by an AI agent that checks for:
+   - Compliance with architectural rules in CLAUDE.md
+   - Code quality and best practices
+   - Database migration issues
+   - Security concerns
+4. **User merges PRs** - I (the user) will merge the PR after reviewing the AI feedback
 
-  🤖 Generated with [Claude Code](https://claude.com/claude-code)
+**Feature Branch Workflow**:
+```bash
+# Create feature branch
+git checkout -b feature/descriptive-name
 
-  Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
-  EOF
-  )"
-  ```
+# Make changes and commit
+git add -A
+git commit -m "$(cat <<'EOF'
+type: description
+
+Detailed explanation...
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+EOF
+)"
+
+# Push and create PR
+git push -u origin feature/descriptive-name
+gh pr create --title "Title" --body "Description"
+
+# User will merge after AI review
+```
+
+**Commit Message Format**:
+- **IMPORTANT**: Always use multi-line HEREDOC for commit messages
+- Follow conventional commits: `type: description`
+- Include detailed explanation of changes
+- Always include Claude Code footer
+
+**Other Rules**:
 - Main branch: `main`
 - Use `kubectl` (not `k` alias)
-- Push commits after user confirms
+- Never force push to `main`
 
 ### Sealed Secrets
 **CRITICAL**: I (the user) will create all sealed secrets manually. Claude should:
@@ -110,6 +140,63 @@ kubeseal \
   --controller-name sealed-secrets \
   --controller-namespace kube-system \
   --format=yaml > <secret-name>-sealed.yaml
+```
+
+### Database Migrations
+
+**CRITICAL**: Database migrations are managed through GitOps using Kubernetes Jobs. **NEVER** run migrations manually using `kubectl exec`.
+
+**Migration Locations**:
+- **TimescaleDB**: `gitops/apps/base/timescaledb/migrations/`
+- **Heatpump Settings (PostgreSQL)**: `gitops/apps/base/heatpump-settings/migrations/`
+- **Authentik (PostgreSQL)**: Managed by Authentik application
+
+**Migration Workflow**:
+1. **Create migration file** in the appropriate directory:
+   ```sql
+   -- Migration: XXX_descriptive_name
+   -- Description: What this migration does
+
+   \c database_name  -- For TimescaleDB only
+
+   -- Your migration SQL here
+   ALTER TABLE table_name ADD COLUMN new_column type;
+
+   -- Record migration
+   INSERT INTO schema_migrations (version, name)
+   VALUES (XXX, 'descriptive_name')
+   ON CONFLICT (version) DO NOTHING;
+   ```
+
+2. **Commit and push** to feature branch - migration files are part of GitOps
+3. **Create PR** - AI agent will review migrations
+4. **After merge** - FluxCD will automatically:
+   - Sync the new migration files to ConfigMaps
+   - Trigger migration Jobs to run the SQL scripts
+
+**Migration File Naming**:
+- Use sequential numbers: `001_`, `002_`, `003_`, etc.
+- Descriptive name: `add_integral_to_heatpump.sql`
+- Full example: `004_add_integral_to_heatpump.sql`
+
+**Schema Migrations Table**:
+- **TimescaleDB**: `schema_migrations (version, name)`
+- **Heatpump Settings**: `schema_migrations (version, name, applied_at)`
+
+**NEVER DO THIS**:
+```bash
+# ❌ WRONG - Manual migration execution
+kubectl exec -n timescaledb pod -- psql -U postgres -d telemetry -c "ALTER TABLE..."
+```
+
+**DO THIS INSTEAD**:
+```bash
+# ✅ CORRECT - GitOps migration workflow
+1. Create migration file in gitops/apps/base/timescaledb/migrations/
+2. Commit to feature branch
+3. Create PR and wait for AI review
+4. User merges PR
+5. FluxCD automatically runs migration Job
 ```
 
 ### Kubernetes Operations
@@ -338,16 +425,32 @@ RUN npm run build
 
 ### AI Architectural Review
 
-All PRs are automatically reviewed by an AI agent (Claude Sonnet 4.5) for compliance with these principles. The agent:
-- Posts a summary comment with violations and suggestions
-- Blocks merge if architectural violations are found
-- Re-reviews automatically when PR is updated
+**Purpose**: Automated guardrails for developers (including AI assistants) to ensure code quality and architectural compliance.
 
-The review covers:
-- Code changes (database operations, auth patterns, over-engineering)
-- Dockerfiles (layered builds, dependency caching)
-- Tests (coverage for critical paths)
-- GitOps configs (sealed secrets, resource limits, FluxCD best practices)
+All PRs are automatically reviewed by an AI agent (Claude Sonnet 4.5) that acts as a **senior architect**. The agent:
+- **Reviews against CLAUDE.md rules** - Checks compliance with all architectural principles in this document
+- **Posts detailed feedback** - Summary comment with violations, suggestions, and rationale
+- **Blocks merge on violations** - Critical issues prevent PR merge until fixed
+- **Re-reviews automatically** - Updates review when PR is updated with new commits
+- **Provides educational feedback** - Explains why certain patterns are preferred
+
+**What gets reviewed**:
+- **Code changes**: Database operations (read-only API enforcement), auth patterns, over-engineering detection
+- **Dockerfiles**: Layered builds, dependency caching, security best practices
+- **Tests**: Coverage for critical paths (data writes, auth, message processing)
+- **GitOps configs**: Sealed secrets usage, resource limits, FluxCD best practices
+- **Database migrations**: Proper migration structure, schema_migrations table updates
+- **Git workflow**: Feature branches, commit message format, PR descriptions
+
+**Review workflow**:
+1. Push commits to feature branch
+2. Create PR on GitHub
+3. AI agent automatically reviews within minutes
+4. Address feedback by pushing new commits
+5. AI re-reviews automatically
+6. User merges after approval
+
+This ensures high code quality even when working with AI coding assistants. The AI agent acts as a **guardrail** to catch common mistakes and enforce best practices.
 
 See `docs/ARCH_REVIEW.md` for complete details.
 
