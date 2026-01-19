@@ -168,11 +168,36 @@ kubeseal \
    ON CONFLICT (version) DO NOTHING;
    ```
 
-2. **Commit and push** to feature branch - migration files are part of GitOps
-3. **Create PR** - AI agent will review migrations
-4. **After merge** - FluxCD will automatically:
-   - Sync the new migration files to ConfigMaps
-   - Trigger migration Jobs to run the SQL scripts
+2. **Update kustomization.yaml** to include the new migration file:
+   - **TimescaleDB**: Edit `gitops/apps/base/timescaledb/kustomization.yaml`
+   - **Heatpump Settings**: Edit `gitops/apps/base/heatpump-settings/kustomization.yaml`
+
+   Add the new migration file to the `configMapGenerator` section:
+   ```yaml
+   configMapGenerator:
+     - name: timescaledb-migrations  # or postgres-migrations
+       files:
+         - migrations/001_initial_schema.sql
+         - migrations/002_fix_energy_hourly.sql
+         - migrations/XXX_your_new_migration.sql  # ADD THIS LINE
+         - migrations/run_migrations.sh
+   ```
+
+   **CRITICAL**: If you forget this step, FluxCD will NOT sync the migration file to the cluster and the migration will NOT run.
+
+3. **Commit and push** to feature branch - migration files are part of GitOps
+4. **Create PR** - AI agent will review migrations
+5. **After merge** - FluxCD will automatically sync the updated ConfigMaps
+6. **Manually restart migration jobs** to apply the new migrations:
+   ```bash
+   kubectl delete job -n timescaledb timescaledb-migration
+   kubectl delete job -n heatpump-settings postgres-migration
+   ```
+7. **Verify migration** completed successfully:
+   ```bash
+   kubectl logs -n timescaledb job/timescaledb-migration
+   kubectl logs -n heatpump-settings job/postgres-migration
+   ```
 
 **Migration File Naming**:
 - Use sequential numbers: `001_`, `002_`, `003_`, etc.
