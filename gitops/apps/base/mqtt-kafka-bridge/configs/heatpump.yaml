@@ -16,6 +16,7 @@ pipeline:
     - mapping: |
         root = this
         root.ts = now().ts_format("2006-01-02T15:04:05.999999999Z07:00")
+        root.device_id = this.Client_Name | ""
         root.tags.device_id = this.Client_Name | ""
         root.fields.outdoor_temp = this.d0
         root.fields.supplyline_temp = this.d5
