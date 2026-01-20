@@ -104,26 +104,39 @@
 
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
 }
 
 .status-item {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto;
+  gap: 0.75rem;
   align-items: center;
   padding: 0.5rem;
+  min-height: 2.25rem;
 }
 
 .status-label {
   color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .status-badge {
-  padding: 0.25rem 0.75rem;
+  padding: 0.2rem 0.65rem;
   border-radius: 4px;
   font-size: 0.85rem;
   font-weight: bold;
+  justify-self: end;
+  text-align: center;
+  min-width: 44px;
 }
 
 .status-badge.on {
@@ -134,6 +147,23 @@
 .status-badge.off {
   background-color: var(--status-off-bg);
   color: var(--status-off-text);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background-color: var(--status-off-bg);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+}
+
+.status-dot.on {
+  background-color: var(--success-bg);
+}
+
+.status-dot.off {
+  background-color: var(--status-off-bg);
 }
 
 .temp-grid {

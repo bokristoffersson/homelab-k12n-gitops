@@ -9,7 +9,10 @@ interface HeatpumpStatusProps {
 export default function HeatpumpStatus({ heatpump, error, isLoading }: HeatpumpStatusProps) {
   const StatusBadge = ({ label, value }: { label: string; value: boolean | null | undefined }) => (
     <div className="status-item">
-      <span className="status-label">{label}:</span>
+      <span className="status-label">
+        <span className={`status-dot ${value ? 'on' : 'off'}`} aria-hidden="true" />
+        {label}:
+      </span>
       <span className={`status-badge ${value ? 'on' : 'off'}`}>
         {value ? 'ON' : 'OFF'}
       </span>
