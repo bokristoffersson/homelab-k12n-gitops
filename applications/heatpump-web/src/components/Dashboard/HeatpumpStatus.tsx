@@ -11,7 +11,7 @@ export default function HeatpumpStatus({ heatpump, error, isLoading }: HeatpumpS
     <div className="status-item">
       <span className="status-label">
         <span className={`status-dot ${value ? 'on' : 'off'}`} aria-hidden="true" />
-        {label}:
+        <span className="status-text">{label}</span>
       </span>
       <span className={`status-badge ${value ? 'on' : 'off'}`}>
         {value ? 'ON' : 'OFF'}
