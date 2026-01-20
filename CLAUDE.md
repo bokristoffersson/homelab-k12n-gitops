@@ -226,86 +226,25 @@ kubectl exec -n timescaledb pod -- psql -U postgres -d telemetry -c "ALTER TABLE
 
 ### Kubernetes Operations
 
-**CRITICAL**: Always use the RAG-K8S tool via **Python direct calls** for Kubernetes operations instead of direct kubectl commands. Do not run the HTTP server.
-
-**When to use RAG-K8S** (REQUIRED for these operations):
-- Restarting deployments/pods
-- Viewing logs
-- Diagnosing issues (describe, events)
-- Scaling resources
-- Checking rollout status
-- Any operation that modifies cluster state
-
-**When kubectl is acceptable**:
-- Simple read-only queries (get namespaces, get pods)
-- Namespace discovery (`kubectl get namespaces | grep pattern`)
-- Direct database connections (`kubectl exec -it pod -- psql`)
-- Port forwarding (`kubectl port-forward`)
-
-**RAG-K8S Usage Pattern (Python direct)**:
-```python
-import sys
-sys.path.insert(0, '/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/rag-k8s')
-from agent.tool import k8s_exec
-
-# 1) Always start with dry-run
-result = k8s_exec({
-  "intent": "restart",
-  "resource": "deployment",
-  "namespace": "prod",
-  "name": "api",
-  "constraints": {"dryRun": True}
-})
-
-# 2) Review the generated command
-print(result["plan"]["command"])
-
-# 3) Execute with dryRun: False if safe
-# result = k8s_exec({ ...same..., "constraints": {"dryRun": False} })
-```
+Use `kubectl` directly for all Kubernetes operations.
 
 ### Deployment Workflow
-**IMPORTANT**: After certain changes, deployments must be manually restarted using RAG-K8S.
+**IMPORTANT**: After certain changes, deployments must be manually restarted.
 
 1. **After GitHub Actions builds**: When a new application image is built and pushed to GHCR, Kubernetes doesn't automatically detect it.
 
 2. **After ConfigMap updates**: When ConfigMaps are modified via GitOps, pods don't automatically reload.
 
-**Example workflow with RAG-K8S (Python direct)**:
-```python
-import sys
-sys.path.insert(0, '/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/rag-k8s')
-from agent.tool import k8s_exec
-
+**Example workflow**:
+```bash
 # 1. Wait for GitHub Actions to complete
-# gh run watch
+gh run watch
 
-# 2. Restart deployment (dry-run first)
-k8s_exec({
-  "intent": "restart",
-  "resource": "deployment",
-  "namespace": "homelab-api",
-  "name": "homelab-api",
-  "constraints": {"dryRun": True}
-})
+# 2. Restart deployment
+kubectl rollout restart deployment/homelab-api -n homelab-api
 
-# 3. Execute
-k8s_exec({
-  "intent": "restart",
-  "resource": "deployment",
-  "namespace": "homelab-api",
-  "name": "homelab-api",
-  "constraints": {"dryRun": False}
-})
-
-# 4. Check rollout status
-k8s_exec({
-  "intent": "status",
-  "resource": "deployment",
-  "namespace": "homelab-api",
-  "name": "homelab-api",
-  "constraints": {"dryRun": False}
-})
+# 3. Check rollout status
+kubectl rollout status deployment/homelab-api -n homelab-api
 ```
 
 **Note**: k3s pulls images directly from GHCR, so no manual image import is needed (unlike k3d).
@@ -481,123 +420,63 @@ See `docs/ARCH_REVIEW.md` for complete details.
 
 ## Common Commands
 
-### FluxCD (using RAG-K8S Python direct)
+### FluxCD
 
 **Reconcile kustomization** (after GitOps push):
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "flux-reconcile",
-  "resource": "kustomization",
-  "namespace": "flux-system",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
+```bash
+flux reconcile kustomization <app-name>
 ```
 
 **Check Flux status**:
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "flux-status",
-  "resource": "kustomization",
-  "namespace": "flux-system",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
+```bash
+flux get kustomizations
 ```
 
 **Suspend during maintenance**:
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "flux-suspend",
-  "resource": "kustomization",
-  "namespace": "flux-system",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
+```bash
+flux suspend kustomization <app-name>
 ```
 
 **Resume after maintenance**:
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "flux-resume",
-  "resource": "kustomization",
-  "namespace": "flux-system",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
+```bash
+flux resume kustomization <app-name>
 ```
 
-### Kubernetes (using RAG-K8S Python direct)
+### Kubernetes
 
 **View logs**:
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "logs",
-  "resource": "deployment",
-  "namespace": "<namespace>",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
+```bash
+kubectl logs -n <namespace> deployment/<app-name>
 ```
 
 **Restart deployment**:
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "restart",
-  "resource": "deployment",
-  "namespace": "<namespace>",
-  "name": "<app-name>",
-  "constraints": {"dryRun": True}
-})
-k8s_exec({
-  "intent": "restart",
-  "resource": "deployment",
-  "namespace": "<namespace>",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
-```
-
-**Diagnose deployment issues**:
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "diagnose",
-  "resource": "deployment",
-  "namespace": "<namespace>",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
-```
-
-**Check deployment status**:
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "status",
-  "resource": "deployment",
-  "namespace": "<namespace>",
-  "name": "<app-name>",
-  "constraints": {"dryRun": False}
-})
-```
-
-**Simple queries (kubectl acceptable)**:
 ```bash
-# List namespaces
-kubectl get namespaces
+kubectl rollout restart deployment/<app-name> -n <namespace>
+```
 
-# Get pods in namespace
+**Check rollout status**:
+```bash
+kubectl rollout status deployment/<app-name> -n <namespace>
+```
+
+**Describe deployment**:
+```bash
+kubectl describe deployment/<app-name> -n <namespace>
+```
+
+**Get pods**:
+```bash
 kubectl get pods -n <namespace>
+```
 
-# Direct database connection
-kubectl exec -it -n <namespace> <pod-name> -- psql -U postgres
+**Exec into pod**:
+```bash
+kubectl exec -it -n <namespace> <pod-name> -- /bin/sh
+```
+
+**Port forward**:
+```bash
+kubectl port-forward -n <namespace> deployment/<app-name> 8080:8080
 ```
 
 ### GitHub Actions
@@ -630,8 +509,6 @@ docs/
 
 ## Recent Changes
 
-- Enhanced RAG-K8S with Phase 1 features: FluxCD operations, Job management, ConfigMap viewing (2026-01-13)
-- Added RAG-K8S tool for safe Kubernetes operations with semantic search and RBAC validation (2026-01-13)
 - Deployed heatpump-settings-api service with separate Kafka consumer group (2026-01-11)
 - Replaced Redpanda operator with rpk-based topic management (Job in redpanda-v2 namespace) (2026-01-11)
 - Created comprehensive TechDocs for redpanda-v2 with Backstage integration (2026-01-11)
@@ -640,228 +517,6 @@ docs/
 - Created authentication documentation (2025-12-30)
 - Added Authentik PostgreSQL backup CronJob (2025-12-30)
 - Fixed mqtt-kafka-bridge configuration for Shelly sensor (2025-12-30)
-
-## RAG-K8S Tool (PRIMARY METHOD)
-
-**CRITICAL**: Use the RAG-K8S tool via **Python direct calls** (no HTTP server). This is the REQUIRED method for all Kubernetes operations except simple read-only queries.
-
-### Required Usage Pattern
-
-**ALWAYS follow this pattern for Kubernetes operations**:
-
-```python
-import sys
-sys.path.insert(0, '/Users/bo/Development/homelab/Cursor Workspace/homelab-k12n-gitops/rag-k8s')
-from agent.tool import k8s_exec
-
-result = k8s_exec({
-  "intent": "<intent>",
-  "resource": "<resource>",
-  "namespace": "<namespace>",
-  "name": "<name>",
-  "constraints": {"dryRun": True}
-})
-print(result["plan"]["command"])
-
-# If safe:
-# result = k8s_exec({ ...same..., "constraints": {"dryRun": False} })
-```
-
-### Available Operations
-
-**Kubernetes Resources**:
-- **intents**: restart, diagnose, logs, scale, status, describe, events, top
-- **resources**: deployment, pod, statefulset, node, configmap
-
-**FluxCD Operations** (NEW):
-- **intents**: flux-reconcile, flux-suspend, flux-resume, flux-status
-- **resources**: kustomization
-
-**Job Management** (NEW):
-- **intents**: job-restart
-- **resources**: job
-
-**ConfigMap Viewing** (NEW):
-- **intents**: config-view
-- **resources**: configmap
-
-### Response Format
-```json
-{
-  "operationId": "uuid",
-  "plan": {
-    "command": "kubectl ...",
-    "intent": "restart",
-    "namespace": "prod",
-    "target": "deployment/api",
-    "summary": "Rolling restart of deployment/api in prod namespace"
-  },
-  "validation": {
-    "valid": true,
-    "reasons": []
-  },
-  "result": {
-    "code": 0,
-    "duration": 0.12,
-    "stdoutDigest": "...",
-    "stderrDigest": ""
-  }
-}
-```
-
-### Safety Features
-- **RBAC validation** against allow-lists (`rag-k8s/org/rbac-allowlist.yaml`)
-- **Namespace enforcement** (all commands must specify namespace)
-- **Dangerous operation blocking** (e.g., `delete pod` → suggests `rollout restart`)
-- **Audit logging** to `rag-k8s/logs/agent.log` (JSONL format)
-- **Semantic understanding** (converts intents to correct kubectl commands)
-
-### Safety Protocol (MANDATORY)
-1. **Always** use `dryRun: true` first to preview the command
-2. **Check** `validation.valid` is `true` in response
-3. **Review** the generated command in `plan.command`
-4. **Execute** with `dryRun: false` only if safe
-5. **Never** skip dry-run for state-changing operations
-
-### Common Use Cases
-
-**FluxCD Reconciliation** (after GitOps push):
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "flux-reconcile",
-  "resource": "kustomization",
-  "namespace": "flux-system",
-  "name": "heatpump-settings",
-  "constraints": {"dryRun": False}
-})
-```
-
-**Job Restart** (rerun migrations):
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "job-restart",
-  "resource": "job",
-  "namespace": "heatpump-settings",
-  "name": "postgres-migration",
-  "constraints": {"dryRun": False}
-})
-```
-
-**View ConfigMap** (debug configuration):
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "config-view",
-  "resource": "configmap",
-  "namespace": "heatpump-settings",
-  "name": "postgres-migrations",
-  "constraints": {"dryRun": False}
-})
-```
-
-**Suspend FluxCD** (during maintenance):
-```python
-from agent.tool import k8s_exec
-k8s_exec({
-  "intent": "flux-suspend",
-  "resource": "kustomization",
-  "namespace": "flux-system",
-  "name": "heatpump-settings",
-  "constraints": {"dryRun": False}
-})
-```
-
-### Error Recovery - Namespace Not Found
-When a command fails with "namespace not found", use kubectl directly to discover the correct namespace:
-
-```bash
-# Find namespaces matching a pattern
-kubectl get namespaces | grep -i heatpump
-# Output: heatpump-settings, heatpump-web
-
-# Then retry with the RAG-K8S tool using the correct namespace
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{
-    "intent": "restart",
-    "resource": "deployment",
-    "namespace": "heatpump-settings",
-    "name": "heatpump-settings-api",
-    "constraints": {"dryRun": false}
-  }'
-```
-
-### Audit Trail
-All operations are logged to `rag-k8s/logs/agent.log`:
-```bash
-tail -f rag-k8s/logs/agent.log
-```
-
-Each log entry includes:
-- `operation_id`, `timestamp`, `intent`, `namespace`, `target`
-- Actual `command` executed
-- `exit_code`, `duration`, `stdout_digest`, `stderr_digest`
-
-### GitHub Operations (NEW)
-
-RAG-K8S now supports GitHub CLI (`gh`) operations for workflow and PR management:
-
-**GitHub Workflow Operations**:
-- **intents**: gh-run-watch, gh-run-list, gh-run-view, gh-workflow-view
-- **resources**: workflow
-
-**GitHub Pull Request Operations**:
-- **intents**: gh-pr-list, gh-pr-view
-- **resources**: pull-request
-
-**Example - Watch Workflow Run**:
-```bash
-# Watch latest workflow run
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{
-    "intent": "gh-run-watch",
-    "resource": "workflow",
-    "repo": "bokristoffersson/homelab-k12n-gitops",
-    "constraints": {"dryRun": false}
-  }'
-```
-
-**Example - List Workflow Runs**:
-```bash
-# List recent workflow runs for specific workflow
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{
-    "intent": "gh-run-list",
-    "resource": "workflow",
-    "repo": "bokristoffersson/homelab-k12n-gitops",
-    "workflow": "heatpump-settings-api.yml",
-    "limit": 5,
-    "constraints": {"dryRun": false}
-  }'
-```
-
-**Example - View PR Details**:
-```bash
-# View pull request with comments
-curl -s -X POST http://127.0.0.1:8000/k8s-exec \
-  -H "Content-Type: application/json" \
-  -d '{
-    "intent": "gh-pr-view",
-    "resource": "pull-request",
-    "repo": "bokristoffersson/homelab-k12n-gitops",
-    "pr_number": 123,
-    "comments": true,
-    "constraints": {"dryRun": false}
-  }'
-```
-
-### Python Direct Method (Required)
-
-Use Python direct calls for all RAG-K8S usage. Do not run the HTTP server.
 
 ## Notes
 

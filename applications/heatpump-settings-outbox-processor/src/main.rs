@@ -101,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Err(e) => {
-                error!("Error processing outbox entries: {}", e);
+            error!("Error processing outbox entries: {}", e);
             }
         }
 
