@@ -121,6 +121,7 @@ fn map_field_to_thermiq_param(field_name: &str) -> Option<String> {
         "curve_zero" => Some("d56".to_string()),
         "curve_minus_5" => Some("d57".to_string()),
         "heatstop" => Some("d58".to_string()),
+        "integral_setting" => Some("d73".to_string()),
         _ => None,
     }
 }
