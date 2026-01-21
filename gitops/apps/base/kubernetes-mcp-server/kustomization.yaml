@@ -4,4 +4,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - rbac.yaml
+  - config-configmap.yaml
   - helmrelease.yaml
+  # Uncomment after creating the sealed secret
+  # - oauth-secret-sealed.yaml
