@@ -1,0 +1,72 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubernetes-mcp-server-viewer
+rules:
+  # Allow read-only access to most resources
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - configmaps
+      - persistentvolumeclaims
+      - persistentvolumes
+      - nodes
+      - events
+    verbs: ["get", "list", "watch"]
+  
+  # Apps
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - daemonsets
+      - statefulsets
+      - replicasets
+    verbs: ["get", "list", "watch"]
+  
+  # Batch
+  - apiGroups: ["batch"]
+    resources:
+      - jobs
+      - cronjobs
+    verbs: ["get", "list", "watch"]
+  
+  # Networking
+  - apiGroups: ["networking.k8s.io"]
+    resources:
+      - ingresses
+      - networkpolicies
+    verbs: ["get", "list", "watch"]
+  
+  # Helm
+  - apiGroups: ["helm.toolkit.fluxcd.io", "source.toolkit.fluxcd.io", "kustomize.toolkit.fluxcd.io"]
+    resources:
+      - helmreleases
+      - helmrepositories
+      - helmcharts
+      - kustomizations
+      - gitrepositories
+    verbs: ["get", "list", "watch"]
+  
+  # Custom resources
+  - apiGroups: ["*"]
+    resources:
+      - "*"
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubernetes-mcp-server-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubernetes-mcp-server-viewer
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-mcp-server
+    namespace: kubernetes-mcp-server
