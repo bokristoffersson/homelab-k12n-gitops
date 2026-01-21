@@ -9,8 +9,9 @@ spec:
     - web  # Port 8000
   routes:
     # Kubernetes MCP Server
-    # OIDC authentication is handled by the MCP server itself
-    - match: Host(`api.k12n.com`) && PathPrefix(`/mcp/kubernetes`)
+    # Server expects: /mcp, /sse, /message paths (no base path support)
+    # Using /mcp directly - future MCP servers will need subdomains
+    - match: Host(`api.k12n.com`) && (Path(`/mcp`) || PathPrefix(`/sse`) || PathPrefix(`/message`))
       kind: Rule
       middlewares:
         - name: https-scheme
@@ -19,21 +20,21 @@ spec:
           namespace: traefik
         - name: security-headers
           namespace: traefik
-        - name: mcp-kubernetes-stripprefix
-          namespace: traefik
       services:
         - name: kubernetes-mcp-server
           namespace: kubernetes-mcp-server
           port: 8080
 
 ---
-# Middleware to rewrite /mcp/kubernetes/* to /mcp/*
+# Middleware to strip /mcp/kubernetes prefix
+# Server expects: /mcp, /sse, /message
+# Requests come as: /mcp/kubernetes/*, /mcp/kubernetes/sse, /mcp/kubernetes/message
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
   name: mcp-kubernetes-stripprefix
   namespace: traefik
 spec:
-  replacePathRegex:
-    regex: ^/mcp/kubernetes(/.*)?$
-    replacement: /mcp$1
+  stripPrefix:
+    prefixes:
+      - /mcp/kubernetes
