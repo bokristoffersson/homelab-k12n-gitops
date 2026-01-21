@@ -9,9 +9,10 @@ spec:
     - web  # Port 8000
   routes:
     # Kubernetes MCP Server
-    # Server expects: /mcp, /sse, /message paths (no base path support)
-    # Using /mcp directly - future MCP servers will need subdomains
-    - match: Host(`api.k12n.com`) && (Path(`/mcp`) || PathPrefix(`/sse`) || PathPrefix(`/message`))
+    # Incoming: /models/kubernetes/{mcp,sse,message}
+    # Strip: /models/kubernetes
+    # Server receives: /{mcp,sse,message}
+    - match: Host(`api.k12n.com`) && PathPrefix(`/models/kubernetes/`)
       kind: Rule
       middlewares:
         - name: https-scheme
@@ -20,15 +21,15 @@ spec:
           namespace: traefik
         - name: security-headers
           namespace: traefik
+        - name: mcp-kubernetes-stripprefix
+          namespace: traefik
       services:
         - name: kubernetes-mcp-server
           namespace: kubernetes-mcp-server
           port: 8080
 
 ---
-# Middleware to strip /mcp/kubernetes prefix
-# Server expects: /mcp, /sse, /message
-# Requests come as: /mcp/kubernetes/*, /mcp/kubernetes/sse, /mcp/kubernetes/message
+# Middleware to strip /models/kubernetes prefix
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -37,4 +38,4 @@ metadata:
 spec:
   stripPrefix:
     prefixes:
-      - /mcp/kubernetes
+      - /models/kubernetes
