@@ -1,0 +1,33 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-mcp-server-config
+  namespace: kubernetes-mcp-server
+data:
+  config.toml: |
+    # Kubernetes MCP Server Configuration
+    
+    # OIDC Authentication with Authentik
+    require_oauth = true
+    oauth_audience = "kubernetes-mcp-server"
+    oauth_scopes = ["openid", "profile", "email"]
+    validate_token = false  # Token validation happens at K8s API server level
+    
+    # Authorization URL for OIDC discovery
+    authorization_url = "https://authentik.k12n.com/application/o/kubernetes-mcp/"
+    
+    # Security Token Service (STS) for token exchange
+    # This allows the MCP server to exchange the user's token for a K8s API token
+    sts_client_id = "kubernetes-mcp-server"
+    sts_audience = "kubernetes-mcp-server"
+    sts_scopes = ["openid"]
+    
+    # Server settings
+    [server]
+    port = 8080
+    host = "0.0.0.0"
+    
+    # Logging
+    [logging]
+    level = "info"

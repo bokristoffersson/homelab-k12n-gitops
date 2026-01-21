@@ -7,3 +7,4 @@ resources:
   - authentik-routes.yaml
   - backstage-routes.yaml
   - frontend-routes.yaml
+  - mcp-routes.yaml
