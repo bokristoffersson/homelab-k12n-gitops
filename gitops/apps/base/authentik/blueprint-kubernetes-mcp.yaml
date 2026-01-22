@@ -17,13 +17,11 @@ data:
         identifiers:
           name: kubernetes-mcp
         attrs:
-          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          authorization_flow: !Find [authentik_flows.flow, [slug,  default-provider-authorization-code]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
           client_type: confidential
           client_id: kubernetes-mcp-server
           redirect_uris:
-            - matching_mode: strict
-              url: "https://api.k12n.com/models/kubernetes/callback"
             - matching_mode: strict
               url: "cursor://anysphere.cursor-mcp/oauth/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
