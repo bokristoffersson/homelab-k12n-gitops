@@ -9,4 +9,3 @@ resources:
   - postgres-operator.yaml
   - redpanda.yaml
   - actions-runner-controller.yaml
-  - kubernetes-mcp-server.yaml
