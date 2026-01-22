@@ -24,6 +24,8 @@ data:
           redirect_uris:
             - matching_mode: strict
               url: "https://api.k12n.com/models/kubernetes/callback"
+            - matching_mode: strict
+              url: "cursor://anysphere.cursor-mcp/oauth/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           access_code_validity: minutes=1
           access_token_validity: hours=1
