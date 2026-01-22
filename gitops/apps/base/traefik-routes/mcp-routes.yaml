@@ -12,7 +12,7 @@ spec:
     # Incoming: /models/kubernetes/{mcp,sse,message}
     # Strip: /models/kubernetes
     # Server receives: /{mcp,sse,message}
-    - match: Host(`api.k12n.com`) && PathPrefix(`/models/kubernetes/`)
+    - match: Host(`api.k12n.com`) && (Path(`/models/kubernetes`) || PathPrefix(`/models/kubernetes/`))
       kind: Rule
       middlewares:
         - name: https-scheme
