@@ -1,0 +1,24 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-mcp-server
+  namespace: kubernetes-mcp-server
+data:
+  config.toml: |
+    # Kubernetes MCP Server Configuration with OIDC
+    port = "8080"
+    
+    # OIDC Authentication
+    require_oauth = true
+    oauth_audience = "kubernetes-mcp-server"
+    oauth_scopes = ["openid", "profile", "email"]
+    validate_token = false
+    
+    # Authentik OIDC endpoints
+    authorization_url = "https://authentik.k12n.com/application/o/kubernetes-mcp/"
+    
+    # Security Token Service for token exchange  
+    sts_client_id = "kubernetes-mcp-server"
+    sts_audience = "kubernetes-mcp-server"
+    sts_scopes = ["openid"]
