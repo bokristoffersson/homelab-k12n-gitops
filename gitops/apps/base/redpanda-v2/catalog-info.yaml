@@ -12,8 +12,8 @@ metadata:
     - redpanda
     - messaging
   links:
-    - url: http://localhost:8080
-      title: Redpanda Console (port-forward)
+    - url: https://redpanda.k12n.com
+      title: Redpanda Console
       icon: dashboard
 spec:
   type: service

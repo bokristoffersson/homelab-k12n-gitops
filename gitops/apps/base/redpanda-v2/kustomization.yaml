@@ -6,3 +6,4 @@ resources:
   # ServiceMonitor removed - Prometheus Operator CRDs not installed
   # - servicemonitor.yaml
   - topics
+  - redpanda-console-oidc-sealed.yaml
