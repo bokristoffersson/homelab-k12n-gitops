@@ -109,3 +109,5 @@ spec:
                   name: blueprint-backstage
               - configMap:
                   name: blueprint-claude-mcp
+              - configMap:
+                  name: blueprint-redpanda-console

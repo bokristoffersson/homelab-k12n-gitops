@@ -8,3 +8,4 @@ resources:
   - backstage-routes.yaml
   - frontend-routes.yaml
   - mcp-routes.yaml
+  - redpanda-console-routes.yaml
