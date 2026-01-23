@@ -100,5 +100,9 @@ data:
       - hostname: whoami.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80
 
+      # Redpanda Console (via Traefik)
+      - hostname: redpanda.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:80
+
       # Catch-all rule (required)
       - service: http_status:404
