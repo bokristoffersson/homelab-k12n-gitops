@@ -22,6 +22,7 @@ resources:
   - blueprint-oauth2-proxy.yaml
   - blueprint-backstage.yaml
   - blueprint-claude-mcp.yaml
+  - blueprint-redpanda-console.yaml
   - blueprint-apply-job.yaml
 
   - postgres-secret-sealed.yaml
