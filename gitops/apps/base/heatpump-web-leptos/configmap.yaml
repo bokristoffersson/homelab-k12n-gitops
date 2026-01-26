@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: heatpump-web-leptos-config
+  namespace: heatpump-web-leptos
+data:
+  # API URLs - runtime configuration
+  VITE_API_URL: "https://heatpump-leptos.k12n.com"
+  VITE_WS_URL: "wss://heatpump-leptos.k12n.com"

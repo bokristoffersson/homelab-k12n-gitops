@@ -104,14 +104,10 @@ impl Default for ApiClient {
 fn get_api_url() -> String {
     #[cfg(target_arch = "wasm32")]
     {
-        use wasm_bindgen::JsCast;
-
         if let Some(window) = web_sys::window() {
             if let Ok(env) = js_sys::Reflect::get(&window, &JsValue::from_str("ENV")) {
                 if !env.is_undefined() {
-                    if let Ok(api_url) =
-                        js_sys::Reflect::get(&env, &JsValue::from_str("API_URL"))
-                    {
+                    if let Ok(api_url) = js_sys::Reflect::get(&env, &JsValue::from_str("API_URL")) {
                         if let Some(url) = api_url.as_string() {
                             return url;
                         }

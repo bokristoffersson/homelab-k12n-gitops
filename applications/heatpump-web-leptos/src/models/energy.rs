@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Latest energy reading from the power meter
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnergyLatest {
     pub ts: String,
@@ -20,6 +21,7 @@ pub struct HourlyTotal {
 }
 
 /// Hourly energy breakdown
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EnergyHourly {
     pub hour_start: String,

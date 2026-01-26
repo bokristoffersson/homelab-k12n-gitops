@@ -22,9 +22,7 @@ fn Navbar() -> impl IntoView {
     let location = use_location();
 
     // Check if a path is active
-    let is_active = move |path: &str| {
-        location.pathname.get().starts_with(path)
-    };
+    let is_active = move |path: &str| location.pathname.get().starts_with(path);
 
     view! {
         <nav class="navbar">
@@ -103,7 +101,7 @@ fn ThemeToggle() -> impl IntoView {
 
     let icon = move || {
         match theme_ctx.theme.get() {
-            Theme::Light => "Dark",  // Show what clicking will do
+            Theme::Light => "Dark", // Show what clicking will do
             Theme::Dark => "Light",
         }
     };

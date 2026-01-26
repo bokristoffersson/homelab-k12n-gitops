@@ -1,6 +1,6 @@
-use leptos::*;
 use crate::api::ApiClient;
-use crate::models::{HeatpumpSetting, SettingPatch, HeatpumpMode};
+use crate::models::{HeatpumpMode, HeatpumpSetting, SettingPatch};
+use leptos::*;
 
 use super::adjustable_field::AdjustableField;
 
@@ -35,7 +35,7 @@ pub fn Settings() -> impl IntoView {
 
     // When update completes, refetch settings
     create_effect(move |_| {
-        if let Some(_) = update_setting.value().get() {
+        if update_setting.value().get().is_some() {
             set_trigger.update(|n| *n += 1);
         }
     });
@@ -136,11 +136,15 @@ fn SettingsCard(
     let device_id = device_id.clone();
 
     // Get mode display string
-    let mode_display = setting.mode
-        .and_then(|m| HeatpumpMode::from_i32(m))
+    let mode_display = setting
+        .mode
+        .and_then(HeatpumpMode::from_i32)
         .map(|m| m.as_str().to_string())
         .unwrap_or_else(|| {
-            setting.mode.map(|m| format!("Unknown ({})", m)).unwrap_or("N/A".to_string())
+            setting
+                .mode
+                .map(|m| format!("Unknown ({})", m))
+                .unwrap_or("N/A".to_string())
         });
 
     view! {
@@ -160,7 +164,7 @@ fn SettingsCard(
                     device_id=device_id.clone()
                     field_name="indoor_target_temp"
                     unit="°C"
-                    on_adjust=on_adjust.clone()
+                    on_adjust=on_adjust
                     is_pending=is_pending
                 />
                 <div class="setting-item">
@@ -177,7 +181,7 @@ fn SettingsCard(
                     device_id=device_id.clone()
                     field_name="curve"
                     unit=""
-                    on_adjust=on_adjust.clone()
+                    on_adjust=on_adjust
                     is_pending=is_pending
                 />
                 <AdjustableField
@@ -186,7 +190,7 @@ fn SettingsCard(
                     device_id=device_id.clone()
                     field_name="curve_min"
                     unit="°C"
-                    on_adjust=on_adjust.clone()
+                    on_adjust=on_adjust
                     is_pending=is_pending
                 />
                 <AdjustableField
@@ -195,7 +199,7 @@ fn SettingsCard(
                     device_id=device_id.clone()
                     field_name="curve_max"
                     unit="°C"
-                    on_adjust=on_adjust.clone()
+                    on_adjust=on_adjust
                     is_pending=is_pending
                 />
             </div>
@@ -208,7 +212,7 @@ fn SettingsCard(
                     device_id=device_id.clone()
                     field_name="heatstop"
                     unit=""
-                    on_adjust=on_adjust.clone()
+                    on_adjust=on_adjust
                     is_pending=is_pending
                 />
                 <AdjustableField
@@ -217,7 +221,7 @@ fn SettingsCard(
                     device_id=device_id.clone()
                     field_name="integral_setting"
                     unit=""
-                    on_adjust=on_adjust.clone()
+                    on_adjust=on_adjust
                     is_pending=is_pending
                 />
             </div>

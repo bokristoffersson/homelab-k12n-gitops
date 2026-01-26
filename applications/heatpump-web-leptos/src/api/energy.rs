@@ -1,6 +1,7 @@
 use super::client::{ApiClient, ApiError};
 use crate::models::{EnergyHourly, EnergyLatest, HourlyTotal};
 
+#[allow(dead_code)]
 impl ApiClient {
     /// Get the latest energy reading
     pub async fn get_energy_latest(&self) -> Result<EnergyLatest, ApiError> {

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heatpump-web-leptos
+  namespace: heatpump-web-leptos
+  labels:
+    app: heatpump-web-leptos
+    backstage.io/kubernetes-id: heatpump-web-leptos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: heatpump-web-leptos
+  template:
+    metadata:
+      labels:
+        app: heatpump-web-leptos
+        backstage.io/kubernetes-id: heatpump-web-leptos
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: web
+          image: ghcr.io/bokristoffersson/heatpump-web-leptos:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: VITE_API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-leptos-config
+                  key: VITE_API_URL
+            - name: VITE_WS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-leptos-config
+                  key: VITE_WS_URL
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5

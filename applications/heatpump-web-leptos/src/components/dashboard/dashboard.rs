@@ -1,8 +1,8 @@
-use leptos::*;
 use crate::api::ApiClient;
+use leptos::*;
 
-use super::hourly_total_card::HourlyTotalCard;
 use super::heatpump_status_card::HeatpumpStatusCard;
+use super::hourly_total_card::HourlyTotalCard;
 use super::temperatures_card::TemperaturesCard;
 
 /// Dashboard page component with data fetching

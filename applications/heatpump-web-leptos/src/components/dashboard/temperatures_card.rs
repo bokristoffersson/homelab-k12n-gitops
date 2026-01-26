@@ -1,6 +1,6 @@
-use leptos::*;
 use crate::api::ApiError;
 use crate::models::{HeatpumpStatus, TemperatureLatest};
+use leptos::*;
 
 #[component]
 pub fn TemperaturesCard(
@@ -11,9 +11,9 @@ pub fn TemperaturesCard(
         Ok(hp) => {
             // Get indoor temperature if available
             let indoor = indoor_temp.ok().and_then(|temps| {
-                temps.into_iter().find(|t| {
-                    t.location.as_ref().map(|l| l == "indoor").unwrap_or(false)
-                })
+                temps
+                    .into_iter()
+                    .find(|t| t.location.as_ref().map(|l| l == "indoor").unwrap_or(false))
             });
 
             view! {
@@ -39,24 +39,20 @@ pub fn TemperaturesCard(
                 </div>
             }.into_view()
         }
-        Err(e) => {
-            view! {
-                <div class="card card-error">
-                    <h3>"Temperatures"</h3>
-                    <div class="error-message">
-                        {format!("Error: {}", e)}
-                    </div>
+        Err(e) => view! {
+            <div class="card card-error">
+                <h3>"Temperatures"</h3>
+                <div class="error-message">
+                    {format!("Error: {}", e)}
                 </div>
-            }.into_view()
+            </div>
         }
+        .into_view(),
     }
 }
 
 #[component]
-fn TempItem(
-    label: &'static str,
-    value: Option<f64>,
-) -> impl IntoView {
+fn TempItem(label: &'static str, value: Option<f64>) -> impl IntoView {
     view! {
         <div class="temp-item">
             <span class="temp-label">{label}":"</span>

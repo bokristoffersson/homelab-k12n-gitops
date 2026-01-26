@@ -1,6 +1,6 @@
-use leptos::*;
 use crate::api::ApiError;
 use crate::models::{HeatpumpSetting, SettingPatch};
+use leptos::*;
 
 /// Adjustable field with +/- buttons
 #[component]
@@ -53,16 +53,16 @@ pub fn AdjustableField(
                         </button>
                     </div>
                 </div>
-            }.into_view()
+            }
+            .into_view()
         }
-        None => {
-            view! {
-                <div class="setting-item">
-                    <span class="setting-label">{label}</span>
-                    <span class="setting-value">"N/A"</span>
-                </div>
-            }.into_view()
+        None => view! {
+            <div class="setting-item">
+                <span class="setting-label">{label}</span>
+                <span class="setting-value">"N/A"</span>
+            </div>
         }
+        .into_view(),
     }
 }
 

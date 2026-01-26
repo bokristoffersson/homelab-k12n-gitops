@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Outbox entry for async command processing
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutboxEntry {
     pub id: i64,
@@ -19,6 +20,7 @@ pub struct OutboxEntry {
 }
 
 /// Outbox status enum
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OutboxStatus {
@@ -28,6 +30,7 @@ pub enum OutboxStatus {
     Failed,
 }
 
+#[allow(dead_code)]
 impl OutboxStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -44,6 +47,7 @@ impl OutboxStatus {
 }
 
 /// Outbox list response
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OutboxResponse {
     pub data: Vec<OutboxEntry>,

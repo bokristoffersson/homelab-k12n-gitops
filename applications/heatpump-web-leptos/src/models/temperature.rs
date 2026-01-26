@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Full temperature reading from a sensor
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TemperatureReading {
     pub time: String,

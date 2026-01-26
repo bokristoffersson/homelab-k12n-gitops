@@ -1,6 +1,7 @@
 use super::client::{ApiClient, ApiError};
 use crate::models::{HeatpumpSetting, SettingPatch, SettingsResponse};
 
+#[allow(dead_code)]
 impl ApiClient {
     /// Get all heatpump settings
     pub async fn get_settings(&self) -> Result<SettingsResponse, ApiError> {
