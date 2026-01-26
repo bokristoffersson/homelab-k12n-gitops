@@ -23,10 +23,12 @@ COPY style ./style
 COPY public ./public
 COPY Trunk.toml ./
 
+# Force rebuild of actual code (not cached dependencies)
+# This touch invalidates Cargo's cache for the lib crate
+RUN touch src/lib.rs
+
 # Build the WASM application with Trunk
-# Touch lib.rs to force rebuild of actual code (not cached dependencies)
-RUN touch src/lib.rs && \
-    trunk build --release
+RUN trunk build --release
 
 # Stage 2: Serve with nginx
 FROM nginx:alpine
