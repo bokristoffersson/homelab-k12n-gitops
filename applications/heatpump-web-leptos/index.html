@@ -14,8 +14,7 @@
     <link data-trunk rel="css" href="style/components/dashboard.css" />
     <link data-trunk rel="css" href="style/components/settings.css" />
 
-    <!-- Runtime configuration (injected by container) -->
-    <link data-trunk rel="copy-file" href="public/env-config.js" />
+    <!-- Runtime configuration (injected by Docker entrypoint via envsubst) -->
     <script src="/env-config.js"></script>
 </head>
 <body>

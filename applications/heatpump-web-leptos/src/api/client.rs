@@ -23,6 +23,11 @@ impl From<gloo_net::Error> for ApiError {
 }
 
 /// API client for making HTTP requests
+///
+/// Authentication is handled by oauth2-proxy via HTTP-only cookies.
+/// The client sends credentials with each request, and oauth2-proxy
+/// validates the session cookie before forwarding to backend APIs.
+/// On 401, redirect to oauth2-proxy login page.
 #[derive(Clone)]
 pub struct ApiClient {
     base_url: String,

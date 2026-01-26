@@ -42,6 +42,7 @@ jobs:
         run: cargo fmt --check
 
       - name: Run clippy
+        # module_inception allowed: Leptos convention uses mod.rs + same-named file (e.g., dashboard/mod.rs + dashboard/dashboard.rs)
         run: cargo clippy --target wasm32-unknown-unknown -- -D warnings -A clippy::module_inception
 
   build:
