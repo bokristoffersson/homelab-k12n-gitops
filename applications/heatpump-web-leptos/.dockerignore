@@ -1,0 +1,15 @@
+# Build output
+/dist/
+/target/
+
+# IDE
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+LICENSE

@@ -1,0 +1,6 @@
+// Runtime environment configuration
+// Injected at container startup via envsubst
+window.ENV = {
+  API_URL: "${VITE_API_URL:-https://heatpump.k12n.com}",
+  WS_URL: "${VITE_WS_URL:-wss://heatpump.k12n.com}",
+};

@@ -1,0 +1,157 @@
+.dashboard {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--bg-secondary);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px var(--shadow);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card h3 {
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.power-value, .energy-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--accent);
+  margin: 1rem 0;
+}
+
+.unit {
+  font-size: 1.5rem;
+  font-weight: normal;
+  color: var(--text-secondary);
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Status grid for heatpump status */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
+}
+
+.status-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  min-height: 2.25rem;
+}
+
+.status-label {
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.status-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background-color: var(--status-off-bg);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.15);
+}
+
+.status-dot.on {
+  background-color: var(--success-bg);
+}
+
+.status-dot.off {
+  background-color: var(--status-off-bg);
+}
+
+/* Temperature grid */
+.temp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.temp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.temp-label {
+  color: var(--text-primary);
+}
+
+.temp-value {
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.humidity-info {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+/* Chart cards span full width */
+.chart-card {
+  grid-column: 1 / -1;
+}
+
+/* Loading and error states */
+.no-data {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.card-error {
+  border: 2px solid var(--error-border);
+  background-color: var(--error-bg);
+}
+
+.error-message {
+  padding: 1rem;
+  text-align: center;
+  color: var(--error-text);
+  font-size: 0.9rem;
+}
+
+.placeholder-text {
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}

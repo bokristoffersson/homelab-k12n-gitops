@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Heatpump Monitor</title>
+
+    <!-- Trunk will inject the WASM bundle here -->
+    <link data-trunk rel="rust" data-wasm-opt="z" />
+
+    <!-- CSS stylesheets -->
+    <link data-trunk rel="css" href="style/main.css" />
+    <link data-trunk rel="css" href="style/components/layout.css" />
+    <link data-trunk rel="css" href="style/components/dashboard.css" />
+    <link data-trunk rel="css" href="style/components/settings.css" />
+
+    <!-- Runtime configuration (injected by container) -->
+    <link data-trunk rel="copy-file" href="public/env-config.js" />
+    <script src="/env-config.js"></script>
+</head>
+<body>
+    <!-- Leptos will mount here -->
+    <noscript>
+        <p>This application requires JavaScript to be enabled.</p>
+    </noscript>
+</body>
+</html>

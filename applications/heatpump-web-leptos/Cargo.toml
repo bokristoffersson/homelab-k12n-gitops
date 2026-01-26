@@ -1,0 +1,56 @@
+[package]
+name = "heatpump-web-leptos"
+version = "0.1.0"
+edition = "2021"
+description = "Heatpump monitoring dashboard built with Leptos WASM"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Leptos framework
+leptos = { version = "0.6", features = ["csr"] }
+leptos_router = { version = "0.6", features = ["csr"] }
+
+# WASM essentials
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"
+console_log = "1.0"
+log = "0.4"
+
+# Browser APIs
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Storage",
+    "MediaQueryList",
+    "Location",
+] }
+js-sys = "0.3"
+
+# HTTP and async
+gloo-net = { version = "0.6", features = ["http", "websocket"] }
+gloo-timers = "0.3"
+wasm-bindgen-futures = "0.4"
+futures = "0.3"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+
+# Error handling
+thiserror = "2.0"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[profile.release]
+# Optimize for size in release builds
+opt-level = "z"
+lto = true
+codegen-units = 1
