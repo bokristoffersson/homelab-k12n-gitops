@@ -27,8 +27,17 @@ web-sys = { version = "0.3", features = [
     "Storage",
     "MediaQueryList",
     "Location",
+    "Crypto",
+    "SubtleCrypto",
+    "TextEncoder",
 ] }
 js-sys = "0.3"
+
+# Storage
+gloo-storage = "0.3"
+
+# Base64 encoding for PKCE
+base64 = "0.22"
 
 # HTTP and async
 gloo-net = { version = "0.6", features = ["http", "websocket"] }

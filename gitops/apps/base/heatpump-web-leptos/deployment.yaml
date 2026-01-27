@@ -37,6 +37,21 @@ spec:
                 configMapKeyRef:
                   name: heatpump-web-leptos-config
                   key: VITE_WS_URL
+            - name: VITE_AUTHENTIK_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-leptos-config
+                  key: VITE_AUTHENTIK_URL
+            - name: VITE_OAUTH_CLIENT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-leptos-config
+                  key: VITE_OAUTH_CLIENT_ID
+            - name: VITE_OAUTH_REDIRECT_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: heatpump-web-leptos-config
+                  key: VITE_OAUTH_REDIRECT_URI
           resources:
             requests:
               cpu: 50m

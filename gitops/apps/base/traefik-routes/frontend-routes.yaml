@@ -77,21 +77,12 @@ spec:
           namespace: heatpump-web
           port: 80
 
-    # ===== Heatpump Leptos Frontend (test deployment) =====
+    # ===== Heatpump Leptos Frontend (OIDC with JWT auth) =====
+    # Uses OAuth2 Authorization Code Flow with PKCE directly with Authentik.
+    # Backend APIs validate JWT tokens via Authentik's JWKS endpoint.
+    # No oauth2-proxy ForwardAuth middleware needed.
 
-    # OAuth2 Proxy Callbacks for Leptos frontend
-    - match: Host(`heatpump-leptos.k12n.com`) && PathPrefix(`/oauth2`)
-      kind: Rule
-      priority: 100
-      middlewares:
-        - name: https-scheme
-          namespace: traefik
-      services:
-        - name: oauth2-proxy
-          namespace: oauth2-proxy
-          port: 4180
-
-    # WebSocket for Leptos frontend
+    # WebSocket for Leptos frontend (JWT via query param)
     - match: Host(`heatpump-leptos.k12n.com`) && PathPrefix(`/ws`)
       kind: Rule
       priority: 95
@@ -105,14 +96,12 @@ spec:
           namespace: energy-ws
           port: 8080
 
-    # Heatpump Settings API for Leptos frontend
+    # Heatpump Settings API for Leptos frontend (JWT in Authorization header)
     - match: Host(`heatpump-leptos.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
       kind: Rule
       priority: 95
       middlewares:
         - name: https-scheme
-          namespace: traefik
-        - name: oauth2-proxy-auth
           namespace: traefik
         - name: cors
           namespace: traefik
@@ -121,14 +110,12 @@ spec:
           namespace: heatpump-settings
           port: 8080
 
-    # API Proxy for Leptos frontend
+    # API Proxy for Leptos frontend (JWT in Authorization header)
     - match: Host(`heatpump-leptos.k12n.com`) && PathPrefix(`/api`)
       kind: Rule
       priority: 90
       middlewares:
         - name: https-scheme
-          namespace: traefik
-        - name: oauth2-proxy-auth
           namespace: traefik
         - name: cors
           namespace: traefik
@@ -137,7 +124,7 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Heatpump Leptos Frontend (public SPA)
+    # Heatpump Leptos Frontend (public SPA - handles OIDC flow)
     - match: Host(`heatpump-leptos.k12n.com`)
       kind: Rule
       middlewares:

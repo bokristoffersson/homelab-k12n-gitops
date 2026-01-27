@@ -3,6 +3,7 @@ use wasm_bindgen::prelude::*;
 
 mod api;
 mod app;
+mod auth;
 mod components;
 mod models;
 mod state;

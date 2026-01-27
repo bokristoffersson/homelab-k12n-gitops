@@ -1,7 +1,11 @@
+//! API client with OAuth2 JWT authentication
+
 use gloo_net::http::Request;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use wasm_bindgen::JsValue;
+
+use crate::auth::{get_access_token, is_authenticated, needs_refresh, OAuthService};
 
 /// API error types
 #[derive(Error, Debug, Clone)]
@@ -24,10 +28,10 @@ impl From<gloo_net::Error> for ApiError {
 
 /// API client for making HTTP requests
 ///
-/// Authentication is handled by oauth2-proxy via HTTP-only cookies.
-/// The client sends credentials with each request, and oauth2-proxy
-/// validates the session cookie before forwarding to backend APIs.
-/// On 401, redirect to oauth2-proxy login page.
+/// Authentication uses OAuth2 Authorization Code Flow with PKCE.
+/// JWT access tokens are stored in localStorage and included in
+/// the Authorization header as Bearer tokens. Backend APIs validate
+/// the JWT signature using Authentik's JWKS endpoint.
 #[derive(Clone)]
 pub struct ApiClient {
     base_url: String,
@@ -42,12 +46,22 @@ impl ApiClient {
 
     /// Make a GET request and deserialize the response
     pub async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, ApiError> {
+        // Check if token needs refresh before making request
+        if needs_refresh() {
+            let oauth = OAuthService::new();
+            let _ = oauth.refresh_token().await;
+        }
+
         let url = format!("{}{}", self.base_url, path);
 
-        let response = Request::get(&url)
-            .credentials(web_sys::RequestCredentials::Include) // Send cookies
-            .send()
-            .await?;
+        let mut request = Request::get(&url);
+
+        // Add Authorization header if we have a token
+        if let Some(token) = get_access_token() {
+            request = request.header("Authorization", &format!("Bearer {}", token));
+        }
+
+        let response = request.send().await?;
 
         self.handle_response(response).await
     }
@@ -58,11 +72,22 @@ impl ApiClient {
         path: &str,
         body: &B,
     ) -> Result<T, ApiError> {
+        // Check if token needs refresh before making request
+        if needs_refresh() {
+            let oauth = OAuthService::new();
+            let _ = oauth.refresh_token().await;
+        }
+
         let url = format!("{}{}", self.base_url, path);
 
-        let response = Request::patch(&url)
-            .credentials(web_sys::RequestCredentials::Include)
-            .header("Content-Type", "application/json")
+        let mut request = Request::patch(&url).header("Content-Type", "application/json");
+
+        // Add Authorization header if we have a token
+        if let Some(token) = get_access_token() {
+            request = request.header("Authorization", &format!("Bearer {}", token));
+        }
+
+        let response = request
             .json(body)
             .map_err(|e| ApiError::Network(e.to_string()))?
             .send()
@@ -79,7 +104,7 @@ impl ApiClient {
         let status = response.status();
 
         if status == 401 {
-            // Redirect to login
+            // Token expired or invalid - trigger OAuth login
             redirect_to_login();
             return Err(ApiError::Unauthorized);
         }
@@ -105,6 +130,11 @@ impl Default for ApiClient {
     }
 }
 
+/// Check if user is authenticated
+pub fn check_authenticated() -> bool {
+    is_authenticated()
+}
+
 /// Get API URL from window.ENV or use default
 fn get_api_url() -> String {
     #[cfg(target_arch = "wasm32")]
@@ -123,17 +153,17 @@ fn get_api_url() -> String {
     }
 
     // Default fallback
-    "https://heatpump.k12n.com".to_string()
+    "https://heatpump-leptos.k12n.com".to_string()
 }
 
-/// Redirect to oauth2-proxy login
+/// Redirect to OAuth login flow
 fn redirect_to_login() {
     #[cfg(target_arch = "wasm32")]
     {
-        if let Some(window) = web_sys::window() {
-            if let Ok(_location) = window.location().href() {
-                let _ = window.location().set_href("/oauth2/sign_in");
-            }
-        }
+        // Use spawn_local to call async login in sync context
+        wasm_bindgen_futures::spawn_local(async {
+            let oauth = OAuthService::new();
+            oauth.login().await;
+        });
     }
 }

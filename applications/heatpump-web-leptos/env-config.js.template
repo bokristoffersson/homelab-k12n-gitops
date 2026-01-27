@@ -1,6 +1,9 @@
 // Runtime environment configuration
 // Injected at container startup via envsubst
 window.ENV = {
-  API_URL: "${VITE_API_URL:-https://heatpump.k12n.com}",
-  WS_URL: "${VITE_WS_URL:-wss://heatpump.k12n.com}",
+  API_URL: "${VITE_API_URL:-https://heatpump-leptos.k12n.com}",
+  WS_URL: "${VITE_WS_URL:-wss://heatpump-leptos.k12n.com}",
+  AUTHENTIK_URL: "${VITE_AUTHENTIK_URL:-https://authentik.k12n.com}",
+  OAUTH_CLIENT_ID: "${VITE_OAUTH_CLIENT_ID:-heatpump-web-leptos}",
+  OAUTH_REDIRECT_URI: "${VITE_OAUTH_REDIRECT_URI:-https://heatpump-leptos.k12n.com/auth/callback}",
 };
