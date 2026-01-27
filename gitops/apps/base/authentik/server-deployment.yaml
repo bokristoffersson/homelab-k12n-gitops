@@ -114,4 +114,4 @@ spec:
               - configMap:
                   name: authentik-blueprint-homelab-macos
               - configMap:
-                  name: blueprint-homelab-macos
+                  name: authentik-blueprint-homelab-macos
