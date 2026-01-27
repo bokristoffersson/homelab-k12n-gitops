@@ -8,7 +8,9 @@ spec:
   headers:
     accessControlAllowOriginList:
       - https://heatpump.k12n.com
+      - https://heatpump-leptos.k12n.com
       - http://localhost:5173
+      - http://localhost:8080
     accessControlAllowMethods:
       - GET
       - POST

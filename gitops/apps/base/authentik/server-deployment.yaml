@@ -111,3 +111,5 @@ spec:
                   name: blueprint-claude-mcp
               - configMap:
                   name: blueprint-redpanda-console
+              - configMap:
+                  name: blueprint-homelab-macos

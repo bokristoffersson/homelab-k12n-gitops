@@ -1,0 +1,17 @@
+[build]
+# The index HTML file to drive the bundling process
+target = "index.html"
+# The output dir for all final assets
+dist = "dist"
+
+[watch]
+# Paths to watch for changes
+watch = ["src", "style", "index.html"]
+
+[serve]
+# The port to serve on
+port = 8080
+# The addresses to serve on
+addresses = ["127.0.0.1"]
+# Open browser on serve
+open = false

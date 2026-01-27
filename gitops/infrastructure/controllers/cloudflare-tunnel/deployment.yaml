@@ -104,5 +104,9 @@ data:
       - hostname: redpanda.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80
 
+      # Heatpump Leptos Frontend (via Traefik)
+      - hostname: heatpump-leptos.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:80
+
       # Catch-all rule (required)
       - service: http_status:404
