@@ -1,0 +1,288 @@
+asyncapi: 2.6.0
+info:
+  title: Energy WebSocket API
+  version: 1.0.0
+  description: |
+    Real-time WebSocket API for streaming energy data from Redpanda/Kafka.
+
+    ## Connection
+    Connect to `/ws/energy?token=<jwt>` with a valid JWT token.
+
+    ## Authentication
+    JWT token must be provided as a query parameter. Token is validated against
+    Authentik's JWKS endpoint.
+
+    ## Protocol
+    - Client sends JSON messages to subscribe/unsubscribe to streams
+    - Server pushes JSON messages with real-time data
+    - Ping/pong for keepalive
+  license:
+    name: Private
+  contact:
+    name: Homelab K12n
+
+servers:
+  production:
+    url: wss://energy-ws.k12n.com/ws/energy
+    protocol: wss
+    description: Production WebSocket server
+  development:
+    url: ws://localhost:8082/ws/energy
+    protocol: ws
+    description: Local development server
+
+channels:
+  /ws/energy:
+    description: WebSocket endpoint for real-time energy data
+    parameters:
+      token:
+        description: JWT authentication token
+        schema:
+          type: string
+    subscribe:
+      summary: Receive messages from server
+      message:
+        oneOf:
+          - $ref: '#/components/messages/DataMessage'
+          - $ref: '#/components/messages/PongMessage'
+          - $ref: '#/components/messages/ErrorMessage'
+          - $ref: '#/components/messages/SubscribedMessage'
+          - $ref: '#/components/messages/UnsubscribedMessage'
+    publish:
+      summary: Send messages to server
+      message:
+        oneOf:
+          - $ref: '#/components/messages/SubscribeMessage'
+          - $ref: '#/components/messages/UnsubscribeMessage'
+          - $ref: '#/components/messages/PingMessage'
+
+components:
+  messages:
+    SubscribeMessage:
+      name: Subscribe
+      title: Subscribe to streams
+      summary: Subscribe to one or more data streams
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - streams
+        properties:
+          type:
+            type: string
+            const: subscribe
+          streams:
+            type: array
+            items:
+              type: string
+              enum:
+                - energy
+            description: List of streams to subscribe to
+        example:
+          type: subscribe
+          streams:
+            - energy
+
+    UnsubscribeMessage:
+      name: Unsubscribe
+      title: Unsubscribe from streams
+      summary: Unsubscribe from one or more data streams
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - streams
+        properties:
+          type:
+            type: string
+            const: unsubscribe
+          streams:
+            type: array
+            items:
+              type: string
+            description: List of streams to unsubscribe from
+        example:
+          type: unsubscribe
+          streams:
+            - energy
+
+    PingMessage:
+      name: Ping
+      title: Keepalive ping
+      summary: Send ping to keep connection alive
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+        properties:
+          type:
+            type: string
+            const: ping
+        example:
+          type: ping
+
+    DataMessage:
+      name: Data
+      title: Real-time data update
+      summary: Server pushes data from subscribed streams
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - stream
+          - timestamp
+          - data
+        properties:
+          type:
+            type: string
+            const: data
+          stream:
+            type: string
+            description: Stream name (e.g., "energy")
+          timestamp:
+            type: string
+            format: date-time
+            description: RFC3339 timestamp
+          data:
+            type: object
+            description: Stream-specific data payload
+            additionalProperties: true
+        example:
+          type: data
+          stream: energy
+          timestamp: "2025-01-27T10:30:00Z"
+          data:
+            consumption_total_w: 1500
+            consumption_l1_actual_w: 500
+            consumption_l2_actual_w: 500
+            consumption_l3_actual_w: 500
+
+    PongMessage:
+      name: Pong
+      title: Keepalive pong response
+      summary: Server response to client ping
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - timestamp
+        properties:
+          type:
+            type: string
+            const: pong
+          timestamp:
+            type: string
+            format: date-time
+            description: Server timestamp
+        example:
+          type: pong
+          timestamp: "2025-01-27T10:30:00Z"
+
+    ErrorMessage:
+      name: Error
+      title: Error notification
+      summary: Server sends error when something goes wrong
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - message
+          - code
+        properties:
+          type:
+            type: string
+            const: error
+          message:
+            type: string
+            description: Human-readable error message
+          code:
+            type: string
+            description: Error code for programmatic handling
+            enum:
+              - auth_failed
+              - invalid_message
+              - stream_not_found
+              - internal_error
+        example:
+          type: error
+          message: "Authentication failed: token expired"
+          code: auth_failed
+
+    SubscribedMessage:
+      name: Subscribed
+      title: Subscription confirmation
+      summary: Server confirms successful subscription
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - streams
+        properties:
+          type:
+            type: string
+            const: subscribed
+          streams:
+            type: array
+            items:
+              type: string
+            description: List of newly subscribed streams
+        example:
+          type: subscribed
+          streams:
+            - energy
+
+    UnsubscribedMessage:
+      name: Unsubscribed
+      title: Unsubscription confirmation
+      summary: Server confirms successful unsubscription
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - type
+          - streams
+        properties:
+          type:
+            type: string
+            const: unsubscribed
+          streams:
+            type: array
+            items:
+              type: string
+            description: List of unsubscribed streams
+        example:
+          type: unsubscribed
+          streams:
+            - energy
+
+  schemas:
+    EnergyData:
+      type: object
+      description: Real-time energy reading from smart meter
+      properties:
+        consumption_total_w:
+          type: integer
+          description: Total consumption in watts
+        consumption_total_actual_w:
+          type: integer
+          format: int64
+          description: Total actual consumption in watts
+        consumption_l1_actual_w:
+          type: integer
+          format: int64
+          description: L1 phase consumption in watts
+        consumption_l2_actual_w:
+          type: integer
+          format: int64
+          description: L2 phase consumption in watts
+        consumption_l3_actual_w:
+          type: integer
+          format: int64
+          description: L3 phase consumption in watts

@@ -1,0 +1,795 @@
+openapi: 3.0.3
+info:
+  title: Homelab API
+  description: |
+    Read-only REST API for serving telemetry data from TimescaleDB.
+
+    This API provides access to:
+    - Energy consumption data from smart meter
+    - Heatpump telemetry and statistics
+    - Temperature/humidity readings from Shelly sensors
+
+    ## Authentication
+    All `/api/v1/*` endpoints require JWT authentication via Authentik OIDC.
+    Include the JWT token in the Authorization header: `Authorization: Bearer <token>`
+  version: 1.0.0
+  contact:
+    name: Homelab K12n
+  license:
+    name: Private
+servers:
+  - url: https://api.k12n.com
+    description: Production server
+  - url: http://localhost:8080
+    description: Local development
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: User
+    description: User information
+  - name: Energy
+    description: Energy consumption data
+  - name: Heatpump
+    description: Heatpump telemetry
+  - name: Temperature
+    description: Temperature sensor readings
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns OK if the service is healthy
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: OK
+
+  /api/v1/user/info:
+    get:
+      tags:
+        - User
+      summary: Get current user info
+      description: Returns information about the authenticated user
+      operationId: getUserInfo
+      responses:
+        '200':
+          description: User information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/energy/latest:
+    get:
+      tags:
+        - Energy
+      summary: Get latest energy reading
+      description: Returns the most recent energy consumption reading
+      operationId: getEnergyLatest
+      responses:
+        '200':
+          description: Latest energy reading
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnergyLatest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/energy/hourly-total:
+    get:
+      tags:
+        - Energy
+      summary: Get current hourly total
+      description: Returns the total energy consumption for the current hour
+      operationId: getEnergyHourlyTotal
+      responses:
+        '200':
+          description: Hourly total
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HourlyTotal'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/energy/history:
+    get:
+      tags:
+        - Energy
+      summary: Get energy history
+      description: Returns hourly aggregated energy data for the specified time range
+      operationId: getEnergyHistory
+      parameters:
+        - $ref: '#/components/parameters/FromRequired'
+        - $ref: '#/components/parameters/ToOptional'
+      responses:
+        '200':
+          description: Energy history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnergyHourly'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/energy/daily-summary:
+    get:
+      tags:
+        - Energy
+      summary: Get daily energy summary
+      description: Returns daily aggregated energy consumption
+      operationId: getEnergyDailySummary
+      parameters:
+        - $ref: '#/components/parameters/FromRequired'
+        - $ref: '#/components/parameters/ToOptional'
+      responses:
+        '200':
+          description: Daily energy summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnergySummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/energy/monthly-summary:
+    get:
+      tags:
+        - Energy
+      summary: Get monthly energy summary
+      description: Returns monthly aggregated energy consumption
+      operationId: getEnergyMonthlySummary
+      parameters:
+        - $ref: '#/components/parameters/FromRequired'
+        - $ref: '#/components/parameters/ToOptional'
+      responses:
+        '200':
+          description: Monthly energy summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnergySummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/energy/yearly-summary:
+    get:
+      tags:
+        - Energy
+      summary: Get yearly energy summary
+      description: Returns yearly aggregated energy consumption
+      operationId: getEnergyYearlySummary
+      parameters:
+        - $ref: '#/components/parameters/FromRequired'
+        - $ref: '#/components/parameters/ToOptional'
+      responses:
+        '200':
+          description: Yearly energy summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EnergySummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/heatpump/latest:
+    get:
+      tags:
+        - Heatpump
+      summary: Get latest heatpump reading
+      description: Returns the most recent heatpump telemetry
+      operationId: getHeatpumpLatest
+      parameters:
+        - name: device_id
+          in: query
+          description: Filter by specific device ID
+          required: false
+          schema:
+            type: string
+            example: "ivt-495"
+      responses:
+        '200':
+          description: Latest heatpump reading
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeatpumpLatest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/heatpump/daily-summary:
+    get:
+      tags:
+        - Heatpump
+      summary: Get daily heatpump summary
+      description: Returns daily aggregated heatpump statistics including runtime increases
+      operationId: getHeatpumpDailySummary
+      parameters:
+        - $ref: '#/components/parameters/FromRequired'
+        - $ref: '#/components/parameters/ToOptional'
+        - name: device_id
+          in: query
+          description: Filter by specific device ID
+          required: false
+          schema:
+            type: string
+            example: "ivt-495"
+      responses:
+        '200':
+          description: Daily heatpump summary
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HeatpumpDailySummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/temperature/latest:
+    get:
+      tags:
+        - Temperature
+      summary: Get latest temperature reading for location
+      description: Returns the most recent temperature reading for a specific location
+      operationId: getTemperatureLatest
+      parameters:
+        - name: location
+          in: query
+          description: Sensor location
+          required: true
+          schema:
+            type: string
+            example: "bedroom"
+      responses:
+        '200':
+          description: Latest temperature reading
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemperatureLatest'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/temperature/all-latest:
+    get:
+      tags:
+        - Temperature
+      summary: Get latest readings from all sensors
+      description: Returns the most recent temperature reading from each sensor location
+      operationId: getTemperatureAllLatest
+      responses:
+        '200':
+          description: Latest readings from all sensors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TemperatureLatest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/temperature/history:
+    get:
+      tags:
+        - Temperature
+      summary: Get temperature history
+      description: Returns temperature readings for a location over time
+      operationId: getTemperatureHistory
+      parameters:
+        - name: location
+          in: query
+          description: Sensor location
+          required: true
+          schema:
+            type: string
+            example: "bedroom"
+        - name: hours
+          in: query
+          description: Hours of history to retrieve (default 24)
+          required: false
+          schema:
+            type: integer
+            default: 24
+            minimum: 1
+            maximum: 168
+      responses:
+        '200':
+          description: Temperature history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TemperatureReading'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Authentik OIDC
+
+  parameters:
+    FromRequired:
+      name: from
+      in: query
+      description: Start time (RFC3339/ISO8601 format)
+      required: true
+      schema:
+        type: string
+        format: date-time
+        example: "2025-01-01T00:00:00Z"
+    ToOptional:
+      name: to
+      in: query
+      description: End time (RFC3339/ISO8601 format). Defaults to now.
+      required: false
+      schema:
+        type: string
+        format: date-time
+        example: "2025-01-31T23:59:59Z"
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Error message
+          example: "Missing required parameter: from"
+
+    UserInfo:
+      type: object
+      required:
+        - token
+        - username
+        - expires_in
+      properties:
+        token:
+          type: string
+          description: JWT token
+        username:
+          type: string
+          description: Username
+          example: "admin"
+        email:
+          type: string
+          format: email
+          description: User email (optional)
+          example: "admin@example.com"
+        expires_in:
+          type: integer
+          format: int64
+          description: Token expiration in seconds
+          example: 3600
+
+    EnergyLatest:
+      type: object
+      required:
+        - ts
+      properties:
+        ts:
+          type: string
+          format: date-time
+          description: Timestamp of the reading
+        consumption_total_w:
+          type: integer
+          format: int32
+          nullable: true
+          description: Total consumption in watts
+        consumption_total_actual_w:
+          type: integer
+          format: int64
+          nullable: true
+          description: Total actual consumption in watts
+        consumption_l1_actual_w:
+          type: integer
+          format: int64
+          nullable: true
+          description: L1 phase consumption in watts
+        consumption_l2_actual_w:
+          type: integer
+          format: int64
+          nullable: true
+          description: L2 phase consumption in watts
+        consumption_l3_actual_w:
+          type: integer
+          format: int64
+          nullable: true
+          description: L3 phase consumption in watts
+
+    HourlyTotal:
+      type: object
+      required:
+        - total_kwh
+        - hour_start
+        - current_time
+      properties:
+        total_kwh:
+          type: number
+          format: double
+          description: Total kWh consumed in current hour
+          example: 1.234
+        hour_start:
+          type: string
+          format: date-time
+          description: Start of the current hour
+        current_time:
+          type: string
+          format: date-time
+          description: Current server time
+
+    EnergyHourly:
+      type: object
+      required:
+        - hour_start
+        - hour_end
+        - measurement_count
+      properties:
+        hour_start:
+          type: string
+          format: date-time
+        hour_end:
+          type: string
+          format: date-time
+        total_energy_kwh:
+          type: number
+          format: double
+          nullable: true
+          description: Total energy consumed in kWh
+        avg_power_l1_kw:
+          type: number
+          format: double
+          nullable: true
+          description: Average L1 phase power in kW
+        avg_power_l2_kw:
+          type: number
+          format: double
+          nullable: true
+          description: Average L2 phase power in kW
+        avg_power_l3_kw:
+          type: number
+          format: double
+          nullable: true
+          description: Average L3 phase power in kW
+        avg_power_total_kw:
+          type: number
+          format: double
+          nullable: true
+          description: Average total power in kW
+        measurement_count:
+          type: integer
+          format: int64
+          description: Number of measurements in this period
+
+    EnergySummary:
+      type: object
+      required:
+        - measurement_count
+      properties:
+        day_start:
+          type: string
+          format: date-time
+          nullable: true
+          description: Start of day (for daily summary)
+        day_end:
+          type: string
+          format: date-time
+          nullable: true
+          description: End of day (for daily summary)
+        month_start:
+          type: string
+          format: date-time
+          nullable: true
+          description: Start of month (for monthly summary)
+        month_end:
+          type: string
+          format: date-time
+          nullable: true
+          description: End of month (for monthly summary)
+        year_start:
+          type: string
+          format: date-time
+          nullable: true
+          description: Start of year (for yearly summary)
+        year_end:
+          type: string
+          format: date-time
+          nullable: true
+          description: End of year (for yearly summary)
+        energy_consumption_kwh:
+          type: number
+          format: double
+          nullable: true
+          description: Total energy consumption in kWh
+        measurement_count:
+          type: integer
+          format: int64
+          description: Number of measurements in this period
+
+    HeatpumpLatest:
+      type: object
+      required:
+        - ts
+      properties:
+        ts:
+          type: string
+          format: date-time
+          description: Timestamp of the reading
+        device_id:
+          type: string
+          nullable: true
+          description: Device identifier
+          example: "ivt-495"
+        compressor_on:
+          type: boolean
+          nullable: true
+          description: Compressor running status
+        hotwater_production:
+          type: boolean
+          nullable: true
+          description: Hot water production active
+        flowlinepump_on:
+          type: boolean
+          nullable: true
+          description: Flow line pump running
+        brinepump_on:
+          type: boolean
+          nullable: true
+          description: Brine pump running
+        aux_heater_3kw_on:
+          type: boolean
+          nullable: true
+          description: 3kW auxiliary heater active
+        aux_heater_6kw_on:
+          type: boolean
+          nullable: true
+          description: 6kW auxiliary heater active
+        outdoor_temp:
+          type: integer
+          format: int16
+          nullable: true
+          description: Outdoor temperature (tenths of degrees C)
+        supplyline_temp:
+          type: integer
+          format: int16
+          nullable: true
+          description: Supply line temperature (tenths of degrees C)
+        returnline_temp:
+          type: integer
+          format: int16
+          nullable: true
+          description: Return line temperature (tenths of degrees C)
+        hotwater_temp:
+          type: integer
+          format: int16
+          nullable: true
+          description: Hot water temperature (tenths of degrees C)
+        brine_out_temp:
+          type: integer
+          format: int16
+          nullable: true
+          description: Brine out temperature (tenths of degrees C)
+        brine_in_temp:
+          type: integer
+          format: int16
+          nullable: true
+          description: Brine in temperature (tenths of degrees C)
+        integral:
+          type: integer
+          format: int16
+          nullable: true
+          description: Integral value
+
+    HeatpumpDailySummary:
+      type: object
+      required:
+        - day
+      properties:
+        day:
+          type: string
+          format: date-time
+          description: Day of the summary
+        daily_runtime_compressor_increase:
+          type: integer
+          format: int64
+          nullable: true
+          description: Compressor runtime increase in seconds
+        daily_runtime_hotwater_increase:
+          type: integer
+          format: int64
+          nullable: true
+          description: Hot water runtime increase in seconds
+        daily_runtime_3kw_increase:
+          type: integer
+          format: int64
+          nullable: true
+          description: 3kW heater runtime increase in seconds
+        daily_runtime_6kw_increase:
+          type: integer
+          format: int64
+          nullable: true
+          description: 6kW heater runtime increase in seconds
+        avg_outdoor_temp:
+          type: number
+          format: double
+          nullable: true
+          description: Average outdoor temperature
+        avg_supplyline_temp:
+          type: number
+          format: double
+          nullable: true
+          description: Average supply line temperature
+        avg_returnline_temp:
+          type: number
+          format: double
+          nullable: true
+          description: Average return line temperature
+        avg_hotwater_temp:
+          type: number
+          format: double
+          nullable: true
+          description: Average hot water temperature
+        avg_brine_out_temp:
+          type: number
+          format: double
+          nullable: true
+          description: Average brine out temperature
+        avg_brine_in_temp:
+          type: number
+          format: double
+          nullable: true
+          description: Average brine in temperature
+
+    TemperatureLatest:
+      type: object
+      required:
+        - time
+      properties:
+        time:
+          type: string
+          format: date-time
+          description: Timestamp of the reading
+        location:
+          type: string
+          nullable: true
+          description: Sensor location
+          example: "bedroom"
+        temperature_c:
+          type: number
+          format: double
+          nullable: true
+          description: Temperature in Celsius
+        humidity:
+          type: number
+          format: double
+          nullable: true
+          description: Relative humidity percentage
+        battery_percent:
+          type: number
+          format: double
+          nullable: true
+          description: Battery level percentage
+
+    TemperatureReading:
+      type: object
+      required:
+        - time
+      properties:
+        time:
+          type: string
+          format: date-time
+          description: Timestamp of the reading
+        device_id:
+          type: string
+          nullable: true
+          description: Device identifier
+        mac_address:
+          type: string
+          nullable: true
+          description: Device MAC address
+        location:
+          type: string
+          nullable: true
+          description: Sensor location
+          example: "bedroom"
+        temperature_c:
+          type: number
+          format: double
+          nullable: true
+          description: Temperature in Celsius
+        temperature_f:
+          type: number
+          format: double
+          nullable: true
+          description: Temperature in Fahrenheit
+        humidity:
+          type: number
+          format: double
+          nullable: true
+          description: Relative humidity percentage
+        wifi_rssi:
+          type: number
+          format: double
+          nullable: true
+          description: WiFi signal strength (dBm)
+        battery_voltage:
+          type: number
+          format: double
+          nullable: true
+          description: Battery voltage
+        battery_percent:
+          type: number
+          format: double
+          nullable: true
+          description: Battery level percentage
