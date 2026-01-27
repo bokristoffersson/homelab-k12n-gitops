@@ -102,4 +102,6 @@ spec:
               - configMap:
                   name: blueprint-redpanda-console
               - configMap:
+                  name: authentik-blueprint-homelab-macos
+              - configMap:
                   name: blueprint-homelab-macos
