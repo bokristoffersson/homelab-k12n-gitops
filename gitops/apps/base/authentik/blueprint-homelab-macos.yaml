@@ -30,6 +30,7 @@ data:
           # PKCE is enforced for public clients in Authentik
           client_type: public
           client_id: homelab-macos
+          audience: "homelab-macos"
           # Custom URL scheme for native macOS app callback
           # Register this URL scheme in your app's Info.plist
           redirect_uris:
