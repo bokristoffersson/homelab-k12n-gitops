@@ -333,4 +333,3 @@ spec:
     - name: energy-ws
     - name: homelab-api
     - name: heatpump-web
-    - name: heatpump-web-leptos
