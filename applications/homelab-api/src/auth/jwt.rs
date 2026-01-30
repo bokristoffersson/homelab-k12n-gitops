@@ -87,7 +87,16 @@ impl JwtValidator {
                 None
             };
 
+            // Validate introspection configuration: if URL is set, credentials are required
             if config.introspection_url.is_some() {
+                if config.introspection_client_id.is_none()
+                    || config.introspection_client_secret.is_none()
+                {
+                    return Err(format!(
+                        "Issuer '{}': introspection_url requires introspection_client_id and introspection_client_secret",
+                        config.name
+                    ).into());
+                }
                 info!(
                     "Issuer '{}' configured for token introspection",
                     config.name
