@@ -19,6 +19,7 @@ resources:
   # Blueprints
   - blueprint-heatpump-web.yaml
   - blueprint-homelab-macos.yaml
+  - blueprint-homelab-api-backend.yaml
   - blueprint-oauth2-proxy.yaml
   - blueprint-backstage.yaml
   - blueprint-claude-mcp.yaml
