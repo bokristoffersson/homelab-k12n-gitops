@@ -44,6 +44,9 @@ struct IssuerEntry {
     issuer: String,
     jwks: Option<Arc<RwLock<JWKS>>>,
     introspection_url: Option<String>,
+    // Client credentials for token introspection (RFC 7662 requires authentication)
+    introspection_client_id: Option<String>,
+    introspection_client_secret: Option<String>,
 }
 
 // Multi-issuer token validator for Authentik
@@ -96,6 +99,8 @@ impl JwtValidator {
                 issuer: config.issuer.clone(),
                 jwks,
                 introspection_url: config.introspection_url,
+                introspection_client_id: config.introspection_client_id,
+                introspection_client_secret: config.introspection_client_secret,
             });
             issuer_index.insert(config.issuer, idx);
         }
@@ -123,6 +128,8 @@ impl JwtValidator {
                 issuer: issuer_clone,
                 jwks: Some(Arc::new(RwLock::new(jwks))),
                 introspection_url: None,
+                introspection_client_id: None,
+                introspection_client_secret: None,
             }],
             issuer_index,
             http_client: reqwest::Client::new(),
@@ -219,7 +226,7 @@ impl JwtValidator {
         for entry in &self.issuers {
             if let Some(ref url) = entry.introspection_url {
                 debug!("Introspecting token with issuer '{}'", entry.name);
-                match self.introspect_with_url(token, url).await {
+                match self.introspect_with_entry(token, url, entry).await {
                     Ok(claims) => {
                         debug!(
                             "Token introspection successful with issuer '{}'",
@@ -240,20 +247,40 @@ impl JwtValidator {
         Err(ValidationError::InvalidSignature)
     }
 
-    async fn introspect_with_url(&self, token: &str, url: &str) -> Result<Claims, ValidationError> {
-        let response = self
-            .http_client
-            .post(url)
-            .form(&[("token", token)])
-            .send()
-            .await
-            .map_err(|e| {
-                warn!("Introspection request failed: {}", e);
-                ValidationError::InvalidSignature
-            })?;
+    async fn introspect_with_entry(
+        &self,
+        token: &str,
+        url: &str,
+        entry: &IssuerEntry,
+    ) -> Result<Claims, ValidationError> {
+        // Build request with optional client credentials (RFC 7662 requires authentication)
+        let mut request = self.http_client.post(url).form(&[("token", token)]);
+
+        // Add Basic auth if client credentials are configured
+        if let (Some(client_id), Some(client_secret)) = (
+            &entry.introspection_client_id,
+            &entry.introspection_client_secret,
+        ) {
+            request = request.basic_auth(client_id, Some(client_secret));
+        } else {
+            warn!(
+                "No client credentials configured for introspection with issuer '{}'. \
+                 RFC 7662 requires authentication - introspection may fail.",
+                entry.name
+            );
+        }
+
+        let response = request.send().await.map_err(|e| {
+            warn!("Introspection request failed: {}", e);
+            ValidationError::InvalidSignature
+        })?;
 
         if !response.status().is_success() {
-            warn!("Introspection endpoint returned {}", response.status());
+            debug!(
+                "Introspection endpoint returned {} for issuer '{}'",
+                response.status(),
+                entry.name
+            );
             return Err(ValidationError::InvalidSignature);
         }
 

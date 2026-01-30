@@ -21,11 +21,17 @@ data:
         - name: heatpump-web
           issuer: "https://authentik.k12n.com/application/o/heatpump-web/"
           introspection_url: "https://authentik.k12n.com/application/o/introspect/"
+          # Client credentials for introspection (injected from SealedSecret)
+          introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
+          introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
 
         # Homelab macOS - Native app (public client, opaque tokens)
         - name: homelab-macos
           issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
           introspection_url: "https://authentik.k12n.com/application/o/introspect/"
+          # Uses same introspection client as heatpump-web
+          introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
+          introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
 
         # Claude MCP - Server-to-server (confidential client, JWT tokens)
         - name: claude-mcp

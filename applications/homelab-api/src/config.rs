@@ -62,6 +62,12 @@ pub struct IssuerConfig {
     // Token introspection URL for opaque tokens (optional if using JWT only)
     #[serde(default)]
     pub introspection_url: Option<String>,
+    // Client credentials for token introspection (required if introspection_url is set)
+    // These should be injected via environment variables from a SealedSecret
+    #[serde(default)]
+    pub introspection_client_id: Option<String>,
+    #[serde(default)]
+    pub introspection_client_secret: Option<String>,
 }
 
 fn default_jwt_expiry_hours() -> u64 {

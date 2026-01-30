@@ -41,6 +41,18 @@ spec:
                 secretKeyRef:
                   name: timescaledb-credentials
                   key: POSTGRES_PASSWORD
+            # Introspection client credentials for opaque token validation
+            # Create SealedSecret with: kubectl create secret generic homelab-api-introspection ...
+            - name: INTROSPECTION_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-api-introspection
+                  key: client-id
+            - name: INTROSPECTION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-api-introspection
+                  key: client-secret
           volumeMounts:
             - name: config
               mountPath: /config
