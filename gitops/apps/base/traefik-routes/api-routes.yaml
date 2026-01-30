@@ -27,7 +27,7 @@ spec:
 
     # Homelab API - Native apps with Bearer token (JWT validated by API)
     # This route MUST come before the oauth2-proxy route to match first
-    - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`) && HeadersRegexp(`Authorization`, `^Bearer .+`)
+    - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
       kind: Rule
       priority: 100
       middlewares:
