@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: authentik-blueprint-heatpump-web
+  name: blueprint-heatpump-web
   namespace: authentik
   labels:
     blueprints.goauthentik.io/instantiate: "true"

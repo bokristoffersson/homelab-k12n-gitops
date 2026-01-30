@@ -100,9 +100,7 @@ spec:
           projected:
             sources:
               - configMap:
-                  name: authentik-blueprint-heatpump-web
-              - configMap:
-                  name: authentik-blueprint-kong-api-gateway
+                  name: blueprint-heatpump-web
               - configMap:
                   name: blueprint-oauth2-proxy
               - configMap:
@@ -112,6 +110,5 @@ spec:
               - configMap:
                   name: blueprint-redpanda-console
               - configMap:
-                  name: authentik-blueprint-homelab-macos
-              - configMap:
-                  name: authentik-blueprint-homelab-macos
+                  name: blueprint-homelab-macos
+

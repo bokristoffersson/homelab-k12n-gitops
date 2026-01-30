@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: authentik-blueprint-homelab-macos
+  name: blueprint-homelab-macos
   namespace: authentik
   labels:
     blueprints.goauthentik.io/instantiate: "true"
