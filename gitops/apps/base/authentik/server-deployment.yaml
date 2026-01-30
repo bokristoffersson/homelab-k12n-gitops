@@ -111,4 +111,6 @@ spec:
                   name: blueprint-redpanda-console
               - configMap:
                   name: blueprint-homelab-macos
+              - configMap:
+                  name: blueprint-homelab-api-backend
 
