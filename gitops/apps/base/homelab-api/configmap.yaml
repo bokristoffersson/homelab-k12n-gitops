@@ -17,19 +17,21 @@ data:
       # Multi-issuer configuration for Authentik OAuth2 providers
       # Public clients use opaque tokens (introspection), confidential clients use JWTs
       issuers:
-        # Heatpump Web - SPA frontend (public client, opaque tokens)
+        # Heatpump Web - SPA frontend (public client)
+        # Supports both JWT validation (via JWKS) and opaque token introspection
         - name: heatpump-web
           issuer: "https://authentik.k12n.com/application/o/heatpump-web/"
+          jwks_url: "https://authentik.k12n.com/application/o/heatpump-web/jwks/"
           introspection_url: "https://authentik.k12n.com/application/o/introspect/"
-          # Client credentials for introspection (injected from SealedSecret)
           introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
           introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
 
-        # Homelab macOS - Native app (public client, opaque tokens)
+        # Homelab macOS - Native app (public client)
+        # Supports both JWT validation (via JWKS) and opaque token introspection
         - name: homelab-macos
           issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
+          jwks_url: "https://authentik.k12n.com/application/o/homelab-macos/jwks/"
           introspection_url: "https://authentik.k12n.com/application/o/introspect/"
-          # Uses same introspection client as heatpump-web
           introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
           introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
 
