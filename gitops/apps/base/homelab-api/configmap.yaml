@@ -14,9 +14,23 @@ data:
       port: 8080
 
     auth:
-      # JWKS-based validation (RS256) for Authentik tokens - Claude MCP client credentials
-      jwks_url: "https://authentik.k12n.com/application/o/claude-mcp/jwks/"
-      issuer: "https://authentik.k12n.com/application/o/claude-mcp/"
+      # Multi-issuer configuration for Authentik OAuth2 providers
+      # Public clients use opaque tokens (introspection), confidential clients use JWTs
+      issuers:
+        # Heatpump Web - SPA frontend (public client, opaque tokens)
+        - name: heatpump-web
+          issuer: "https://authentik.k12n.com/application/o/heatpump-web/"
+          introspection_url: "https://authentik.k12n.com/application/o/introspect/"
 
-      # Placeholder for config parsing compatibility
+        # Homelab macOS - Native app (public client, opaque tokens)
+        - name: homelab-macos
+          issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
+          introspection_url: "https://authentik.k12n.com/application/o/introspect/"
+
+        # Claude MCP - Server-to-server (confidential client, JWT tokens)
+        - name: claude-mcp
+          issuer: "https://authentik.k12n.com/application/o/claude-mcp/"
+          jwks_url: "https://authentik.k12n.com/application/o/claude-mcp/jwks/"
+
+      # Placeholder for config parsing compatibility (legacy)
       jwt_secret: "placeholder"

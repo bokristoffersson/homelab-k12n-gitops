@@ -30,8 +30,30 @@ async fn main() -> Result<(), anyhow::Error> {
     info!("Connected to database");
 
     // Initialize JWT validator if auth is configured
+    // Supports multi-issuer config (preferred) or legacy single-issuer config
     let jwt_validator = if let Some(ref auth_cfg) = cfg.auth {
-        if let (Some(jwks_url), Some(issuer)) = (&auth_cfg.jwks_url, &auth_cfg.issuer) {
+        // Prefer multi-issuer configuration
+        if !auth_cfg.issuers.is_empty() {
+            match auth::JwtValidator::new_multi(auth_cfg.issuers.clone()).await {
+                Ok(validator) => {
+                    info!(
+                        "JWT validator initialized with {} issuers: {:?}",
+                        validator.issuer_count(),
+                        auth_cfg
+                            .issuers
+                            .iter()
+                            .map(|i| i.name.as_str())
+                            .collect::<Vec<_>>()
+                    );
+                    Some(validator)
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to initialize multi-issuer JWT validator: {}", e);
+                    None
+                }
+            }
+        // Fall back to legacy single-issuer config
+        } else if let (Some(jwks_url), Some(issuer)) = (&auth_cfg.jwks_url, &auth_cfg.issuer) {
             match auth::JwtValidator::new(jwks_url, issuer.clone()).await {
                 Ok(validator) => {
                     info!("JWT validator initialized with JWKS from {}", jwks_url);
@@ -43,6 +65,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             }
         } else {
+            info!("No JWT issuer configuration found, skipping JWT validation");
             None
         }
     } else {

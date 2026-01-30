@@ -30,7 +30,6 @@ data:
           # PKCE is enforced for public clients in Authentik
           client_type: public
           client_id: homelab-macos
-          audience: "homelab-macos"
           # Custom URL scheme for native macOS app callback
           # Register this URL scheme in your app's Info.plist
           redirect_uris:
@@ -47,6 +46,9 @@ data:
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
           issuer_mode: per_provider
+          # Use opaque tokens for public clients - client never sees JWT claims
+          # API will introspect tokens to validate and get claims
+          access_token_type: hashed
           # Short-lived authorization code
           access_code_validity: minutes=1
           # Access token validity - reasonable for native app
