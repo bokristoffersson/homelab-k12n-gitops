@@ -1,7 +1,8 @@
 use crate::api::handlers::{auth, energy, health, heatpump, temperature};
+use crate::api::middleware::require_jwt_auth;
 use crate::auth::AppState;
 use crate::mcp::handlers as mcp;
-use axum::{extract::Request, routing::get, Router};
+use axum::{extract::Request, middleware, routing::get, Router};
 use tower_http::trace::TraceLayer;
 use tracing::Level;
 
@@ -9,9 +10,9 @@ pub fn create_router(state: AppState) -> Router {
     // Public routes (no authentication required)
     let public_routes = Router::new().route("/health", get(health::health));
 
-    // API routes (authentication handled by oauth2-proxy/Authentik at ingress level)
+    // API routes protected by JWT auth middleware
+    // Supports both oauth2-proxy headers (web apps) and Bearer tokens (native apps)
     let api_routes = Router::new()
-        .route("/mcp", get(mcp::sse_handler).post(mcp::rpc_handler))
         .route("/api/v1/user/info", get(auth::user_info))
         .route("/api/v1/energy/latest", get(energy::get_latest))
         .route("/api/v1/energy/hourly-total", get(energy::get_hourly_total))
@@ -38,12 +39,25 @@ pub fn create_router(state: AppState) -> Router {
             "/api/v1/temperature/all-latest",
             get(temperature::get_all_latest),
         )
-        .route("/api/v1/temperature/history", get(temperature::get_history));
+        .route("/api/v1/temperature/history", get(temperature::get_history))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_jwt_auth,
+        ));
 
-    // Merge public and API routes
+    // MCP routes (JWT auth via Bearer token)
+    let mcp_routes = Router::new()
+        .route("/mcp", get(mcp::sse_handler).post(mcp::rpc_handler))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_jwt_auth,
+        ));
+
+    // Merge public and protected routes
     Router::new()
         .merge(public_routes)
         .merge(api_routes)
+        .merge(mcp_routes)
         .with_state(state)
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(
