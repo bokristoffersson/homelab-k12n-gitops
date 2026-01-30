@@ -31,6 +31,8 @@ data:
             - matching_mode: strict
               url: "https://heatpump.k12n.com/auth/callback"
             - matching_mode: strict
+              url: "homelab-macos://oauth/callback"
+            - matching_mode: strict
               url: "http://localhost:5173/auth/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
           property_mappings:
