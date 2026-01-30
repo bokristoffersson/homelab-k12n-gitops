@@ -40,11 +40,34 @@ pub struct AuthConfig {
     #[serde(default)]
     pub users: Vec<User>,
 
-    // JWKS configuration (for RS256 validation from Authentik)
+    // Multi-issuer JWKS configuration (for RS256 validation from Authentik)
+    // Supports multiple OAuth2 providers (heatpump-web, homelab-macos, claude-mcp)
+    #[serde(default)]
+    pub issuers: Vec<IssuerConfig>,
+
+    // Legacy single-issuer config (deprecated, use issuers instead)
     #[serde(default)]
     pub jwks_url: Option<String>,
     #[serde(default)]
     pub issuer: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IssuerConfig {
+    pub name: String,
+    pub issuer: String,
+    // JWKS URL for JWT validation (optional if using opaque tokens only)
+    #[serde(default)]
+    pub jwks_url: Option<String>,
+    // Token introspection URL for opaque tokens (optional if using JWT only)
+    #[serde(default)]
+    pub introspection_url: Option<String>,
+    // Client credentials for token introspection (required if introspection_url is set)
+    // These should be injected via environment variables from a SealedSecret
+    #[serde(default)]
+    pub introspection_client_id: Option<String>,
+    #[serde(default)]
+    pub introspection_client_secret: Option<String>,
 }
 
 fn default_jwt_expiry_hours() -> u64 {

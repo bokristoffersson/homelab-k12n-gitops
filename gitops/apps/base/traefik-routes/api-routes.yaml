@@ -25,9 +25,27 @@ spec:
           namespace: heatpump-settings
           port: 8080
 
-    # Homelab API (protected by OAuth2 Proxy ForwardAuth)
+    # Homelab API - Native apps with Bearer token (JWT validated by API)
+    # This route MUST come before the oauth2-proxy route to match first
+    - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`) && HeadersRegexp(`Authorization`, `^Bearer .+`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
+    # Homelab API - Web apps (protected by OAuth2 Proxy ForwardAuth)
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
       kind: Rule
+      priority: 50
       middlewares:
         - name: https-scheme
           namespace: traefik

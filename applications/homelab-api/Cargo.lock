@@ -802,6 +802,7 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-test",
+ "base64 0.22.1",
  "bcrypt",
  "chrono",
  "jsonwebtoken",

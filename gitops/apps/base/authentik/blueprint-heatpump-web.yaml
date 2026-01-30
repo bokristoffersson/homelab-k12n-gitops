@@ -31,8 +31,6 @@ data:
             - matching_mode: strict
               url: "https://heatpump.k12n.com/auth/callback"
             - matching_mode: strict
-              url: "homelab-macos://oauth/callback"
-            - matching_mode: strict
               url: "http://localhost:5173/auth/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
           property_mappings:
@@ -42,6 +40,9 @@ data:
           sub_mode: hashed_user_id
           include_claims_in_id_token: true
           issuer_mode: per_provider
+          # Use opaque tokens for public clients - client never sees JWT claims
+          # API will introspect tokens to validate and get claims
+          access_token_type: hashed
           access_code_validity: minutes=1
           access_token_validity: hours=24
           refresh_token_validity: days=30
