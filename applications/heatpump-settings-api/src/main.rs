@@ -1,4 +1,5 @@
 mod api;
+mod auth;
 mod config;
 mod error;
 mod kafka;
@@ -12,6 +13,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     api::handlers::AppState,
+    auth::JwtValidator,
     config::Config,
     kafka::KafkaConsumerService,
     repositories::{OutboxRepository, SettingsRepository},
@@ -56,11 +58,41 @@ async fn main() -> Result<()> {
         kafka_consumer.run().await;
     });
 
+    // Initialize JWT validator if auth is configured
+    let jwt_validator = if let Some(auth_config) = &config.auth {
+        if !auth_config.issuers.is_empty() {
+            tracing::info!(
+                "Initializing JWT validator with {} issuers",
+                auth_config.issuers.len()
+            );
+            match JwtValidator::new_multi(auth_config.issuers.clone()).await {
+                Ok(validator) => {
+                    tracing::info!("JWT validator initialized successfully");
+                    Some(validator)
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to initialize JWT validator: {} (auth will be disabled)",
+                        e
+                    );
+                    None
+                }
+            }
+        } else {
+            tracing::info!("No issuers configured, JWT auth disabled");
+            None
+        }
+    } else {
+        tracing::info!("Auth not configured, JWT auth disabled");
+        None
+    };
+
     // Create API server
     let app_state = AppState {
         repository: repository.clone(),
         outbox_repository,
         pool: db_pool,
+        jwt_validator,
     };
     let app = api::create_router(app_state);
 

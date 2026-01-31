@@ -3,23 +3,16 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use sqlx::PgPool;
-use std::sync::Arc;
 
 use crate::{
     api::models::{
         OutboxEntriesResponse, OutboxStatusResponse, SettingResponse, SettingsListResponse,
     },
     error::Result,
-    repositories::{outbox::OutboxRepository, settings::SettingPatch, SettingsRepository},
+    repositories::settings::SettingPatch,
 };
 
-#[derive(Clone)]
-pub struct AppState {
-    pub repository: Arc<SettingsRepository>,
-    pub outbox_repository: Arc<OutboxRepository>,
-    pub pool: PgPool,
-}
+use super::AppState;
 
 /// GET /api/v1/heatpump/settings
 /// Returns all device settings
