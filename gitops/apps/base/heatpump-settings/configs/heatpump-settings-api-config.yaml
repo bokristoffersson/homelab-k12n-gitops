@@ -18,6 +18,15 @@ kafka:
   enable_auto_commit: true
   auto_commit_interval_ms: 5000
 
+auth:
+  issuers:
+    # Homelab macOS - Native app (public client, opaque tokens)
+    - name: homelab-macos
+      issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
+      introspection_url: "https://authentik.k12n.com/application/o/introspect/"
+      introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
+      introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
+
 logging:
   level: "info"
   format: "json"

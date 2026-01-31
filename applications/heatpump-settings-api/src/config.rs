@@ -9,6 +9,8 @@ pub struct Config {
     pub kafka: KafkaConfig,
     #[allow(dead_code)]
     pub logging: LoggingConfig,
+    #[serde(default)]
+    pub auth: Option<AuthConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -40,6 +42,26 @@ pub struct KafkaConfig {
 pub struct LoggingConfig {
     pub level: String,
     pub format: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct AuthConfig {
+    #[serde(default)]
+    pub issuers: Vec<IssuerConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct IssuerConfig {
+    pub name: String,
+    pub issuer: String,
+    #[serde(default)]
+    pub jwks_url: Option<String>,
+    #[serde(default)]
+    pub introspection_url: Option<String>,
+    #[serde(default)]
+    pub introspection_client_id: Option<String>,
+    #[serde(default)]
+    pub introspection_client_secret: Option<String>,
 }
 
 impl Config {

@@ -8,9 +8,27 @@ spec:
   entryPoints:
     - web  # Port 8000
   routes:
-    # Heatpump Settings API (protected by OAuth2 Proxy ForwardAuth)
+    # Heatpump Settings API - Native apps with Bearer token (JWT validated by API)
+    # This route MUST come before the oauth2-proxy route to match first
+    - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
+      kind: Rule
+      priority: 110
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: heatpump-settings-api
+          namespace: heatpump-settings
+          port: 8080
+
+    # Heatpump Settings API - Web apps (protected by OAuth2 Proxy ForwardAuth)
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
       kind: Rule
+      priority: 90
       middlewares:
         - name: https-scheme
           namespace: traefik
