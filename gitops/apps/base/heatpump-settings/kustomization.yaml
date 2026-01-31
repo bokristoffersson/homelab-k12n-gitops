@@ -14,6 +14,7 @@ resources:
   - backup-aws-credentials-sealed.yaml
   - postgres-credentials-sealed.yaml
   - mqtt-credentials-sealed.yaml
+  - heatpump-settings-api-introspection-sealed.yaml
 
 configMapGenerator:
   - name: heatpump-settings-config
