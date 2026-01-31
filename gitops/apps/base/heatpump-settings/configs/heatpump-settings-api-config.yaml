@@ -20,12 +20,10 @@ kafka:
 
 auth:
   issuers:
-    # Homelab macOS - Native app (public client, opaque tokens)
+    # Homelab macOS - Native app (public client, JWT validation via JWKS)
     - name: homelab-macos
       issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
-      introspection_url: "https://authentik.k12n.com/application/o/introspect/"
-      introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
-      introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
+      jwks_url: "https://authentik.k12n.com/application/o/homelab-macos/jwks/"
 
 logging:
   level: "info"
