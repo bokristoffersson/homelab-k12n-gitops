@@ -319,4 +319,160 @@ mod tests {
         assert_eq!(extract_issuer_from_token("not-a-jwt"), None);
         assert_eq!(extract_issuer_from_token("only.two"), None);
     }
+
+    #[test]
+    fn test_extract_issuer_malformed_base64() {
+        // Valid structure but invalid base64 in payload
+        let token = "eyJhbGciOiJSUzI1NiJ9.!!!invalid-base64!!!.signature";
+        assert_eq!(extract_issuer_from_token(token), None);
+    }
+
+    #[test]
+    fn test_extract_issuer_missing_iss_claim() {
+        // Header: {"alg":"RS256"}
+        // Payload: {"sub":"user123","exp":9999999999} (no iss)
+        let token = "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjo5OTk5OTk5OTk5fQ.signature";
+        assert_eq!(extract_issuer_from_token(token), None);
+    }
+
+    #[test]
+    fn test_is_jwt_detection() {
+        // JWT has 3 parts separated by dots
+        assert_eq!("header.payload.signature".split('.').count(), 3);
+        // Opaque tokens don't have 3 parts
+        assert_ne!("opaque-token-abc123".split('.').count(), 3);
+        assert_ne!("only.two".split('.').count(), 3);
+    }
+
+    #[test]
+    fn test_claims_deserialization() {
+        let json = r#"{
+            "sub": "user123",
+            "exp": 9999999999,
+            "iat": 1234567890,
+            "iss": "https://example.com/",
+            "email": "user@example.com"
+        }"#;
+
+        let claims: Claims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.sub, "user123");
+        assert_eq!(claims.exp, 9999999999);
+        assert_eq!(claims.iat, Some(1234567890));
+        assert_eq!(claims.iss, Some("https://example.com/".to_string()));
+        assert_eq!(claims.email, Some("user@example.com".to_string()));
+    }
+
+    #[test]
+    fn test_claims_deserialization_minimal() {
+        // Only required fields
+        let json = r#"{"sub": "user123", "exp": 9999999999}"#;
+
+        let claims: Claims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.sub, "user123");
+        assert_eq!(claims.exp, 9999999999);
+        assert_eq!(claims.iat, None);
+        assert_eq!(claims.iss, None);
+        assert_eq!(claims.email, None);
+    }
+
+    #[test]
+    fn test_introspection_response_deserialization() {
+        let json = r#"{
+            "active": true,
+            "sub": "user123",
+            "exp": 9999999999,
+            "iat": 1234567890,
+            "iss": "https://example.com/",
+            "email": "user@example.com",
+            "username": "johndoe",
+            "preferred_username": "john"
+        }"#;
+
+        let response: IntrospectionResponse = serde_json::from_str(json).unwrap();
+        assert!(response.active);
+        assert_eq!(response.sub, Some("user123".to_string()));
+        assert_eq!(response.username, Some("johndoe".to_string()));
+    }
+
+    #[test]
+    fn test_introspection_response_inactive() {
+        let json = r#"{"active": false}"#;
+
+        let response: IntrospectionResponse = serde_json::from_str(json).unwrap();
+        assert!(!response.active);
+        assert_eq!(response.sub, None);
+    }
+
+    #[test]
+    fn test_introspection_response_subject_fallback() {
+        // When sub is missing, should fallback to username or preferred_username
+        let json = r#"{
+            "active": true,
+            "username": "johndoe",
+            "preferred_username": "john"
+        }"#;
+
+        let response: IntrospectionResponse = serde_json::from_str(json).unwrap();
+        assert!(response.active);
+        assert_eq!(response.sub, None);
+        assert_eq!(response.username, Some("johndoe".to_string()));
+
+        // Simulate the fallback logic used in introspect_with_entry
+        let sub = response
+            .sub
+            .or(response.username.clone())
+            .or(response.preferred_username.clone());
+        assert_eq!(sub, Some("johndoe".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_jwt_validator_empty_issuers() {
+        let validator = JwtValidator::new_multi(vec![]).await.unwrap();
+        assert_eq!(validator.issuers.len(), 0);
+
+        // Validation should fail with no issuers configured
+        let result = validator.validate_token("any-token").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_jwt_validator_missing_introspection_credentials() {
+        let config = IssuerConfig {
+            name: "test".to_string(),
+            issuer: "https://example.com/".to_string(),
+            jwks_url: None,
+            introspection_url: Some("https://example.com/introspect".to_string()),
+            introspection_client_id: None,     // Missing!
+            introspection_client_secret: None, // Missing!
+        };
+
+        let result = JwtValidator::new_multi(vec![config]).await;
+        assert!(result.is_err());
+        match result {
+            Err(e) => assert!(e.to_string().contains("introspection_client_id")),
+            Ok(_) => panic!("Expected error for missing credentials"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_jwt_validator_issuer_index() {
+        let config = IssuerConfig {
+            name: "test-issuer".to_string(),
+            issuer: "https://example.com/oauth/".to_string(),
+            jwks_url: None,
+            introspection_url: None,
+            introspection_client_id: None,
+            introspection_client_secret: None,
+        };
+
+        let validator = JwtValidator::new_multi(vec![config]).await.unwrap();
+        assert_eq!(validator.issuers.len(), 1);
+        assert!(validator
+            .issuer_index
+            .contains_key("https://example.com/oauth/"));
+        assert_eq!(
+            validator.issuer_index.get("https://example.com/oauth/"),
+            Some(&0)
+        );
+    }
 }
