@@ -54,7 +54,7 @@ spec:
               value: "info"
             # Gunicorn worker configuration for Raspberry Pi
             - name: AUTHENTIK_WEB__WORKERS
-              value: "1"
+              value: "2"
             - name: AUTHENTIK_WEB__TIMEOUT
               value: "120"
             # Bootstrap admin credentials
@@ -79,10 +79,10 @@ spec:
               readOnly: true
           resources:
             requests:
-              cpu: 100m
+              cpu: 500m
               memory: 512Mi
             limits:
-              cpu: 1000m
+              cpu: 2000m
               memory: 1Gi
           livenessProbe:
             httpGet:
