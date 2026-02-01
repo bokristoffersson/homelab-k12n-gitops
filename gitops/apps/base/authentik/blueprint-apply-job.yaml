@@ -103,4 +103,6 @@ spec:
                   name: blueprint-homelab-macos
               - configMap:
                   name: blueprint-homelab-api-backend
+              - configMap:
+                  name: blueprint-traefikoidc
 
