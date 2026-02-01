@@ -9,16 +9,14 @@ export const api = axios.create({
   withCredentials: true,  // Send cookies with requests
 });
 
-// Handle 401 responses by redirecting to OIDC login
+// TODO: Re-enable 401 redirect when traefikoidc is working
+// For now, just let errors propagate to the UI
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log auth errors for debugging
     if (error.response?.status === 401) {
-      // Store current path for redirect after auth
-      sessionStorage.setItem('auth_redirect', window.location.pathname);
-      // Redirect to auth login to trigger OIDC flow
-      window.location.href = '/auth/login';
-      return new Promise(() => {}); // Prevent error propagation during redirect
+      console.warn('API returned 401 - authentication required');
     }
     return Promise.reject(error);
   }

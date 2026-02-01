@@ -8,35 +8,7 @@ spec:
   entryPoints:
     - web
   routes:
-    # OIDC Callback - handled by traefikoidc plugin
-    - match: Host(`heatpump.k12n.com`) && PathPrefix(`/oidc/callback`)
-      kind: Rule
-      priority: 105
-      middlewares:
-        - name: https-scheme
-          namespace: traefik
-        - name: traefikoidc-auth
-          namespace: traefik
-      services:
-        - name: heatpump-web
-          namespace: heatpump-web
-          port: 80
-
-    # Auth Login - triggers OIDC flow via traefikoidc
-    - match: Host(`heatpump.k12n.com`) && PathPrefix(`/auth/login`)
-      kind: Rule
-      priority: 100
-      middlewares:
-        - name: https-scheme
-          namespace: traefik
-        - name: traefikoidc-auth
-          namespace: traefik
-      services:
-        - name: heatpump-web
-          namespace: heatpump-web
-          port: 80
-
-    # WebSocket - JWT auth via query parameter (no traefikoidc)
+    # WebSocket (no auth for now)
     - match: Host(`heatpump.k12n.com`) && PathPrefix(`/ws`)
       kind: Rule
       priority: 95
@@ -50,7 +22,7 @@ spec:
           namespace: energy-ws
           port: 8080
 
-    # Heatpump Settings API - protected by traefikoidc
+    # Heatpump Settings API (no auth for now - TODO: re-enable traefikoidc)
     - match: Host(`heatpump.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
       kind: Rule
       priority: 95
@@ -59,14 +31,12 @@ spec:
           namespace: traefik
         - name: cors
           namespace: traefik
-        - name: traefikoidc-auth
-          namespace: traefik
       services:
         - name: heatpump-settings-api
           namespace: heatpump-settings
           port: 8080
 
-    # API Proxy - protected by traefikoidc
+    # API Proxy (no auth for now - TODO: re-enable traefikoidc)
     - match: Host(`heatpump.k12n.com`) && PathPrefix(`/api`)
       kind: Rule
       priority: 90
@@ -75,14 +45,12 @@ spec:
           namespace: traefik
         - name: cors
           namespace: traefik
-        - name: traefikoidc-auth
-          namespace: traefik
       services:
         - name: homelab-api
           namespace: homelab-api
           port: 8080
 
-    # Heatpump Web Frontend - public SPA (no traefikoidc)
+    # Heatpump Web Frontend (no auth for now - TODO: re-enable traefikoidc)
     - match: Host(`heatpump.k12n.com`)
       kind: Rule
       middlewares:
