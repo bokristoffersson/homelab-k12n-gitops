@@ -9,24 +9,18 @@ export const api = axios.create({
   withCredentials: true,  // Send cookies with requests
 });
 
-// Response interceptor to handle 401 - redirect to trigger OIDC flow
-// traefikoidc middleware handles authentication via session cookies
+// TODO: Re-enable 401 redirect when traefikoidc is working
+// For now, just let errors propagate to the UI
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Log auth errors for debugging
     if (error.response?.status === 401) {
-      // Store current location for post-login redirect
-      sessionStorage.setItem('auth_redirect', window.location.pathname);
-      // Redirect to /auth/login which is protected by traefikoidc
-      // This triggers the OIDC flow with Authentik
-      window.location.href = '/auth/login';
+      console.warn('API returned 401 - authentication required');
     }
     return Promise.reject(error);
   }
 );
-
-// Authentication is handled by traefikoidc middleware via session cookies
-// No client-side OAuth2 code needed
 
 
 
