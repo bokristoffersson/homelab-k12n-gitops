@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
 import Settings from './components/Settings/Settings';
+import AuthLogin from './components/Auth/AuthLogin';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,15 +16,16 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Authentication is handled by oauth2-proxy
-  // If user is not authenticated, oauth2-proxy will redirect to Authentik
-  // If authenticated, cookie is automatically sent with API requests
+  // Authentication is handled by traefikoidc middleware
+  // API routes are protected - 401 triggers redirect to /auth/login
+  // traefikoidc handles OIDC flow and sets session cookie
 
   return (
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <Routes>
+            <Route path="/auth/login" element={<AuthLogin />} />
             <Route path="/" element={<Layout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
