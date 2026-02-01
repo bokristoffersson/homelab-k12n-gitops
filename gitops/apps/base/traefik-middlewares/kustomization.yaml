@@ -9,3 +9,4 @@ resources:
   - cors.yaml
   - headers.yaml
   - https-scheme.yaml
+  - traefikoidc-secrets-sealed.yaml
