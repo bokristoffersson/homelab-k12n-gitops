@@ -83,11 +83,14 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Heatpump Web Frontend (public SPA - auth handled by API)
+    # Heatpump Web Frontend (protected by traefikoidc)
+    # User authenticates before SPA loads - session cookie used for all requests
     - match: Host(`heatpump.k12n.com`)
       kind: Rule
       middlewares:
         - name: https-scheme
+          namespace: traefik
+        - name: traefikoidc-auth
           namespace: traefik
       services:
         - name: heatpump-web
