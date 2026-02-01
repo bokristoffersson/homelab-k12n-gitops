@@ -7,13 +7,14 @@ metadata:
 spec:
   plugin:
     traefikoidc:
-      providerURL: https://authentik.k12n.com/application/o/traefikoidc/
+      # Use internal cluster URL for OIDC discovery (faster, more reliable)
+      providerURL: http://authentik-server.authentik.svc.cluster.local:9000/application/o/traefikoidc/
       clientID: traefikoidc
       clientSecretFile: /etc/traefik/secrets/client-secret
       sessionEncryptionKeyFile: /etc/traefik/secrets/session-encryption-key
       callbackURL: /oidc/callback
       forceHTTPS: true
-      logLevel: info
+      logLevel: debug
       scopes:
         - openid
         - profile
@@ -22,3 +23,5 @@ spec:
         - /health
         - /ready
       sessionMaxAge: 86400
+      # Required for internal cluster URLs
+      allowPrivateIPAddresses: true
