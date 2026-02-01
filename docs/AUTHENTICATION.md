@@ -19,6 +19,9 @@ The homelab uses a modern, cloud-native authentication stack built on **Authenti
 ### High-Level Architecture
 
 ```
+                         Internet
+                            │
+                            ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Cloudflare Tunnel                         │
 │                         (TLS Termination)                        │
@@ -34,23 +37,23 @@ The homelab uses a modern, cloud-native authentication stack built on **Authenti
 └────┬────────────────────┬────────────────────┬──────────────────┘
      │                    │                    │
      ▼                    ▼                    ▼
-┌─────────┐                              ┌──────────────┐
-│Authentik│◄─────────────────────────────│   Protected  │
-│  (IdP)  │       OIDC Auth Flow         │   Services   │
-└─────────┘                              └──────────────┘
-     │                                         │
-     ▼                                         ▼
-┌──────────┐                            ┌──────────────┐
-│PostgreSQL│                            │ Backend APIs │
-└──────────┘                            └──────────────┘
+┌─────────┐         ┌──────────┐        ┌──────────────┐
+│Authentik│◄────────│traefikoidc│───────│   Protected  │
+│  (IdP)  │  OIDC   │  Session │       │   Services   │
+└─────────┘         └──────────┘        └──────────────┘
+     │                                        │
+     ▼                                        ▼
+┌──────────┐                           ┌──────────────┐
+│PostgreSQL│                           │ Backend APIs │
+└──────────┘                           └──────────────┘
 ```
 
 ### Key Features
 
 - **Single Sign-On (SSO)**: Centralized authentication through Authentik
 - **OAuth2/OIDC**: Industry-standard protocols for secure authentication
-- **JWT Tokens**: Stateless authentication with cryptographically signed tokens
-- **Native OIDC Plugin**: traefikoidc handles OIDC authentication directly in Traefik (no separate proxy deployment)
+- **Session-Based Auth**: traefikoidc manages encrypted session cookies
+- **Native Traefik Plugin**: No separate proxy deployment required
 - **Sealed Secrets**: Encrypted secrets stored in Git (cluster-specific encryption)
 - **Blueprint Automation**: Infrastructure-as-code for identity configuration
 
@@ -73,17 +76,17 @@ The homelab uses a modern, cloud-native authentication stack built on **Authenti
 #### Key Endpoints
 - `/application/o/authorize/` - OAuth2 authorization endpoint
 - `/application/o/token/` - Token exchange endpoint
-- `/application/o/introspect/` - Token validation endpoint
+- `/application/o/userinfo/` - User information endpoint
+- `/.well-known/openid-configuration` - OIDC discovery endpoint
 - `/-/health/live/` - Liveness health check
 - `/-/health/ready/` - Readiness health check
 
 #### Configured Applications
 
-| Application | Client Type | Redirect URI | Token Validity | Scopes |
-|-------------|-------------|--------------|----------------|--------|
-| **heatpump-web** | Public (SPA) | `https://heatpump.k12n.com/auth/callback` | 24h access / 30d refresh | `openid`, `profile`, `email`, `read:energy`, `read:heatpump`, `read:settings`, `write:settings` |
-| **oauth2-proxy** | Confidential | `https://api.k12n.com/oauth2/callback` | 24h access / 30d refresh | `openid`, `email`, `profile` |
-| **kong-api-gateway** | Confidential | `https://api.k12n.com/callback` | 10h access / 30d refresh | `openid`, `email`, `profile` |
+| Application | Client Type | Auth Method | Scopes |
+|-------------|-------------|-------------|--------|
+| **traefikoidc** | Confidential | Session cookies via traefikoidc plugin | `openid`, `profile`, `email` |
+| **heatpump-web-leptos** | Public (SPA) | JWT tokens via SPA OIDC flow | `openid`, `profile`, `email`, `read:energy`, `read:heatpump`, `read:settings`, `write:settings` |
 
 #### Blueprint Automation
 
@@ -97,9 +100,8 @@ Authentik configuration is managed through **blueprints** - YAML files that defi
 5. Cleans up after 5 minutes (TTL: 300s)
 
 **Blueprint Files**:
-- `blueprint-heatpump-web.yaml` - Frontend SPA authentication
-- `blueprint-oauth2-proxy.yaml` - OAuth2-proxy service authentication
-- `blueprint-kong-api-gateway.yaml` - API gateway authentication
+- `blueprint-traefikoidc.yaml` - traefikoidc plugin authentication
+- `blueprint-heatpump-web.yaml` - Leptos frontend SPA authentication (JWT-based)
 
 #### Resource Limits
 
@@ -112,51 +114,104 @@ Authentik configuration is managed through **blueprints** - YAML files that defi
 
 ---
 
-### 2. traefikoidc (OIDC Plugin)
+### 2. traefikoidc (Native Traefik OIDC Plugin)
 
 **Version**: v0.7.10
+**Repository**: [github.com/lukaszraczylo/traefikoidc](https://github.com/lukaszraczylo/traefikoidc)
 **Namespace**: `traefik` (runs as Traefik plugin)
 **Role**: Native OIDC authentication middleware for Traefik
+
+#### How It Works
+
+traefikoidc is a Traefik middleware plugin that handles the complete OIDC authentication flow natively within Traefik:
+
+1. **Intercepts unauthenticated requests** to protected routes
+2. **Redirects to Authentik** for user authentication
+3. **Handles the callback** and exchanges authorization code for tokens
+4. **Creates encrypted session cookies** to maintain authentication state
+5. **Passes user information** to backend services via HTTP headers
 
 #### Configuration
 
 ```yaml
-Provider URL: https://authentik.k12n.com/application/o/traefikoidc/
-Client ID: traefikoidc
-Callback URL: /oidc/callback
-Force HTTPS: true
-Session Max Age: 86400 (24 hours)
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: traefikoidc-auth
+  namespace: traefik
+spec:
+  plugin:
+    traefikoidc:
+      providerURL: https://authentik.k12n.com/application/o/traefikoidc/
+      clientID: traefikoidc
+      clientSecretFile: /etc/traefik/secrets/client-secret
+      sessionEncryptionKeyFile: /etc/traefik/secrets/session-encryption-key
+      callbackURL: /oidc/callback
+      forceHTTPS: true
+      logLevel: info
+      scopes:
+        - openid
+        - profile
+        - email
+      excludedURLs:
+        - /health
+        - /ready
+      sessionMaxAge: 86400
 ```
 
-#### Key Features
+#### Configuration Options
 
-| Feature | Value | Purpose |
-|---------|-------|---------|
-| `forceHTTPS` | true | Ensures HTTPS in redirects (behind Cloudflare Tunnel) |
-| `sessionMaxAge` | 86400 | Session cookie lifetime (24 hours) |
-| `excludedURLs` | `/health`, `/ready` | Health check endpoints bypass auth |
+| Parameter | Value | Purpose |
+|-----------|-------|---------|
+| `providerURL` | `https://authentik.k12n.com/application/o/traefikoidc/` | OIDC discovery endpoint |
+| `clientID` | `traefikoidc` | OAuth2 client identifier |
+| `clientSecretFile` | `/etc/traefik/secrets/client-secret` | Path to client secret |
+| `sessionEncryptionKeyFile` | `/etc/traefik/secrets/session-encryption-key` | 32+ byte encryption key |
+| `callbackURL` | `/oidc/callback` | OAuth redirect path |
+| `forceHTTPS` | `true` | Required for TLS termination at Cloudflare |
+| `sessionMaxAge` | `86400` | Session lifetime (24 hours) |
 | `scopes` | `openid`, `profile`, `email` | OIDC scopes requested |
+| `excludedURLs` | `/health`, `/ready` | Paths bypassing authentication |
+| `logLevel` | `info` | Logging verbosity |
+
+#### Plugin Features
+
+**Security Features**:
+- PKCE (Proof Key for Code Exchange) support
+- JTI-based replay attack detection
+- Encrypted session cookies
+- Automatic token refresh with configurable grace period
+
+**Access Control** (available but not currently used):
+- Email domain restrictions (`allowedDomains`)
+- Individual user allowlists (`allowedUsers`)
+- Role/group-based access control (`allowedRoles`, `allowedGroups`)
+
+**Session Management**:
+- Bounded in-memory cache with LRU eviction
+- Automatic cleanup of expired sessions
+- Optional Redis backend for multi-replica deployments
+
+#### Headers Passed to Backends
+
+traefikoidc passes authenticated user information to backend services via HTTP headers:
+
+| Header | Content |
+|--------|---------|
+| `X-Forwarded-User` | User email or identifier |
+| `X-User-Groups` | User group memberships |
+| `X-User-Roles` | User role assignments |
 
 #### Secrets (Sealed)
 
+Secrets are stored in `traefikoidc-secrets-sealed.yaml` and mounted at `/etc/traefik/secrets/`:
+
 - `client-secret` - Authentik OIDC client secret
-- `session-encryption-key` - 32+ byte key for session encryption
-
-**Note**: Secrets are mounted at `/etc/traefik/secrets/` in the Traefik pod.
+- `session-encryption-key` - 32+ byte key for session cookie encryption
 
 ---
 
-### 3. OAuth2-Proxy (DEPRECATED)
-
-> **Note**: oauth2-proxy is being replaced by traefikoidc. The deployment will be removed after validation.
-
-**Version**: v7.7.1
-**Namespace**: `oauth2-proxy`
-**Status**: Deprecated - routes now use traefikoidc middleware
-
----
-
-### 4. Traefik (Ingress Controller)
+### 3. Traefik (Ingress Controller)
 
 **Version**: 38.0.1 (Helm Chart)
 **Namespace**: `traefik`
@@ -173,27 +228,19 @@ Ports:
 Providers:
   - kubernetesCRD: enabled (IngressRoute, Middleware)
   - kubernetesIngress: disabled
+
+Experimental:
+  plugins:
+    traefikoidc:
+      moduleName: github.com/lukaszraczylo/traefikoidc
+      version: v0.7.10
 ```
 
 #### Middlewares
 
 **1. traefikoidc Middleware** (`traefikoidc-auth`)
 
-```yaml
-plugin:
-  traefikoidc:
-    providerURL: https://authentik.k12n.com/application/o/traefikoidc/
-    clientID: traefikoidc
-    clientSecretFile: /etc/traefik/secrets/client-secret
-    sessionEncryptionKeyFile: /etc/traefik/secrets/session-encryption-key
-    callbackURL: /oidc/callback
-    forceHTTPS: true
-    scopes: [openid, profile, email]
-    excludedURLs: [/health, /ready]
-    sessionMaxAge: 86400
-```
-
-**Purpose**: Handles OIDC authentication natively in Traefik without external proxy.
+Handles OIDC authentication natively in Traefik. Applied to protected routes.
 
 **2. Security Headers Middleware** (`security-headers`)
 
@@ -212,221 +259,233 @@ headers:
 ```yaml
 accessControlAllowOriginList:
   - https://heatpump.k12n.com
+  - https://heatpump-leptos.k12n.com
   - http://localhost:5173
 accessControlAllowMethods:
   - GET, POST, PUT, PATCH, DELETE, OPTIONS
 accessControlAllowHeaders:
   - Authorization, Content-Type, Accept
-accessControlExposeHeaders:
-  - Authorization
 accessControlAllowCredentials: true
 accessControlMaxAge: 3600
 ```
 
-#### IngressRoute Examples
+**4. HTTPS Scheme Middleware** (`https-scheme`)
 
-**Authentik (Public - No Auth)**
 ```yaml
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
-metadata:
-  name: authentik-routes
-  namespace: traefik
-spec:
-  entryPoints:
-    - web
-  routes:
-    - match: Host(`authentik.k12n.com`)
-      middlewares:
-        - name: security-headers
-      services:
-        - name: authentik-server
-          namespace: authentik
-          port: 9000
+headers:
+  customRequestHeaders:
+    X-Forwarded-Proto: "https"
 ```
 
-**API Routes (JWT Protected)**
-```yaml
-routes:
-  - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
-    middlewares:
-      - name: cors
-      - name: security-headers
-    services:
-      - name: homelab-api
-        namespace: homelab-api
-        port: 8080
-```
-
-**OAuth2 Callbacks (Public)**
-```yaml
-routes:
-  - match: Host(`api.k12n.com`) && PathPrefix(`/oauth2`)
-    middlewares:
-      - name: cors
-    services:
-      - name: oauth2-proxy
-        namespace: oauth2-proxy
-        port: 4180
-```
-
-**Frontend (Public - SPA Handles OIDC)**
-```yaml
-routes:
-  - match: Host(`heatpump.k12n.com`)
-    services:
-      - name: heatpump-web
-        namespace: heatpump-web
-        port: 80
-```
+Required because Cloudflare Tunnel terminates TLS and internal traffic is HTTP.
 
 ---
 
 ## Authentication Flows
 
-### Flow 1: Frontend SPA Authentication (OIDC Authorization Code Flow)
+### Flow 1: Session-Based Authentication (traefikoidc)
 
-**Used by**: `heatpump-web` frontend application
+**Used by**: `heatpump-web` (React SPA), API routes on `heatpump.k12n.com`
+
+This is the primary authentication flow. The entire SPA and its API routes are protected by traefikoidc middleware.
 
 ```
-┌──────┐                                  ┌──────────┐                    ┌─────────┐
-│ User │                                  │ Frontend │                    │Authentik│
-│      │                                  │   SPA    │                    │  (IdP)  │
-└──┬───┘                                  └────┬─────┘                    └────┬────┘
-   │                                           │                               │
-   │  1. Visit https://heatpump.k12n.com     │                               │
-   │─────────────────────────────────────────>│                               │
-   │                                           │                               │
-   │  2. SPA loads, detects no session        │                               │
-   │                                           │                               │
-   │  3. Redirect to Authentik authorize      │                               │
-   │<──────────────────────────────────────────┤                               │
-   │                                           │                               │
-   │  4. GET /application/o/heatpump-web/authorize/                           │
-   │      ?client_id=heatpump-web                                             │
-   │      &redirect_uri=https://heatpump.k12n.com/auth/callback               │
-   │      &scope=openid+profile+email+read:energy                             │
-   │      &response_type=code                                                 │
-   │──────────────────────────────────────────────────────────────────────────>│
-   │                                           │                               │
-   │  5. Login form (if not authenticated)    │                               │
-   │<──────────────────────────────────────────────────────────────────────────┤
-   │                                           │                               │
-   │  6. Submit credentials                   │                               │
-   │──────────────────────────────────────────────────────────────────────────>│
-   │                                           │                               │
-   │  7. Redirect to callback with code       │                               │
-   │      https://heatpump.k12n.com/auth/callback?code=ABC123                │
-   │<──────────────────────────────────────────────────────────────────────────┤
-   │─────────────────────────────────────────>│                               │
-   │                                           │                               │
-   │                                           │  8. Exchange code for tokens │
-   │                                           │  POST /application/o/heatpump-web/token/
-   │                                           │  grant_type=authorization_code
-   │                                           │  code=ABC123                 │
-   │                                           │  client_id=heatpump-web      │
-   │                                           │──────────────────────────────>│
-   │                                           │                               │
-   │                                           │  9. JWT tokens               │
-   │                                           │  {                           │
-   │                                           │    "access_token": "<JWT>",  │
-   │                                           │    "refresh_token": "<JWT>", │
-   │                                           │    "expires_in": 86400       │
-   │                                           │  }                           │
-   │                                           │<──────────────────────────────┤
-   │                                           │                               │
-   │  10. Store tokens & redirect to app      │                               │
-   │<──────────────────────────────────────────┤                               │
-   │                                           │                               │
+┌──────┐                    ┌────────┐                    ┌─────────┐
+│ User │                    │Traefik │                    │Authentik│
+│      │                    │ oidc   │                    │  (IdP)  │
+└──┬───┘                    └───┬────┘                    └────┬────┘
+   │                            │                              │
+   │  1. GET https://heatpump.k12n.com/dashboard              │
+   │───────────────────────────>│                              │
+   │                            │                              │
+   │                      2. Check session cookie              │
+   │                         (no valid session)                │
+   │                            │                              │
+   │  3. 302 Redirect to Authentik                            │
+   │     https://authentik.k12n.com/application/o/authorize/  │
+   │     ?client_id=traefikoidc                               │
+   │     &redirect_uri=https://heatpump.k12n.com/oidc/callback│
+   │     &scope=openid+profile+email                          │
+   │     &response_type=code                                  │
+   │     &state=<random>                                      │
+   │<───────────────────────────┤                              │
+   │                            │                              │
+   │  4. User redirected to Authentik login page              │
+   │──────────────────────────────────────────────────────────>│
+   │                            │                              │
+   │  5. User enters credentials                              │
+   │──────────────────────────────────────────────────────────>│
+   │                            │                              │
+   │  6. 302 Redirect to callback with authorization code     │
+   │     https://heatpump.k12n.com/oidc/callback?code=ABC123  │
+   │<──────────────────────────────────────────────────────────┤
+   │                            │                              │
+   │  7. GET /oidc/callback?code=ABC123                       │
+   │───────────────────────────>│                              │
+   │                            │                              │
+   │                      8. Exchange code for tokens          │
+   │                            │  POST /token                 │
+   │                            │  code=ABC123                 │
+   │                            │  client_id=traefikoidc       │
+   │                            │  client_secret=<secret>      │
+   │                            │─────────────────────────────>│
+   │                            │                              │
+   │                            │  9. ID Token + Access Token  │
+   │                            │<─────────────────────────────┤
+   │                            │                              │
+   │                      10. Create encrypted session cookie  │
+   │                            │                              │
+   │  11. 302 Redirect to original URL                        │
+   │      Set-Cookie: _traefikoidc_session=<encrypted>        │
+   │<───────────────────────────┤                              │
+   │                            │                              │
+   │  12. GET /dashboard (with session cookie)                │
+   │───────────────────────────>│                              │
+   │                            │                              │
+   │                      13. Validate session cookie          │
+   │                          (valid - extract user info)      │
+   │                            │                              │
+   │                            │  14. Forward to backend      │
+   │                            │      X-Forwarded-User: email │
+   │                            │─────────────────────────────>│
+   │                            │                              │
+   │  15. Dashboard HTML        │                              │
+   │<───────────────────────────┤                              │
 ```
 
-**Token Storage**: SPA stores tokens in sessionStorage or localStorage
-**Token Usage**: All API requests include `Authorization: Bearer <access_token>`
-**Token Validation**: Backend validates JWT signature using Authentik's public key
+**Key Points**:
+- Full page redirects (works for SPAs because user hasn't loaded app yet)
+- Session cookie is HTTP-only and encrypted
+- Same cookie works for SPA and API requests (same origin)
+- No client-side token storage required
 
 ---
 
-### Flow 2: ForwardAuth Pattern (Optional - Not Currently Active)
+### Flow 2: API Request with Session Cookie
 
-**Used when**: Traefik middleware `oauth2-proxy-auth` is applied to routes
+**Used by**: API calls from authenticated `heatpump-web` SPA
 
 ```
-┌──────┐       ┌────────┐       ┌─────────────┐       ┌─────────┐
-│ User │       │Traefik │       │oauth2-proxy │       │ Backend │
-└──┬───┘       └───┬────┘       └──────┬──────┘       └────┬────┘
-   │               │                    │                   │
-   │  GET /api/v1/protected            │                   │
-   │──────────────>│                    │                   │
-   │               │                    │                   │
-   │               │  ForwardAuth       │                   │
-   │               │  GET /             │                   │
-   │               │  (with headers)    │                   │
-   │               │───────────────────>│                   │
-   │               │                    │                   │
-   │               │  Valid cookie?     │                   │
-   │               │  Valid JWT?        │                   │
-   │               │                    │                   │
-   │               │  If NO:            │                   │
-   │  Redirect to  │  302 Redirect      │                   │
-   │  Authentik    │<───────────────────┤                   │
-   │<──────────────┤                    │                   │
-   │               │                    │                   │
-   │  [User authenticates via Authentik OIDC flow]         │
-   │               │                    │                   │
-   │               │  If YES:           │                   │
-   │               │  202 OK + Headers  │                   │
-   │               │  X-Auth-Request-User: user@example.com│
-   │               │  X-Auth-Request-Email: user@example.com
-   │               │  Authorization: Bearer <JWT>          │
-   │               │<───────────────────┤                   │
-   │               │                    │                   │
-   │               │  Forward request   │                   │
-   │               │  with auth headers │                   │
-   │               │────────────────────────────────────────>│
-   │               │                    │                   │
-   │               │                    │  Validate JWT    │
-   │               │                    │  Extract claims  │
-   │               │                    │                   │
-   │               │  Protected data    │                   │
-   │  Response     │<────────────────────────────────────────┤
-   │<──────────────┤                    │                   │
+┌──────┐                    ┌────────┐                    ┌─────────┐
+│ SPA  │                    │Traefik │                    │ Backend │
+│      │                    │ oidc   │                    │   API   │
+└──┬───┘                    └───┬────┘                    └────┬────┘
+   │                            │                              │
+   │  GET /api/v1/energy/latest │                              │
+   │  Cookie: _traefikoidc_session=<encrypted>                │
+   │───────────────────────────>│                              │
+   │                            │                              │
+   │                      Validate session cookie              │
+   │                      (valid - user authenticated)         │
+   │                            │                              │
+   │                            │  Forward request             │
+   │                            │  X-Forwarded-User: user@mail │
+   │                            │  X-User-Roles: user          │
+   │                            │─────────────────────────────>│
+   │                            │                              │
+   │                            │  JSON Response               │
+   │  { "power": 1234 }         │<─────────────────────────────┤
+   │<───────────────────────────┤                              │
 ```
 
-**Current Status**: ForwardAuth middleware available but not applied to routes
-**Reason**: Backend APIs validate JWT tokens directly (stateless authentication)
+**Key Points**:
+- Browser automatically sends session cookie (same origin)
+- traefikoidc validates cookie and passes user info to backend
+- Backend receives user identity via headers
+- No JWT validation needed in backend for session-based routes
 
 ---
 
-### Flow 3: Direct JWT Validation (Currently Used)
+### Flow 3: JWT-Based Authentication (Leptos Frontend)
 
-**Used by**: `homelab-api`, `energy-ws`
+**Used by**: `heatpump-leptos` frontend (alternative SPA with client-side OIDC)
 
 ```
-┌──────┐                  ┌─────────────┐                ┌─────────┐
-│ SPA  │                  │   Traefik   │                │ Backend │
-└──┬───┘                  └──────┬──────┘                └────┬────┘
-   │                             │                            │
-   │  GET /api/v1/energy/latest │                            │
-   │  Authorization: Bearer <JWT from Authentik>             │
-   │────────────────────────────>│                            │
-   │                             │                            │
-   │                             │  Forward request           │
-   │                             │  (CORS + Security Headers) │
-   │                             │───────────────────────────>│
-   │                             │                            │
-   │                             │                     Validate JWT:
-   │                             │                     - Verify signature
-   │                             │                     - Check expiration
-   │                             │                     - Extract claims
-   │                             │                            │
-   │                             │  Protected data            │
-   │  JSON response              │<───────────────────────────┤
-   │<────────────────────────────┤                            │
+┌──────┐                    ┌────────┐                    ┌─────────┐
+│ SPA  │                    │Traefik │                    │ Backend │
+└──┬───┘                    └───┬────┘                    └────┬────┘
+   │                            │                              │
+   │  1. SPA handles OIDC flow directly with Authentik        │
+   │     (stores JWT tokens in localStorage)                   │
+   │                            │                              │
+   │  GET /api/v1/energy/latest │                              │
+   │  Authorization: Bearer <JWT from Authentik>              │
+   │───────────────────────────>│                              │
+   │                            │                              │
+   │                            │  Forward request             │
+   │                            │  (no traefikoidc middleware) │
+   │                            │─────────────────────────────>│
+   │                            │                              │
+   │                            │                       Validate JWT:
+   │                            │                       - Verify signature
+   │                            │                       - Check expiration
+   │                            │                       - Extract claims
+   │                            │                              │
+   │                            │  JSON Response               │
+   │  { "power": 1234 }         │<─────────────────────────────┤
+   │<───────────────────────────┤                              │
 ```
 
-**Validation Method**: Backend uses Authentik's public JWKS endpoint
-**Claims Extracted**: `sub` (user ID), `email`, `scope` (permissions)
-**No Session**: Stateless - every request validated independently
+**Key Points**:
+- SPA handles OIDC flow (authorization code with PKCE)
+- JWT tokens stored in browser localStorage
+- Backend validates JWT using Authentik's JWKS endpoint
+- Routes do NOT have traefikoidc middleware (stateless auth)
+
+---
+
+### Flow 4: Hybrid Auth (Bearer Token Priority)
+
+**Used by**: `api.k12n.com` routes (supports both JWT and session)
+
+Routes on `api.k12n.com` support both authentication methods using priority-based routing:
+
+```yaml
+# Higher priority - Bearer token route (direct JWT validation by backend)
+- match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
+  priority: 100
+  services:
+    - name: homelab-api  # Backend validates JWT
+
+# Lower priority - Session-based route (traefikoidc middleware)
+- match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
+  priority: 50
+  middlewares:
+    - name: traefikoidc-auth
+  services:
+    - name: homelab-api
+```
+
+**Behavior**:
+- Requests with `Authorization: Bearer <token>` header → JWT validation by backend
+- Requests without Bearer header → traefikoidc session validation
+
+---
+
+## Route Configuration
+
+### heatpump.k12n.com Routes
+
+| Route | Priority | Middleware | Purpose |
+|-------|----------|------------|---------|
+| `/oidc/callback` | 105 | `traefikoidc-auth` | OIDC callback endpoint |
+| `/auth/login` | 100 | `traefikoidc-auth` | Explicit login trigger |
+| `/ws` | 95 | `cors` | WebSocket (session cookie) |
+| `/api/v1/heatpump/settings` | 95 | `traefikoidc-auth`, `cors` | Settings API |
+| `/api/*` | 90 | `traefikoidc-auth`, `cors` | Data API |
+| `/*` (catch-all) | default | `traefikoidc-auth` | SPA frontend |
+
+**Note**: The entire SPA is protected by traefikoidc. Users authenticate before the SPA loads.
+
+### api.k12n.com Routes
+
+| Route | Priority | Middleware | Purpose |
+|-------|----------|------------|---------|
+| `/oidc/callback` | 120 | `traefikoidc-auth` | OIDC callback |
+| `/api/v1/*` + Bearer header | 100-110 | `cors`, `security-headers` | JWT auth (backend validates) |
+| `/api/v1/*` | 50-90 | `traefikoidc-auth`, `cors` | Session auth |
+| `/ws` | - | `cors` | WebSocket (JWT via query param) |
+| `/mcp` | - | `cors`, `security-headers` | MCP endpoint (JWT auth) |
 
 ---
 
@@ -439,51 +498,32 @@ All secrets are encrypted using **SealedSecrets** (Bitnami) with cluster-specifi
 **Sealed Secret Locations**:
 - `gitops/apps/base/authentik/authentik-secret-sealed.yaml`
 - `gitops/apps/base/authentik/postgres-secret-sealed.yaml`
-- `gitops/apps/base/authentik/oauth2-proxy-client-secret-sealed.yaml`
-- `gitops/apps/base/oauth2-proxy/secrets-sealed.yaml`
+- `gitops/apps/base/traefik-middlewares/traefikoidc-secrets-sealed.yaml`
 
 **Critical Secrets**:
 - `AUTHENTIK_SECRET_KEY` - Signs Authentik sessions and tokens
-- `OAUTH2_PROXY_CLIENT_SECRET` - OAuth2 client credential
-- `OAUTH2_PROXY_COOKIE_SECRET` - Encrypts session cookies
+- `client-secret` - traefikoidc OAuth2 client credential
+- `session-encryption-key` - Encrypts traefikoidc session cookies
 - `POSTGRES_PASSWORD` - Database access
-
-**Process**:
-1. Plain secret created locally (never committed)
-2. Encrypted with `kubeseal` using cluster's public key
-3. SealedSecret YAML committed to Git
-4. sealed-secrets controller decrypts in-cluster
 
 ---
 
-### 2. Token Security
+### 2. Session Security
 
-**JWT Token Configuration**:
+**traefikoidc Session Cookies**:
 
-| Application | Token Type | Access Validity | Refresh Validity | Issuer Mode |
-|-------------|------------|-----------------|------------------|-------------|
-| heatpump-web | JWT | 24 hours | 30 days | per_provider |
-| oauth2-proxy | JWT | 24 hours | 30 days | per_provider |
-| kong-api-gateway | JWT | 10 hours | 30 days | per_provider |
+| Setting | Value | Purpose |
+|---------|-------|---------|
+| `Secure` | true | Only sent over HTTPS |
+| `HttpOnly` | true | No JavaScript access |
+| `SameSite` | Lax | CSRF protection |
+| `Max-Age` | 86400 | 24 hour lifetime |
+| Encryption | AES-256 | Session data encrypted |
 
-**JWT Structure**:
-```json
-{
-  "iss": "https://authentik.k12n.com/application/o/heatpump-web/",
-  "sub": "user-uuid",
-  "aud": "heatpump-web",
-  "exp": 1735473600,
-  "iat": 1735387200,
-  "email": "user@example.com",
-  "scope": "openid profile email read:energy read:heatpump"
-}
-```
-
-**Validation**:
-- Signature verified using Authentik's public key (JWKS endpoint)
-- Expiration checked (`exp` claim)
-- Audience validated (`aud` claim matches application)
-- Issuer verified (`iss` matches expected Authentik URL)
+**Session Storage**:
+- In-memory cache with LRU eviction
+- Bounded cache prevents memory exhaustion
+- Automatic cleanup of expired sessions
 
 ---
 
@@ -491,20 +531,15 @@ All secrets are encrypted using **SealedSecrets** (Bitnami) with cluster-specifi
 
 **Cloudflare Tunnel** handles TLS termination:
 - External traffic encrypted via Cloudflare's SSL
-- Internal traffic uses HTTP (within cluster)
+- Internal cluster traffic uses HTTP
 - `X-Forwarded-Proto: https` header preserves original scheme
 
-**Traefik Configuration**:
+**traefikoidc Configuration**:
 ```yaml
-sslRedirect: false  # Cloudflare already enforced HTTPS
+forceHTTPS: true  # Required when TLS terminated upstream
 ```
 
-**Cookie Security**:
-```yaml
-cookie-secure: true      # Cookies only sent over HTTPS
-cookie-httponly: true    # No JavaScript access
-cookie-samesite: lax     # CSRF protection
-```
+This ensures OAuth redirect URIs use `https://` even though internal traffic is HTTP.
 
 ---
 
@@ -512,12 +547,10 @@ cookie-samesite: lax     # CSRF protection
 
 **Allowed Origins**:
 - `https://heatpump.k12n.com` (production frontend)
+- `https://heatpump-leptos.k12n.com` (Leptos frontend)
 - `http://localhost:5173` (local development)
 
-**Allowed Methods**: GET, POST, PUT, PATCH, DELETE, OPTIONS
-**Allowed Headers**: Authorization, Content-Type, Accept
-**Credentials**: Allowed (cookies/auth headers)
-**Max Age**: 3600 seconds (1 hour preflight cache)
+**Credentials**: Allowed (enables session cookie transmission)
 
 ---
 
@@ -526,17 +559,11 @@ cookie-samesite: lax     # CSRF protection
 **Internal-Only Services** (no external access):
 - PostgreSQL (Authentik database)
 - Redis (session cache)
-- oauth2-proxy (accessed only via Traefik ForwardAuth)
 
 **Public Services** (via Traefik):
 - Authentik (SSO login page)
-- heatpump-web (frontend SPA)
-- homelab-api (protected by JWT validation)
-
-**Service Mesh**:
-- All traffic routed through Traefik
-- No direct pod-to-pod external access
-- ClusterIP services (internal only)
+- heatpump-web (frontend SPA, protected)
+- homelab-api (protected by traefikoidc or JWT)
 
 ---
 
@@ -556,18 +583,11 @@ AUTHENTIK_BOOTSTRAP_PASSWORD=<sealed-secret>
 AUTHENTIK_BOOTSTRAP_TOKEN=<sealed-secret>
 ```
 
-**OAuth2-Proxy**:
-```bash
-OAUTH2_PROXY_CLIENT_SECRET=<sealed-secret>
-OAUTH2_PROXY_COOKIE_SECRET=<sealed-secret>
-```
-
 ### Kubernetes Resources
 
 **Namespaces**:
 - `authentik` - Identity provider and dependencies
-- `oauth2-proxy` - Authentication gateway
-- `traefik` - Ingress controller and middlewares
+- `traefik` - Ingress controller, middlewares, and traefikoidc plugin
 
 **Custom Resources**:
 - `IngressRoute` (traefik.io/v1alpha1) - HTTP routing
@@ -591,27 +611,17 @@ kubectl logs -n authentik -l app.kubernetes.io/name=authentik --tail=100
 kubectl exec -n authentik deployment/authentik-server -- curl http://localhost:9000/-/health/ready/
 ```
 
-### Check OAuth2-Proxy Status
+### Check traefikoidc
 
 ```bash
-# Check pod status
-kubectl get pods -n oauth2-proxy
+# Check Traefik logs for OIDC-related messages
+kubectl logs -n traefik -l app.kubernetes.io/name=traefik --tail=100 | grep -i oidc
 
-# Check logs
-kubectl logs -n oauth2-proxy -l app=oauth2-proxy --tail=100
+# Verify middleware is configured
+kubectl get middleware -n traefik traefikoidc-auth -o yaml
 
-# Test ping endpoint
-kubectl exec -n oauth2-proxy deployment/oauth2-proxy -- curl http://localhost:4180/ping
-```
-
-### Verify JWT Token
-
-```bash
-# Decode JWT (paste your token)
-echo "<JWT_TOKEN>" | cut -d. -f2 | base64 -d | jq
-
-# Check token expiration
-echo "<JWT_TOKEN>" | cut -d. -f2 | base64 -d | jq '.exp | todate'
+# Check secrets are mounted
+kubectl exec -n traefik deployment/traefik -- ls -la /etc/traefik/secrets/
 ```
 
 ### Check Traefik Routes
@@ -621,18 +631,20 @@ echo "<JWT_TOKEN>" | cut -d. -f2 | base64 -d | jq '.exp | todate'
 kubectl get ingressroute -A
 
 # Describe specific route
-kubectl describe ingressroute api-routes -n traefik
+kubectl describe ingressroute frontend-routes -n traefik
 
 # Check Traefik logs
 kubectl logs -n traefik -l app.kubernetes.io/name=traefik --tail=100
 ```
 
-### Test ForwardAuth Flow
+### Test Authentication Flow
 
 ```bash
-# Test oauth2-proxy auth endpoint
-curl -v http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/ \
-  -H "Authorization: Bearer <YOUR_JWT>"
+# Test in browser (incognito mode):
+# 1. Visit https://heatpump.k12n.com
+# 2. Should redirect to Authentik login
+# 3. After login, should return to dashboard
+# 4. Check browser DevTools > Application > Cookies for session cookie
 ```
 
 ### Check Blueprint Application
@@ -652,19 +664,24 @@ kubectl delete job authentik-blueprint-apply -n authentik
 ### Common Issues
 
 **Issue**: Redirect loop on login
-**Fix**: Check cookie domain and secure settings, verify redirect URIs match
+**Cause**: Cookie domain mismatch or `forceHTTPS` not set
+**Fix**: Verify `forceHTTPS: true` in traefikoidc config
 
-**Issue**: 401 Unauthorized on API requests
-**Fix**: Verify JWT token is valid, check backend JWT validation configuration
+**Issue**: 401 on API requests after successful login
+**Cause**: Session cookie not being sent (CORS or SameSite issue)
+**Fix**: Verify `withCredentials: true` in frontend API client and CORS allows credentials
 
-**Issue**: CORS errors in browser
-**Fix**: Verify origin in CORS middleware, check browser console for specific headers
+**Issue**: "Invalid state parameter" error
+**Cause**: Session expired during login flow or multiple tabs
+**Fix**: Clear browser cookies and try again
 
-**Issue**: OAuth2-proxy not forwarding headers
-**Fix**: Check ForwardAuth middleware `authResponseHeaders` configuration
+**Issue**: OIDC callback fails with "client not found"
+**Cause**: Authentik blueprint not applied or client ID mismatch
+**Fix**: Check blueprint job logs, verify clientID matches Authentik application
 
-**Issue**: Sealed secret not decrypting
-**Fix**: Verify sealed-secrets controller is running, check sealing key matches cluster
+**Issue**: Session expires unexpectedly
+**Cause**: `sessionMaxAge` too short or clock skew
+**Fix**: Verify `sessionMaxAge` setting (86400 = 24 hours)
 
 ---
 
@@ -673,14 +690,13 @@ kubectl delete job authentik-blueprint-apply -n authentik
 | Component | Location |
 |-----------|----------|
 | Authentik Base | `gitops/apps/base/authentik/` |
-| Authentik Overlay | `gitops/apps/homelab/authentik/` |
+| Authentik Blueprints | `gitops/apps/base/authentik/blueprint-*.yaml` |
 | traefikoidc Middleware | `gitops/apps/base/traefik-middlewares/traefikoidc.yaml` |
 | traefikoidc Secrets | `gitops/apps/base/traefik-middlewares/traefikoidc-secrets-sealed.yaml` |
 | Traefik Middlewares | `gitops/apps/base/traefik-middlewares/` |
 | Traefik Routes | `gitops/apps/base/traefik-routes/` |
 | Traefik Controller | `gitops/infrastructure/controllers/traefik/` |
 | Sealed Secrets Controller | `gitops/infrastructure/controllers/sealed-secrets/` |
-| OAuth2-Proxy Base (deprecated) | `gitops/apps/base/oauth2-proxy/` |
 
 ---
 
@@ -692,40 +708,38 @@ The authentication system has been migrated from oauth2-proxy to the native trae
 
 #### What Changed
 
-| Before | After |
-|--------|-------|
-| oauth2-proxy (2 replicas) | traefikoidc plugin (runs in Traefik) |
-| ForwardAuth middleware | Native plugin middleware |
-| `/oauth2/callback` endpoint | `/oidc/callback` endpoint |
-| Separate deployment | No additional deployment |
+| Aspect | Before (oauth2-proxy) | After (traefikoidc) |
+|--------|----------------------|---------------------|
+| Architecture | Separate proxy deployment | Native Traefik plugin |
+| Auth Method | ForwardAuth middleware | Plugin middleware |
+| Callback Path | `/oauth2/callback` | `/oidc/callback` |
+| Session Storage | oauth2-proxy cookies | traefikoidc encrypted cookies |
+| Replicas | 2 pods | 0 (runs in Traefik) |
+| Resource Usage | Additional CPU/memory | Minimal (plugin) |
 
-#### New Components
+#### SPA Authentication Change
 
-1. **Authentik Application**: `traefikoidc` (confidential client)
-2. **Traefik Plugin**: `github.com/lukaszraczylo/traefikoidc` v0.7.10
-3. **Middleware**: `traefikoidc-auth` in traefik namespace
-4. **Secrets**: `traefikoidc-secrets` (client-secret, session-encryption-key)
+| Aspect | Before | After |
+|--------|--------|-------|
+| SPA Route | Public (no auth) | Protected by traefikoidc |
+| Auth Trigger | SPA makes API call → 401 → redirect | Full page redirect before SPA loads |
+| Token Storage | localStorage (JWT) | HTTP-only session cookie |
+| API Auth | Bearer token header | Session cookie (automatic) |
 
-#### Route Priority
+#### Why This Change?
 
-Routes use priority-based matching for hybrid auth:
-- **Priority 120**: OIDC callback route
-- **Priority 100-110**: Bearer token routes (direct JWT validation by backend)
-- **Priority 50-95**: Session-based routes (traefikoidc middleware)
+1. **XHR Redirect Limitation**: When APIs return 302 redirects to Authentik, XHR/fetch cannot follow cross-origin redirects. Protecting the SPA route itself means authentication happens via full page redirect before the SPA loads.
 
-#### Rollback
+2. **Simplified Architecture**: No need for client-side OAuth code, token storage, or refresh logic. The browser handles cookies automatically.
 
-To revert to oauth2-proxy:
-1. Change middleware references in route files from `traefikoidc-auth` to `oauth2-proxy-auth`
-2. Remove OIDC callback routes (`/oidc/callback`)
-3. FluxCD will reconcile the changes
+3. **Improved Security**: Session cookies are HTTP-only (no XSS access) and encrypted.
 
-#### Cleanup (After Validation)
+#### Deprecated Resources
 
-After 1-2 weeks of stable operation, remove deprecated resources:
-- `gitops/apps/base/oauth2-proxy/` (entire directory)
-- OAuth2 callback routes (`/oauth2`, `/oauth2/claude`) in api-routes.yaml
-- `oauth2-proxy-auth` and `oauth2-proxy-auth-claude-mcp` middlewares in forwardauth.yaml
+The following resources are deprecated and will be removed after validation:
+- `gitops/apps/base/oauth2-proxy/` directory
+- OAuth2 callback routes (`/oauth2/*`) in route files
+- `oauth2-proxy-auth` middleware references
 
 ---
 
@@ -733,7 +747,7 @@ After 1-2 weeks of stable operation, remove deprecated resources:
 
 - [Authentik Documentation](https://docs.goauthentik.io/)
 - [traefikoidc Plugin](https://github.com/lukaszraczylo/traefikoidc)
-- [Traefik Plugins](https://doc.traefik.io/traefik/plugins/)
+- [Traefik Plugins Documentation](https://doc.traefik.io/traefik/plugins/)
 - [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets)
 - [OAuth 2.0 RFC](https://datatracker.ietf.org/doc/html/rfc6749)
 - [OpenID Connect](https://openid.net/connect/)
