@@ -119,18 +119,18 @@ impl HeatpumpRepository {
             // Check if TimescaleDB is available for time_bucket function
             match sqlx::query_as::<_, HeatpumpDailySummary>(
                 r#"
-                SELECT 
+                SELECT
                     time_bucket('1 day'::interval, time) AS day,
                     (last(runtime_compressor, time) - first(runtime_compressor, time)) AS daily_runtime_compressor_increase,
                     (last(runtime_hotwater, time) - first(runtime_hotwater, time)) AS daily_runtime_hotwater_increase,
                     (last(runtime_3kw, time) - first(runtime_3kw, time)) AS daily_runtime_3kw_increase,
                     (last(runtime_6kw, time) - first(runtime_6kw, time)) AS daily_runtime_6kw_increase,
-                    avg(outdoor_temp) AS avg_outdoor_temp,
-                    avg(supplyline_temp) AS avg_supplyline_temp,
-                    avg(returnline_temp) AS avg_returnline_temp,
-                    avg(hotwater_temp) AS avg_hotwater_temp,
-                    avg(brine_out_temp) AS avg_brine_out_temp,
-                    avg(brine_in_temp) AS avg_brine_in_temp
+                    avg(outdoor_temp)::float8 AS avg_outdoor_temp,
+                    avg(supplyline_temp)::float8 AS avg_supplyline_temp,
+                    avg(returnline_temp)::float8 AS avg_returnline_temp,
+                    avg(hotwater_temp)::float8 AS avg_hotwater_temp,
+                    avg(brine_out_temp)::float8 AS avg_brine_out_temp,
+                    avg(brine_in_temp)::float8 AS avg_brine_in_temp
                 FROM heatpump_status
                 WHERE time >= $1 AND time < $2 AND device_id = $3
                 GROUP BY time_bucket('1 day'::interval, time)
