@@ -52,6 +52,11 @@ spec:
               value: "false"
             - name: AUTHENTIK_LOG_LEVEL
               value: "info"
+            # Gunicorn worker configuration for Raspberry Pi
+            - name: AUTHENTIK_WEB__WORKERS
+              value: "1"
+            - name: AUTHENTIK_WEB__TIMEOUT
+              value: "120"
             # Bootstrap admin credentials
             - name: AUTHENTIK_BOOTSTRAP_PASSWORD
               valueFrom:
@@ -83,18 +88,18 @@ spec:
             httpGet:
               path: /-/health/live/
               port: 9000
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /-/health/ready/
               port: 9000
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 30
+            failureThreshold: 5
       volumes:
         - name: blueprints
           projected:
