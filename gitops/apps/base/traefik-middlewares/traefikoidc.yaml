@@ -1,0 +1,24 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: traefikoidc-auth
+  namespace: traefik
+spec:
+  plugin:
+    traefikoidc:
+      providerURL: https://authentik.k12n.com/application/o/traefikoidc/
+      clientID: traefikoidc
+      clientSecretFile: /etc/traefik/secrets/client-secret
+      sessionEncryptionKeyFile: /etc/traefik/secrets/session-encryption-key
+      callbackURL: /oidc/callback
+      forceHTTPS: true
+      logLevel: info
+      scopes:
+        - openid
+        - profile
+        - email
+      excludedURLs:
+        - /health
+        - /ready
+      sessionMaxAge: 86400

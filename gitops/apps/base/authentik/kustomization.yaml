@@ -21,6 +21,7 @@ resources:
   - blueprint-homelab-macos.yaml
   - blueprint-homelab-api-backend.yaml
   - blueprint-oauth2-proxy.yaml
+  - blueprint-traefikoidc.yaml
   - blueprint-backstage.yaml
   - blueprint-claude-mcp.yaml
   - blueprint-redpanda-console.yaml

@@ -8,8 +8,22 @@ spec:
   entryPoints:
     - web  # Port 8000
   routes:
+    # OIDC Callback for traefikoidc plugin (must be high priority)
+    - match: Host(`api.k12n.com`) && PathPrefix(`/oidc/callback`)
+      kind: Rule
+      priority: 120
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: traefikoidc-auth
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
     # Heatpump Settings API - Native apps with Bearer token (JWT validated by API)
-    # This route MUST come before the oauth2-proxy route to match first
+    # This route MUST come before the traefikoidc route to match first
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
       kind: Rule
       priority: 110
@@ -25,14 +39,14 @@ spec:
           namespace: heatpump-settings
           port: 8080
 
-    # Heatpump Settings API - Web apps (protected by OAuth2 Proxy ForwardAuth)
+    # Heatpump Settings API - Web apps (protected by traefikoidc)
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
       kind: Rule
       priority: 90
       middlewares:
         - name: https-scheme
           namespace: traefik
-        - name: oauth2-proxy-auth
+        - name: traefikoidc-auth
           namespace: traefik
         - name: cors
           namespace: traefik
@@ -44,7 +58,7 @@ spec:
           port: 8080
 
     # Homelab API - Native apps with Bearer token (JWT validated by API)
-    # This route MUST come before the oauth2-proxy route to match first
+    # This route MUST come before the traefikoidc route to match first
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
       kind: Rule
       priority: 100
@@ -60,14 +74,14 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Homelab API - Web apps (protected by OAuth2 Proxy ForwardAuth)
+    # Homelab API - Web apps (protected by traefikoidc)
     - match: Host(`api.k12n.com`) && PathPrefix(`/api/v1`)
       kind: Rule
       priority: 50
       middlewares:
         - name: https-scheme
           namespace: traefik
-        - name: oauth2-proxy-auth
+        - name: traefikoidc-auth
           namespace: traefik
         - name: cors
           namespace: traefik
@@ -104,7 +118,7 @@ spec:
           namespace: energy-ws
           port: 8080
 
-    # OAuth2 Proxy Callbacks (public)
+    # OAuth2 Proxy Callbacks (public) - DEPRECATED: Will be removed after traefikoidc validation
     - match: Host(`api.k12n.com`) && PathPrefix(`/oauth2`)
       kind: Rule
       middlewares:
@@ -117,7 +131,7 @@ spec:
           namespace: oauth2-proxy
           port: 4180
 
-    # OAuth2 Proxy Callbacks (Claude MCP)
+    # OAuth2 Proxy Callbacks (Claude MCP) - DEPRECATED: Will be removed after traefikoidc validation
     - match: Host(`api.k12n.com`) && PathPrefix(`/oauth2/claude`)
       kind: Rule
       middlewares:

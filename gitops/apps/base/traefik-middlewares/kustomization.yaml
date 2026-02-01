@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: traefik
 resources:
   - forwardauth.yaml
+  - traefikoidc.yaml
   - auth-errors.yaml
   - cors.yaml
   - headers.yaml

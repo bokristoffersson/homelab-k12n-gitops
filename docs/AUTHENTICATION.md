@@ -8,12 +8,13 @@
 - [Security Considerations](#security-considerations)
 - [Configuration Details](#configuration-details)
 - [Troubleshooting](#troubleshooting)
+- [Migration Notes](#migration-notes)
 
 ---
 
 ## Overview
 
-The homelab uses a modern, cloud-native authentication stack built on **Authentik** (Identity Provider), **oauth2-proxy** (authentication gateway), and **Traefik** (ingress controller with middleware support).
+The homelab uses a modern, cloud-native authentication stack built on **Authentik** (Identity Provider), **traefikoidc** (native Traefik OIDC plugin), and **Traefik** (ingress controller with middleware support).
 
 ### High-Level Architecture
 
@@ -27,21 +28,21 @@ The homelab uses a modern, cloud-native authentication stack built on **Authenti
 ┌─────────────────────────────────────────────────────────────────┐
 │                      Traefik Ingress                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │   Security   │  │     CORS     │  │  ForwardAuth │          │
-│  │   Headers    │  │  Middleware  │  │  Middleware  │          │
+│  │   Security   │  │     CORS     │  │ traefikoidc  │          │
+│  │   Headers    │  │  Middleware  │  │   Plugin     │          │
 │  └──────────────┘  └──────────────┘  └──────────────┘          │
 └────┬────────────────────┬────────────────────┬──────────────────┘
      │                    │                    │
      ▼                    ▼                    ▼
-┌─────────┐        ┌─────────────┐      ┌──────────────┐
-│Authentik│◄───────│ oauth2-proxy│      │   Protected  │
-│  (IdP)  │        │  (AuthN GW) │      │   Services   │
-└─────────┘        └─────────────┘      └──────────────┘
-     │                    │                    │
-     ▼                    ▼                    ▼
-┌──────────┐        ┌──────────┐        ┌──────────────┐
-│PostgreSQL│        │  Redis   │        │ Backend APIs │
-└──────────┘        └──────────┘        └──────────────┘
+┌─────────┐                              ┌──────────────┐
+│Authentik│◄─────────────────────────────│   Protected  │
+│  (IdP)  │       OIDC Auth Flow         │   Services   │
+└─────────┘                              └──────────────┘
+     │                                         │
+     ▼                                         ▼
+┌──────────┐                            ┌──────────────┐
+│PostgreSQL│                            │ Backend APIs │
+└──────────┘                            └──────────────┘
 ```
 
 ### Key Features
@@ -49,7 +50,7 @@ The homelab uses a modern, cloud-native authentication stack built on **Authenti
 - **Single Sign-On (SSO)**: Centralized authentication through Authentik
 - **OAuth2/OIDC**: Industry-standard protocols for secure authentication
 - **JWT Tokens**: Stateless authentication with cryptographically signed tokens
-- **ForwardAuth Pattern**: Traefik delegates authentication to oauth2-proxy
+- **Native OIDC Plugin**: traefikoidc handles OIDC authentication directly in Traefik (no separate proxy deployment)
 - **Sealed Secrets**: Encrypted secrets stored in Git (cluster-specific encryption)
 - **Blueprint Automation**: Infrastructure-as-code for identity configuration
 
@@ -111,50 +112,51 @@ Authentik configuration is managed through **blueprints** - YAML files that defi
 
 ---
 
-### 2. OAuth2-Proxy (Authentication Gateway)
+### 2. traefikoidc (OIDC Plugin)
 
-**Version**: v7.7.1
-**Namespace**: `oauth2-proxy`
-**Replicas**: 2 (High Availability)
-**Role**: Forward authentication proxy for protecting backend services
+**Version**: v0.7.10
+**Namespace**: `traefik` (runs as Traefik plugin)
+**Role**: Native OIDC authentication middleware for Traefik
 
 #### Configuration
 
 ```yaml
-Provider: OIDC (OpenID Connect)
-OIDC Issuer: https://authentik.k12n.com/application/o/oauth2-proxy/
-Client ID: oauth2-proxy
-Redirect URL: https://api.k12n.com/oauth2/callback
-Upstream: static://202  # ForwardAuth mode (returns 202 Accepted)
+Provider URL: https://authentik.k12n.com/application/o/traefikoidc/
+Client ID: traefikoidc
+Callback URL: /oidc/callback
+Force HTTPS: true
+Session Max Age: 86400 (24 hours)
 ```
 
-#### Key Settings
+#### Key Features
 
-| Setting | Value | Purpose |
+| Feature | Value | Purpose |
 |---------|-------|---------|
-| `cookie-secure` | true | Require HTTPS for cookies |
-| `cookie-httponly` | true | Prevent JavaScript cookie access |
-| `cookie-samesite` | lax | CSRF protection |
-| `skip-provider-button` | true | Auto-redirect to Authentik |
-| `pass-authorization-header` | true | Forward auth headers to backend |
-| `pass-access-token` | true | Include access token in headers |
-| `set-xauthrequest` | true | Set `X-Auth-Request-*` headers |
+| `forceHTTPS` | true | Ensures HTTPS in redirects (behind Cloudflare Tunnel) |
+| `sessionMaxAge` | 86400 | Session cookie lifetime (24 hours) |
+| `excludedURLs` | `/health`, `/ready` | Health check endpoints bypass auth |
+| `scopes` | `openid`, `profile`, `email` | OIDC scopes requested |
 
-#### Response Headers Forwarded to Backend
+#### Secrets (Sealed)
 
-- `X-Auth-Request-User` - Authenticated username
-- `X-Auth-Request-Email` - User email address
-- `X-Auth-Request-Access-Token` - JWT access token
-- `Authorization` - Bearer token header
+- `client-secret` - Authentik OIDC client secret
+- `session-encryption-key` - 32+ byte key for session encryption
 
-#### Health Checks
-
-- **Liveness**: `GET /ping` (delay: 10s, period: 10s)
-- **Readiness**: `GET /ready` (delay: 5s, period: 5s)
+**Note**: Secrets are mounted at `/etc/traefik/secrets/` in the Traefik pod.
 
 ---
 
-### 3. Traefik (Ingress Controller)
+### 3. OAuth2-Proxy (DEPRECATED)
+
+> **Note**: oauth2-proxy is being replaced by traefikoidc. The deployment will be removed after validation.
+
+**Version**: v7.7.1
+**Namespace**: `oauth2-proxy`
+**Status**: Deprecated - routes now use traefikoidc middleware
+
+---
+
+### 4. Traefik (Ingress Controller)
 
 **Version**: 38.0.1 (Helm Chart)
 **Namespace**: `traefik`
@@ -175,20 +177,23 @@ Providers:
 
 #### Middlewares
 
-**1. ForwardAuth Middleware** (`oauth2-proxy-auth`)
+**1. traefikoidc Middleware** (`traefikoidc-auth`)
 
 ```yaml
-forwardAuth:
-  address: http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/
-  trustForwardHeader: true
-  authResponseHeaders:
-    - X-Auth-Request-User
-    - X-Auth-Request-Email
-    - X-Auth-Request-Access-Token
-    - Authorization
+plugin:
+  traefikoidc:
+    providerURL: https://authentik.k12n.com/application/o/traefikoidc/
+    clientID: traefikoidc
+    clientSecretFile: /etc/traefik/secrets/client-secret
+    sessionEncryptionKeyFile: /etc/traefik/secrets/session-encryption-key
+    callbackURL: /oidc/callback
+    forceHTTPS: true
+    scopes: [openid, profile, email]
+    excludedURLs: [/health, /ready]
+    sessionMaxAge: 86400
 ```
 
-**Purpose**: Delegates authentication to oauth2-proxy before allowing access to protected services.
+**Purpose**: Handles OIDC authentication natively in Traefik without external proxy.
 
 **2. Security Headers Middleware** (`security-headers`)
 
@@ -669,26 +674,72 @@ kubectl delete job authentik-blueprint-apply -n authentik
 |-----------|----------|
 | Authentik Base | `gitops/apps/base/authentik/` |
 | Authentik Overlay | `gitops/apps/homelab/authentik/` |
-| OAuth2-Proxy Base | `gitops/apps/base/oauth2-proxy/` |
-| OAuth2-Proxy Overlay | `gitops/apps/homelab/oauth2-proxy/` |
+| traefikoidc Middleware | `gitops/apps/base/traefik-middlewares/traefikoidc.yaml` |
+| traefikoidc Secrets | `gitops/apps/base/traefik-middlewares/traefikoidc-secrets-sealed.yaml` |
 | Traefik Middlewares | `gitops/apps/base/traefik-middlewares/` |
 | Traefik Routes | `gitops/apps/base/traefik-routes/` |
 | Traefik Controller | `gitops/infrastructure/controllers/traefik/` |
 | Sealed Secrets Controller | `gitops/infrastructure/controllers/sealed-secrets/` |
+| OAuth2-Proxy Base (deprecated) | `gitops/apps/base/oauth2-proxy/` |
+
+---
+
+## Migration Notes
+
+### oauth2-proxy to traefikoidc Migration (2026-02)
+
+The authentication system has been migrated from oauth2-proxy to the native traefikoidc Traefik plugin.
+
+#### What Changed
+
+| Before | After |
+|--------|-------|
+| oauth2-proxy (2 replicas) | traefikoidc plugin (runs in Traefik) |
+| ForwardAuth middleware | Native plugin middleware |
+| `/oauth2/callback` endpoint | `/oidc/callback` endpoint |
+| Separate deployment | No additional deployment |
+
+#### New Components
+
+1. **Authentik Application**: `traefikoidc` (confidential client)
+2. **Traefik Plugin**: `github.com/lukaszraczylo/traefikoidc` v0.7.10
+3. **Middleware**: `traefikoidc-auth` in traefik namespace
+4. **Secrets**: `traefikoidc-secrets` (client-secret, session-encryption-key)
+
+#### Route Priority
+
+Routes use priority-based matching for hybrid auth:
+- **Priority 120**: OIDC callback route
+- **Priority 100-110**: Bearer token routes (direct JWT validation by backend)
+- **Priority 50-95**: Session-based routes (traefikoidc middleware)
+
+#### Rollback
+
+To revert to oauth2-proxy:
+1. Change middleware references in route files from `traefikoidc-auth` to `oauth2-proxy-auth`
+2. Remove OIDC callback routes (`/oidc/callback`)
+3. FluxCD will reconcile the changes
+
+#### Cleanup (After Validation)
+
+After 1-2 weeks of stable operation, remove deprecated resources:
+- `gitops/apps/base/oauth2-proxy/` (entire directory)
+- OAuth2 callback routes (`/oauth2`, `/oauth2/claude`) in api-routes.yaml
+- `oauth2-proxy-auth` and `oauth2-proxy-auth-claude-mcp` middlewares in forwardauth.yaml
 
 ---
 
 ## References
 
 - [Authentik Documentation](https://docs.goauthentik.io/)
-- [OAuth2-Proxy Documentation](https://oauth2-proxy.github.io/oauth2-proxy/)
-- [Traefik ForwardAuth](https://doc.traefik.io/traefik/middlewares/http/forwardauth/)
+- [traefikoidc Plugin](https://github.com/lukaszraczylo/traefikoidc)
+- [Traefik Plugins](https://doc.traefik.io/traefik/plugins/)
 - [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets)
 - [OAuth 2.0 RFC](https://datatracker.ietf.org/doc/html/rfc6749)
 - [OpenID Connect](https://openid.net/connect/)
 
 ---
 
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-02-01
 **Author**: Homelab GitOps System
 **Status**: Production

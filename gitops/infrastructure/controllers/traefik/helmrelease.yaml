@@ -42,6 +42,24 @@ spec:
       kubernetesIngress:
         enabled: false  # Use IngressRoute CRD only
 
+    # Experimental features - plugins
+    experimental:
+      plugins:
+        traefikoidc:
+          moduleName: github.com/lukaszraczylo/traefikoidc
+          version: v0.7.10
+
+    # Additional volumes for plugin secrets
+    deployment:
+      additionalVolumes:
+        - name: traefikoidc-secrets
+          secret:
+            secretName: traefikoidc-secrets
+    additionalVolumeMounts:
+      - name: traefikoidc-secrets
+        mountPath: /etc/traefik/secrets
+        readOnly: true
+
     # Logs
     logs:
       general:
