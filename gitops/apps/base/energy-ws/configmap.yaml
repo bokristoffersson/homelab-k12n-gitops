@@ -17,9 +17,17 @@ data:
       max_connections: 1000
 
     auth:
-      # JWKS-based validation (RS256) for Authentik tokens
-      jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
-      issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+      # Multi-issuer JWKS-based validation (RS256) for Authentik tokens
+      issuers:
+        # Homelab macOS - Native app (public client, JWT validation via JWKS)
+        - name: homelab-macos
+          issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
+          jwks_url: "https://authentik.k12n.com/application/o/homelab-macos/jwks/"
 
-      # Placeholder for legacy HS256 - not used when JWKS is configured
+        # oauth2-proxy - Web app (JWT validation via JWKS)
+        - name: oauth2-proxy
+          issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+          jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
+
+      # Placeholder for legacy HS256 - not used when issuers[] is configured
       jwt_secret: "placeholder"
