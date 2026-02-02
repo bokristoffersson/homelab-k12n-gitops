@@ -17,11 +17,48 @@ fn extract_bearer_token(auth_header: Option<&str>) -> Option<&str> {
     }
 }
 
+/// Check if request was authenticated by oauth2-proxy.
+///
+/// # Security Model
+/// This function trusts requests that have been validated by oauth2-proxy, which runs as
+/// a Traefik ForwardAuth middleware. The security relies on:
+/// 1. Traefik middleware enforcement - all external requests to protected routes must pass
+///    through oauth2-proxy-auth middleware before reaching this service
+/// 2. Network isolation - this service is only accessible within the Kubernetes cluster
+/// 3. Multiple header validation - we require BOTH X-Auth-Request-User AND X-Auth-Request-Email
+///    headers to be present, making header spoofing more difficult
+///
+/// oauth2-proxy sets these headers after validating the user's session cookie against Authentik.
+fn is_authenticated_by_proxy(request: &Request<Body>) -> Option<String> {
+    let headers = request.headers();
+
+    // Require both headers to be present - oauth2-proxy always sets both
+    let user = headers
+        .get("X-Auth-Request-User")
+        .and_then(|h| h.to_str().ok())
+        .filter(|s| !s.is_empty())?;
+
+    let email = headers
+        .get("X-Auth-Request-Email")
+        .and_then(|h| h.to_str().ok())
+        .filter(|s| !s.is_empty())?;
+
+    // Both headers present and non-empty - this request came through oauth2-proxy
+    Some(format!("{} ({})", user, email))
+}
+
 pub async fn require_jwt_auth(
     State(state): State<AppState>,
     request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    // Check for oauth2-proxy authentication headers
+    // Requires BOTH X-Auth-Request-User AND X-Auth-Request-Email to be present
+    if let Some(proxy_user) = is_authenticated_by_proxy(&request) {
+        debug!("Request authenticated via oauth2-proxy for: {}", proxy_user);
+        return Ok(next.run(request).await);
+    }
+
     let jwt_validator = match &state.jwt_validator {
         Some(validator) => validator,
         None => {
@@ -58,6 +95,66 @@ pub async fn require_jwt_auth(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::Request;
+
+    fn make_request_with_headers(headers: Vec<(&str, &str)>) -> Request<Body> {
+        let mut builder = Request::builder().uri("/test").method("GET");
+        for (name, value) in headers {
+            builder = builder.header(name, value);
+        }
+        builder.body(Body::empty()).unwrap()
+    }
+
+    #[test]
+    fn test_proxy_auth_with_both_headers() {
+        let request = make_request_with_headers(vec![
+            ("X-Auth-Request-User", "testuser"),
+            ("X-Auth-Request-Email", "test@example.com"),
+        ]);
+        let result = is_authenticated_by_proxy(&request);
+        assert_eq!(result, Some("testuser (test@example.com)".to_string()));
+    }
+
+    #[test]
+    fn test_proxy_auth_missing_email() {
+        let request = make_request_with_headers(vec![("X-Auth-Request-User", "testuser")]);
+        let result = is_authenticated_by_proxy(&request);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_proxy_auth_missing_user() {
+        let request = make_request_with_headers(vec![("X-Auth-Request-Email", "test@example.com")]);
+        let result = is_authenticated_by_proxy(&request);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_proxy_auth_empty_user() {
+        let request = make_request_with_headers(vec![
+            ("X-Auth-Request-User", ""),
+            ("X-Auth-Request-Email", "test@example.com"),
+        ]);
+        let result = is_authenticated_by_proxy(&request);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_proxy_auth_empty_email() {
+        let request = make_request_with_headers(vec![
+            ("X-Auth-Request-User", "testuser"),
+            ("X-Auth-Request-Email", ""),
+        ]);
+        let result = is_authenticated_by_proxy(&request);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_proxy_auth_no_headers() {
+        let request = make_request_with_headers(vec![]);
+        let result = is_authenticated_by_proxy(&request);
+        assert_eq!(result, None);
+    }
 
     #[test]
     fn test_extract_bearer_token_valid() {
