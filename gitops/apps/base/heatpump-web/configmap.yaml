@@ -6,9 +6,9 @@ metadata:
   namespace: heatpump-web
 data:
   # API URLs - runtime configuration
-  VITE_API_URL: "https://heatpump.k12n.com"
+  VITE_API_URL: "https://homelab.k12n.com"
 
   # Authentik OAuth2 Configuration
   VITE_AUTHENTIK_URL: "https://authentik.k12n.com"
   VITE_OAUTH_CLIENT_ID: "heatpump-web"
-  VITE_OAUTH_REDIRECT_URI: "https://heatpump.k12n.com/auth/callback"
+  VITE_OAUTH_REDIRECT_URI: "https://homelab.k12n.com/auth/callback"

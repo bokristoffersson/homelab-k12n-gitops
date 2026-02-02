@@ -53,20 +53,14 @@ spec:
     tls:
       enabled: false
 
-    # Console configuration with OIDC authentication via Authentik
+    # Console configuration - OIDC disabled (using oauth2-proxy ForwardAuth)
     console:
       enabled: true
-      extraEnvFrom:
-        - secretRef:
-            name: redpanda-console-oidc
       config:
         authentication:
           useSecureCookies: true
           oidc:
-            enabled: true
-            issuerUrl: "https://authentik.k12n.com/application/o/redpanda-console/"
-            clientId: "redpanda-console"
-            redirectUrl: "https://redpanda.k12n.com/auth/callbacks/oidc"
+            enabled: false
 
     # Monitoring disabled - Prometheus Operator CRDs not installed
     monitoring:
