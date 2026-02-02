@@ -22,6 +22,23 @@ pub async fn require_jwt_auth(
     request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
+    // Check for X-Auth-Request-User header (set by oauth2-proxy after authentication)
+    // This header is only present when the request comes through oauth2-proxy middleware,
+    // which has already validated the user's session. Trust it.
+    if let Some(proxy_user) = request
+        .headers()
+        .get("X-Auth-Request-User")
+        .and_then(|h| h.to_str().ok())
+    {
+        if !proxy_user.is_empty() {
+            debug!(
+                "Request authenticated via oauth2-proxy for user: {}",
+                proxy_user
+            );
+            return Ok(next.run(request).await);
+        }
+    }
+
     let jwt_validator = match &state.jwt_validator {
         Some(validator) => validator,
         None => {
