@@ -29,7 +29,7 @@ data:
           # No client_secret needed for public clients (SPAs)
           redirect_uris:
             - matching_mode: strict
-              url: "https://heatpump.k12n.com/auth/callback"
+              url: "https://homelab.k12n.com/auth/callback"
             - matching_mode: strict
               url: "http://localhost:5173/auth/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
@@ -57,8 +57,8 @@ data:
           slug: heatpump-web
           provider: !KeyOf heatpump-web-provider
           policy_engine_mode: any
-          meta_launch_url: https://heatpump.k12n.com
-          meta_icon: https://heatpump.k12n.com/favicon.ico
+          meta_launch_url: https://homelab.k12n.com
+          meta_icon: https://homelab.k12n.com/favicon.ico
           meta_description: Real-time heatpump monitoring and energy dashboard
           open_in_new_tab: false
 

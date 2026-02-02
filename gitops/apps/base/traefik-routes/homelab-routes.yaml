@@ -1,0 +1,185 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: homelab-routes
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    # OAuth2 Proxy Callbacks (public - must be highest priority)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/oauth2`)
+      kind: Rule
+      priority: 200
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+      services:
+        - name: oauth2-proxy
+          namespace: oauth2-proxy
+          port: 4180
+
+    # Admin: Backstage Developer Portal (protected by OAuth2 Proxy)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/admin/backstage`)
+      kind: Rule
+      priority: 180
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: backstage-stripprefix
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: backstage
+          namespace: backstage
+          port: 7007
+
+    # Admin: Redpanda Console (protected by OAuth2 Proxy)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/admin/redpanda`)
+      kind: Rule
+      priority: 170
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: redpanda-stripprefix
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: redpanda-v2-console
+          namespace: redpanda-v2
+          port: 8080
+
+    # Kubernetes MCP Server (Bearer JWT auth)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/models/kubernetes`)
+      kind: Rule
+      priority: 160
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+        - name: mcp-kubernetes-stripprefix
+          namespace: traefik
+      services:
+        - name: kubernetes-mcp-server
+          namespace: kubernetes-mcp-server
+          port: 8080
+
+    # Energy WebSocket (JWT auth via query parameter)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/ws`)
+      kind: Rule
+      priority: 150
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+      services:
+        - name: energy-ws
+          namespace: energy-ws
+          port: 8080
+
+    # Heatpump Settings API - Native apps with Bearer token (JWT validated by API)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
+      kind: Rule
+      priority: 130
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: heatpump-settings-api
+          namespace: heatpump-settings
+          port: 8080
+
+    # Homelab API - Native apps with Bearer token (JWT validated by API)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
+      kind: Rule
+      priority: 120
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
+    # MCP endpoints (Bearer JWT auth)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/mcp`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
+      kind: Rule
+      priority: 110
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
+    # Heatpump Settings API - Web apps (protected by OAuth2 Proxy)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: heatpump-settings-api
+          namespace: heatpump-settings
+          port: 8080
+
+    # Homelab API - Web apps (protected by OAuth2 Proxy)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api`)
+      kind: Rule
+      priority: 90
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
+    # Heatpump Web Frontend (public SPA - catch-all)
+    - match: Host(`homelab.k12n.com`)
+      kind: Rule
+      priority: 10
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+      services:
+        - name: heatpump-web
+          namespace: heatpump-web
+          port: 80

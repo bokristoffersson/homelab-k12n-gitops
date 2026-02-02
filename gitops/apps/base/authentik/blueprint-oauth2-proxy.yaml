@@ -23,9 +23,7 @@ data:
           client_id: oauth2-proxy
           redirect_uris:
             - matching_mode: strict
-              url: "https://api.k12n.com/oauth2/callback"
-            - matching_mode: strict
-              url: "https://heatpump.k12n.com/oauth2/callback"
+              url: "https://homelab.k12n.com/oauth2/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
           access_code_validity: minutes=1
           access_token_validity: hours=24

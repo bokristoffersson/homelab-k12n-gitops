@@ -3,9 +3,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: traefik
 resources:
-  - api-routes.yaml
+  - homelab-routes.yaml
   - authentik-routes.yaml
-  - backstage-routes.yaml
-  - frontend-routes.yaml
-  - mcp-routes.yaml
-  - redpanda-console-routes.yaml
