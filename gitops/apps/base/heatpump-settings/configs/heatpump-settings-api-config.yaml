@@ -25,6 +25,13 @@ auth:
       issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
       jwks_url: "https://authentik.k12n.com/application/o/homelab-macos/jwks/"
 
+    # oauth2-proxy - Web app (opaque token, requires introspection)
+    - name: oauth2-proxy
+      issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+      introspection_url: "https://authentik.k12n.com/application/o/introspect/"
+      introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
+      introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
+
 logging:
   level: "info"
   format: "json"
