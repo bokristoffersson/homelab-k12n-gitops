@@ -54,11 +54,30 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Initialize authentication method based on configuration
-    let auth_method =
-        if let (Some(jwks_url), Some(issuer)) = (&config.auth.jwks_url, &config.auth.issuer) {
-            // Prefer JWKS/RS256 validation for OIDC tokens
+    let auth_method = if let Some(ref issuers) = config.auth.issuers {
+        if !issuers.is_empty() {
+            // Multi-issuer JWKS/RS256 validation
             info!(
-                "Initializing JWKS authentication: issuer={}, jwks_url={}",
+                "Initializing multi-issuer JWKS authentication with {} issuers",
+                issuers.len()
+            );
+            for issuer_config in issuers {
+                info!(
+                    "  - {}: issuer={}, jwks_url={}",
+                    issuer_config.name, issuer_config.issuer, issuer_config.jwks_url
+                );
+            }
+            let validator = JwtValidator::new_multi(issuers.clone())
+                .await
+                .map_err(|e| {
+                    anyhow::anyhow!("Failed to initialize multi-issuer validator: {}", e)
+                })?;
+            AuthMethod::Jwks(Arc::new(validator))
+        } else if let (Some(jwks_url), Some(issuer)) = (&config.auth.jwks_url, &config.auth.issuer)
+        {
+            // Legacy single-issuer JWKS/RS256 validation
+            info!(
+                "Initializing single-issuer JWKS authentication: issuer={}, jwks_url={}",
                 issuer, jwks_url
             );
             let validator = JwtValidator::new(jwks_url, issuer.clone())
@@ -71,9 +90,28 @@ async fn main() -> anyhow::Result<()> {
             AuthMethod::Legacy(secret.clone())
         } else {
             return Err(anyhow::anyhow!(
-                "No authentication method configured (need either JWKS or jwt_secret)"
+                "No authentication method configured (need either issuers[], JWKS, or jwt_secret)"
             ));
-        };
+        }
+    } else if let (Some(jwks_url), Some(issuer)) = (&config.auth.jwks_url, &config.auth.issuer) {
+        // Legacy single-issuer JWKS/RS256 validation
+        info!(
+            "Initializing single-issuer JWKS authentication: issuer={}, jwks_url={}",
+            issuer, jwks_url
+        );
+        let validator = JwtValidator::new(jwks_url, issuer.clone())
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to initialize JWKS validator: {}", e))?;
+        AuthMethod::Jwks(Arc::new(validator))
+    } else if let Some(secret) = &config.auth.jwt_secret {
+        // Fall back to legacy HS256 validation
+        warn!("Using legacy HS256 JWT validation - consider migrating to JWKS/RS256");
+        AuthMethod::Legacy(secret.clone())
+    } else {
+        return Err(anyhow::anyhow!(
+            "No authentication method configured (need either issuers[], JWKS, or jwt_secret)"
+        ));
+    };
 
     // Create application state
     let state = Arc::new(AppState::new(

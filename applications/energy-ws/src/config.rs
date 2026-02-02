@@ -24,13 +24,25 @@ pub struct ServerConfig {
     pub max_connections: usize,
 }
 
+/// Single issuer configuration for multi-issuer support
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IssuerConfig {
+    pub name: String,
+    pub issuer: String,
+    pub jwks_url: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthConfig {
     // Legacy HS256 configuration (optional)
     #[serde(default)]
     pub jwt_secret: Option<String>,
 
-    // JWKS configuration for RS256 validation from Authentik
+    // Multi-issuer JWKS configuration for RS256 validation from Authentik
+    #[serde(default)]
+    pub issuers: Option<Vec<IssuerConfig>>,
+
+    // Legacy single-issuer configuration (for backwards compatibility)
     #[serde(default)]
     pub jwks_url: Option<String>,
     #[serde(default)]
@@ -75,13 +87,20 @@ impl Config {
             return Err(AppError::Config("Server port cannot be 0".to_string()));
         }
 
-        // Validate that either legacy HS256 or JWKS configuration is provided
+        // Validate that either legacy HS256, multi-issuer JWKS, or single-issuer JWKS is provided
         let has_legacy = self.auth.jwt_secret.is_some();
-        let has_jwks = self.auth.jwks_url.is_some() && self.auth.issuer.is_some();
+        let has_multi_issuer = self
+            .auth
+            .issuers
+            .as_ref()
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
+        let has_single_issuer = self.auth.jwks_url.is_some() && self.auth.issuer.is_some();
 
-        if !has_legacy && !has_jwks {
+        if !has_legacy && !has_multi_issuer && !has_single_issuer {
             return Err(AppError::Config(
-                "Either jwt_secret or (jwks_url and issuer) must be provided".to_string(),
+                "Either jwt_secret, issuers[], or (jwks_url and issuer) must be provided"
+                    .to_string(),
             ));
         }
 

@@ -2,8 +2,10 @@ use crate::error::{AppError, Result};
 use alcoholic_jwt::{validate, Validation as JwksValidation, ValidationError, JWKS};
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -14,22 +16,66 @@ pub struct Claims {
     pub email: Option<String>, // Email (from Authentik)
 }
 
-// JWKS-based JWT Validator for RS256 tokens from Authentik
+// Single issuer entry with cached JWKS
+#[derive(Clone)]
+struct IssuerEntry {
+    name: String,
+    issuer: String,
+    jwks: Arc<RwLock<JWKS>>,
+}
+
+// Multi-issuer JWKS-based JWT Validator for RS256 tokens from Authentik
 #[derive(Clone)]
 pub struct JwtValidator {
-    jwks: Arc<RwLock<JWKS>>,
-    issuer: String,
+    issuers: Vec<IssuerEntry>,
+    issuer_index: HashMap<String, usize>,
 }
 
 impl JwtValidator {
+    /// Create a new multi-issuer validator
+    pub async fn new_multi(
+        configs: Vec<crate::config::IssuerConfig>,
+    ) -> std::result::Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let mut issuers = Vec::new();
+        let mut issuer_index = HashMap::new();
+
+        for (idx, config) in configs.into_iter().enumerate() {
+            let jwks = fetch_jwks(&config.jwks_url).await?;
+            info!(
+                "Loaded JWKS for issuer '{}' from {}",
+                config.name, config.jwks_url
+            );
+
+            issuers.push(IssuerEntry {
+                name: config.name.clone(),
+                issuer: config.issuer.clone(),
+                jwks: Arc::new(RwLock::new(jwks)),
+            });
+            issuer_index.insert(config.issuer, idx);
+        }
+
+        Ok(Self {
+            issuers,
+            issuer_index,
+        })
+    }
+
+    /// Legacy constructor for single issuer (backwards compatibility)
     pub async fn new(
         jwks_url: &str,
         issuer: String,
-    ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+    ) -> std::result::Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let jwks = fetch_jwks(jwks_url).await?;
+        let mut issuer_index = HashMap::new();
+        issuer_index.insert(issuer.clone(), 0);
+
         Ok(Self {
-            jwks: Arc::new(RwLock::new(jwks)),
-            issuer,
+            issuers: vec![IssuerEntry {
+                name: "default".to_string(),
+                issuer,
+                jwks: Arc::new(RwLock::new(jwks)),
+            }],
+            issuer_index,
         })
     }
 
@@ -37,9 +83,49 @@ impl JwtValidator {
         &self,
         token: &str,
     ) -> std::result::Result<Claims, ValidationError> {
-        let jwks = self.jwks.read().await;
+        // First, try to extract the issuer from the token to find the right JWKS
+        if let Some(iss) = extract_issuer_from_token(token) {
+            if let Some(&idx) = self.issuer_index.get(&iss) {
+                let entry = &self.issuers[idx];
+                debug!("Validating JWT from issuer '{}' ({})", entry.name, iss);
+                return self.validate_with_issuer(token, entry).await;
+            } else {
+                debug!("Unknown issuer in token: {}", iss);
+            }
+        }
+
+        // If issuer extraction failed or issuer not found, try all issuers
+        debug!(
+            "Trying all {} configured issuers for JWT validation",
+            self.issuers.len()
+        );
+        for entry in &self.issuers {
+            match self.validate_with_issuer(token, entry).await {
+                Ok(claims) => {
+                    debug!("JWT validated successfully with issuer '{}'", entry.name);
+                    return Ok(claims);
+                }
+                Err(e) => {
+                    debug!(
+                        "JWT validation failed with issuer '{}': {:?}",
+                        entry.name, e
+                    );
+                }
+            }
+        }
+
+        warn!("JWT validation failed with all configured issuers");
+        Err(ValidationError::InvalidSignature)
+    }
+
+    async fn validate_with_issuer(
+        &self,
+        token: &str,
+        entry: &IssuerEntry,
+    ) -> std::result::Result<Claims, ValidationError> {
+        let jwks = entry.jwks.read().await;
         let validations = vec![
-            JwksValidation::Issuer(self.issuer.clone()),
+            JwksValidation::Issuer(entry.issuer.clone()),
             JwksValidation::SubjectPresent,
         ];
 
@@ -53,9 +139,30 @@ impl JwtValidator {
 
         serde_json::from_value(valid_jwt.claims).map_err(|_| ValidationError::InvalidSignature)
     }
+
+    #[allow(dead_code)]
+    pub fn issuer_count(&self) -> usize {
+        self.issuers.len()
+    }
 }
 
-async fn fetch_jwks(url: &str) -> std::result::Result<JWKS, Box<dyn std::error::Error>> {
+/// Extract issuer from JWT without validating signature
+fn extract_issuer_from_token(token: &str) -> Option<String> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+
+    // Decode the payload (second part)
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    let payload = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&payload).ok()?;
+    claims.get("iss").and_then(|v| v.as_str()).map(String::from)
+}
+
+async fn fetch_jwks(
+    url: &str,
+) -> std::result::Result<JWKS, Box<dyn std::error::Error + Send + Sync>> {
     let res = reqwest::get(url).await?;
     let jwks: JWKS = res.json().await?;
     Ok(jwks)

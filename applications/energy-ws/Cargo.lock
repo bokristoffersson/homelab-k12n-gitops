@@ -326,6 +326,7 @@ dependencies = [
  "alcoholic_jwt",
  "anyhow",
  "axum",
+ "base64 0.22.1",
  "chrono",
  "futures",
  "jsonwebtoken",
