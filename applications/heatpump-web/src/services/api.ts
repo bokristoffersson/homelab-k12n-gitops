@@ -9,20 +9,18 @@ export const api = axios.create({
   withCredentials: true,  // Send cookies with requests
 });
 
-// Handle 401 responses by redirecting to OIDC login
+// Simple response interceptor to handle 401
+// oauth2-proxy will redirect to Authentik login page automatically
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Store current path for redirect after auth
-      sessionStorage.setItem('auth_redirect', window.location.pathname);
-      // Redirect to auth login to trigger OIDC flow
-      window.location.href = '/auth/login';
-      return new Promise(() => {}); // Prevent error propagation during redirect
+      // Redirect to login (oauth2-proxy will handle this)
+      window.location.href = '/oauth2/sign_in';
     }
     return Promise.reject(error);
   }
 );
 
-
-
+// Authentication is handled by oauth2-proxy via HTTP-only cookies
+// No client-side OAuth2 code needed
