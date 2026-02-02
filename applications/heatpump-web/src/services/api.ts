@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use runtime configuration from window.ENV (loaded from env-config.js)
-const API_BASE_URL = window.ENV?.API_URL || 'https://heatpump.k12n.com';
+const API_BASE_URL = window.ENV?.API_URL || 'https://homelab.k12n.com';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
