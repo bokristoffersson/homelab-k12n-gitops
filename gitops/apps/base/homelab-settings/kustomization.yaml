@@ -30,4 +30,5 @@ configMapGenerator:
       - migrations/003_create_outbox_table.sql
       - migrations/004_add_integral_setting.sql
       - migrations/005_rename_database.sql
+      - migrations/006_create_power_plugs_tables.sql
       - migrations/run_migrations.sh

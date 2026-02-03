@@ -31,7 +31,7 @@ impl OutboxRepository {
         Self { pool }
     }
 
-    /// Insert a new outbox command within an existing transaction
+    /// Insert a new outbox command within an existing transaction (for heatpump settings)
     pub async fn insert_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         device_id: &str,
@@ -58,6 +58,46 @@ impl OutboxRepository {
         .bind("heatpump_setting")
         .bind(device_id)
         .bind("setting_update")
+        .bind(payload)
+        .bind("pending")
+        .bind(0) // retry_count
+        .bind(3) // max_retries
+        .fetch_one(&mut **tx)
+        .await?;
+
+        Ok(entry)
+    }
+
+    /// Insert a power plug command within an existing transaction
+    pub async fn insert_plug_command_in_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        plug_id: &str,
+        status: bool,
+    ) -> Result<OutboxEntry> {
+        let payload = serde_json::json!({
+            "plug_id": plug_id,
+            "status": status,
+            "action": if status { "ON" } else { "OFF" }
+        });
+
+        let entry = sqlx::query_as::<_, OutboxEntry>(
+            r#"
+            INSERT INTO outbox (
+                aggregate_type,
+                aggregate_id,
+                event_type,
+                payload,
+                status,
+                created_at,
+                retry_count,
+                max_retries
+            ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)
+            RETURNING *
+            "#,
+        )
+        .bind("power_plug")
+        .bind(plug_id)
+        .bind("plug_toggle")
         .bind(payload)
         .bind("pending")
         .bind(0) // retry_count
