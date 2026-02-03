@@ -68,7 +68,7 @@ impl OutboxRepository {
         Ok(entry)
     }
 
-    /// Insert a power plug command within an existing transaction
+    /// Insert a power plug command within an existing transaction (manual toggle)
     pub async fn insert_plug_command_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         plug_id: &str,
@@ -77,7 +77,8 @@ impl OutboxRepository {
         let payload = serde_json::json!({
             "plug_id": plug_id,
             "status": status,
-            "action": if status { "ON" } else { "OFF" }
+            "action": if status { "ON" } else { "OFF" },
+            "source": "manual"
         });
 
         let entry = sqlx::query_as::<_, OutboxEntry>(
@@ -98,6 +99,49 @@ impl OutboxRepository {
         .bind("power_plug")
         .bind(plug_id)
         .bind("plug_toggle")
+        .bind(payload)
+        .bind("pending")
+        .bind(0) // retry_count
+        .bind(3) // max_retries
+        .fetch_one(&mut **tx)
+        .await?;
+
+        Ok(entry)
+    }
+
+    /// Insert a scheduled power plug command within an existing transaction
+    pub async fn insert_scheduled_plug_command_in_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        plug_id: &str,
+        status: bool,
+        schedule_id: i64,
+    ) -> Result<OutboxEntry> {
+        let payload = serde_json::json!({
+            "plug_id": plug_id,
+            "status": status,
+            "action": if status { "ON" } else { "OFF" },
+            "source": "schedule",
+            "schedule_id": schedule_id
+        });
+
+        let entry = sqlx::query_as::<_, OutboxEntry>(
+            r#"
+            INSERT INTO outbox (
+                aggregate_type,
+                aggregate_id,
+                event_type,
+                payload,
+                status,
+                created_at,
+                retry_count,
+                max_retries
+            ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)
+            RETURNING *
+            "#,
+        )
+        .bind("power_plug")
+        .bind(plug_id)
+        .bind("plug_schedule")
         .bind(payload)
         .bind("pending")
         .bind(0) // retry_count

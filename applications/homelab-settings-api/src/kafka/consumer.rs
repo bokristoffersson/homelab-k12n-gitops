@@ -126,7 +126,10 @@ impl KafkaConsumerService {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        let wifi_rssi = data.get("wifi_rssi").and_then(|v| v.as_i64()).map(|v| v as i32);
+        let wifi_rssi = data
+            .get("wifi_rssi")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32);
 
         let uptime_seconds = data
             .get("uptime_seconds")

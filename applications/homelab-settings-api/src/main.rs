@@ -4,6 +4,7 @@ mod config;
 mod error;
 mod kafka;
 mod repositories;
+mod scheduler;
 
 use anyhow::Result;
 use sqlx::postgres::PgPoolOptions;
@@ -17,6 +18,7 @@ use crate::{
     config::Config,
     kafka::KafkaConsumerService,
     repositories::{OutboxRepository, PlugsRepository, SchedulesRepository, SettingsRepository},
+    scheduler::{ScheduleExecutor, SchedulerConfig},
 };
 
 #[tokio::main]
@@ -61,6 +63,13 @@ async fn main() -> Result<()> {
     // Spawn Kafka consumer task
     let kafka_handle = tokio::spawn(async move {
         kafka_consumer.run().await;
+    });
+
+    // Create and spawn schedule executor task
+    tracing::info!("Initializing schedule executor...");
+    let scheduler = ScheduleExecutor::new(db_pool.clone(), SchedulerConfig::default());
+    let scheduler_handle = tokio::spawn(async move {
+        scheduler.run().await;
     });
 
     // Initialize JWT validator if auth is configured
@@ -113,8 +122,9 @@ async fn main() -> Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    // Wait for Kafka consumer to finish (it won't unless shutdown)
+    // Abort background tasks on shutdown
     kafka_handle.abort();
+    scheduler_handle.abort();
 
     tracing::info!("Application shutdown complete");
     Ok(())
