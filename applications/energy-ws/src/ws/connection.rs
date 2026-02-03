@@ -9,7 +9,7 @@ use tracing::{debug, error, info, warn};
 /// Handle a WebSocket connection
 pub async fn handle_connection(
     socket: WebSocket,
-    broadcast_rx: broadcast::Receiver<EnergyMessage>,
+    mut broadcast_rx: broadcast::Receiver<EnergyMessage>,
     client_id: String,
 ) {
     info!("WebSocket client connected: {}", client_id);
@@ -19,32 +19,46 @@ pub async fn handle_connection(
     // Track which streams the client is subscribed to
     let mut subscribed_streams: HashSet<String> = HashSet::new();
 
-    // Clone receiver for the broadcast task
-    let mut rx = broadcast_rx.resubscribe();
-
     // Clone client_id for tasks
     let send_client_id = client_id.clone();
+    let send_client_id_outer = client_id.clone(); // For logging after task completes
     let recv_client_id = client_id.clone();
 
     // Spawn task to receive broadcasts from Kafka and send to WebSocket
     let mut send_task = tokio::spawn(async move {
-        while let Ok(energy_msg) = rx.recv().await {
-            // Create server message
-            let server_msg = ServerMessage::data("energy", energy_msg);
+        loop {
+            match broadcast_rx.recv().await {
+                Ok(energy_msg) => {
+                    // Create server message
+                    let server_msg = ServerMessage::data("energy", energy_msg);
 
-            // Serialize to JSON
-            let json = match serde_json::to_string(&server_msg) {
-                Ok(j) => j,
-                Err(e) => {
-                    error!("Failed to serialize message: {}", e);
-                    continue;
+                    // Serialize to JSON
+                    let json = match serde_json::to_string(&server_msg) {
+                        Ok(j) => j,
+                        Err(e) => {
+                            error!("Failed to serialize message: {}", e);
+                            continue;
+                        }
+                    };
+
+                    // Send to WebSocket client
+                    if let Err(e) = ws_sender.send(Message::Text(json.into())).await {
+                        error!("Failed to send message to WebSocket: {}", e);
+                        break;
+                    }
+                    debug!("Sent energy message to WebSocket client {}", send_client_id);
                 }
-            };
-
-            // Send to WebSocket client
-            if let Err(e) = ws_sender.send(Message::Text(json.into())).await {
-                error!("Failed to send message to WebSocket: {}", e);
-                break;
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(count)) => {
+                    warn!(
+                        "Broadcast receiver for client {} lagged, {} messages dropped",
+                        send_client_id, count
+                    );
+                    // Continue receiving - we can recover from lag
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    info!("Broadcast channel closed for client {}", send_client_id);
+                    break;
+                }
             }
         }
     });
@@ -115,7 +129,7 @@ pub async fn handle_connection(
     // Wait for either task to finish
     tokio::select! {
         _ = &mut send_task => {
-            info!("Send task completed for client {}", send_client_id);
+            info!("Send task completed for client {}", send_client_id_outer);
             recv_task.abort();
         }
         subscriptions = &mut recv_task => {
