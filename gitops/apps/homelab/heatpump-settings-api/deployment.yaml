@@ -31,13 +31,13 @@ spec:
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
-                  name: database-credentials
-                  key: username
+                  name: postgres-credentials
+                  key: DATABASE_USERNAME
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: database-credentials
-                  key: password
+                  name: postgres-credentials
+                  key: DATABASE_PASSWORD
           volumeMounts:
             - name: config
               mountPath: /config
