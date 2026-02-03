@@ -54,6 +54,7 @@ spec:
           port: 7007
 
     # Admin: Redpanda Console (protected by OAuth2 Proxy)
+    # Uses X-Forwarded-Prefix header for subpath hosting (console reads this automatically)
     - match: Host(`homelab.k12n.com`) && PathPrefix(`/admin/redpanda`)
       kind: Rule
       priority: 170
@@ -61,6 +62,8 @@ spec:
         - name: https-scheme
           namespace: traefik
         - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: redpanda-forwarded-prefix
           namespace: traefik
         - name: redpanda-stripprefix
           namespace: traefik

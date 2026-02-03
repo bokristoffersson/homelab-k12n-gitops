@@ -54,13 +54,10 @@ spec:
       enabled: false
 
     # Console configuration - OIDC disabled (using oauth2-proxy ForwardAuth)
+    # Note: server.basePath config requires chart 25.x+, so we use X-Forwarded-Prefix header instead
     console:
       enabled: true
       config:
-        # Server config for subpath hosting at /admin/redpanda
-        server:
-          basePath: /admin/redpanda
-          stripPrefix: false  # Traefik already strips the prefix
         authentication:
           useSecureCookies: true
           oidc:

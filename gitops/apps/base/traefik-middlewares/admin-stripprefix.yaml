@@ -9,6 +9,17 @@ spec:
     prefixes:
       - /admin/backstage
 ---
+# Add X-Forwarded-Prefix header for Redpanda Console subpath hosting
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redpanda-forwarded-prefix
+  namespace: traefik
+spec:
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Prefix: /admin/redpanda
+---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
