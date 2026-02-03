@@ -8,7 +8,7 @@ spec:
   chart:
     spec:
       chart: redpanda
-      version: "5.10.4"
+      version: "25.1.2"
       sourceRef:
         kind: HelmRepository
         name: redpanda
@@ -17,32 +17,16 @@ spec:
     # Override cluster name to avoid conflicts with old deployment
     fullnameOverride: "redpanda-v2"
 
+    # Resource configuration (25.x uses different structure)
+    resources:
+      cpu:
+        cores: 1
+      memory:
+        container:
+          max: 2Gi
+
     statefulset:
       replicas: 1
-
-      # NEW: Explicit resource limits (GitOps best practice)
-      resources:
-        limits:
-          cpu: 1000m
-          memory: 2Gi
-        requests:
-          cpu: 500m
-          memory: 1Gi
-
-      # NEW: Health checks (GitOps best practice)
-      livenessProbe:
-        enabled: true
-        initialDelaySeconds: 60
-        periodSeconds: 30
-        timeoutSeconds: 10
-        failureThreshold: 3
-
-      readinessProbe:
-        enabled: true
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        timeoutSeconds: 5
-        failureThreshold: 3
 
     storage:
       persistentVolume:
@@ -53,11 +37,13 @@ spec:
     tls:
       enabled: false
 
-    # Console configuration - OIDC disabled (using oauth2-proxy ForwardAuth)
-    # Note: server.basePath config requires chart 25.x+, so we use X-Forwarded-Prefix header instead
+    # Console configuration with basePath for subpath hosting
     console:
       enabled: true
       config:
+        server:
+          basePath: /admin/redpanda
+          stripPrefix: false  # Traefik already strips the prefix
         authentication:
           useSecureCookies: true
           oidc:
@@ -69,12 +55,9 @@ spec:
 
     external:
       enabled: false
-      service:
-        enabled: false
 
     listeners:
       admin:
-        enabled: true
         port: 9644
         tls:
           enabled: false
@@ -82,21 +65,14 @@ spec:
           default:
             enabled: false
       kafka:
-        port: 9092
+        port: 9092  # Keep 9092 for compatibility with existing services
         tls:
           enabled: false
         external:
           default:
             enabled: false
-        # Different advertised address to avoid conflicts
-        advertisedAddress: "redpanda-v2.redpanda-v2.svc.cluster.local"
       http:
         enabled: true
         port: 8082
       schemaRegistry:
         enabled: false
-
-    # NEW: Pod disruption budget (GitOps best practice)
-    podDisruptionBudget:
-      enabled: true
-      maxUnavailable: 0
