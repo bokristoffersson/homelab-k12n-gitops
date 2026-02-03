@@ -104,7 +104,8 @@ spec:
           port: 8080
 
     # Homelab Settings API - Native apps with Bearer token (JWT validated by API)
-    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
+    # Routes: /api/v1/heatpump/settings, /api/v1/plugs
+    - match: Host(`homelab.k12n.com`) && (PathPrefix(`/api/v1/heatpump/settings`) || PathPrefix(`/api/v1/plugs`)) && HeaderRegexp(`Authorization`, `^Bearer .+`)
       kind: Rule
       priority: 130
       middlewares:
@@ -152,7 +153,8 @@ spec:
           port: 8080
 
     # Homelab Settings API - Web apps (protected by OAuth2 Proxy)
-    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
+    # Routes: /api/v1/heatpump/settings, /api/v1/plugs
+    - match: Host(`homelab.k12n.com`) && (PathPrefix(`/api/v1/heatpump/settings`) || PathPrefix(`/api/v1/plugs`))
       kind: Rule
       priority: 100
       middlewares:
