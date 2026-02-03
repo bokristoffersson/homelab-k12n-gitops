@@ -1,7 +1,6 @@
 use rdkafka::config::ClientConfig;
 use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::message::Message;
-use rdkafka::util::Timeout;
 use serde_json::Value;
 use sqlx::PgPool;
 use std::time::Duration;

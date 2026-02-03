@@ -126,6 +126,106 @@ fn map_field_to_thermiq_param(field_name: &str) -> Option<String> {
     }
 }
 
+/// Publish a power plug command to Tasmota via MQTT
+/// Topic format: cmnd/{plug_id}/POWER
+/// Payload: ON or OFF
+async fn publish_plug_command(
+    mqtt_client: &AsyncClient,
+    entry: &outbox::OutboxEntry,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let payload_obj = entry
+        .payload
+        .as_object()
+        .ok_or("Payload is not a JSON object")?;
+
+    // Get plug_id from payload (or fall back to aggregate_id)
+    let plug_id = payload_obj
+        .get("plug_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or(&entry.aggregate_id);
+
+    // Get action from payload
+    let action = payload_obj
+        .get("action")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing 'action' field in payload")?;
+
+    // Validate action
+    if action != "ON" && action != "OFF" {
+        return Err(format!("Invalid action '{}', expected 'ON' or 'OFF'", action).into());
+    }
+
+    // Build Tasmota MQTT topic: cmnd/{plug_id}/POWER
+    let topic = format!("cmnd/{}/POWER", plug_id);
+
+    // Log source information if available
+    let source = payload_obj
+        .get("source")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+    let schedule_id = payload_obj.get("schedule_id").and_then(|v| v.as_i64());
+
+    if let Some(sid) = schedule_id {
+        info!(
+            "Publishing plug command (source={}, schedule_id={}) to topic '{}': {}",
+            source, sid, topic, action
+        );
+    } else {
+        info!(
+            "Publishing plug command (source={}) to topic '{}': {}",
+            source, topic, action
+        );
+    }
+
+    // Publish to MQTT
+    mqtt_client
+        .publish(&topic, QoS::AtLeastOnce, false, action.as_bytes())
+        .await?;
+
+    info!("Published plug command to {}: {}", topic, action);
+    Ok(())
+}
+
+/// Publish a heatpump setting command to ThermIQ via MQTT
+async fn publish_heatpump_command(
+    mqtt_client: &AsyncClient,
+    entry: &outbox::OutboxEntry,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let topic = "thermiq_heatpump/write";
+
+    let payload_obj = entry
+        .payload
+        .as_object()
+        .ok_or("Payload is not a JSON object")?;
+
+    // Convert each field to ThermIQ "d" parameter and publish separately
+    for (field_name, field_value) in payload_obj {
+        if let Some(thermiq_param) = map_field_to_thermiq_param(field_name) {
+            // Build single-field payload: {"d50": 21}
+            let thermiq_payload = serde_json::json!({
+                thermiq_param: field_value
+            });
+            let payload_str = thermiq_payload.to_string();
+
+            info!(
+                "Publishing outbox entry {} field '{}' to topic '{}': {}",
+                entry.id, field_name, topic, payload_str
+            );
+
+            // Publish to MQTT
+            mqtt_client
+                .publish(topic, QoS::AtLeastOnce, false, payload_str.as_bytes())
+                .await?;
+
+            info!("Published field '{}'", field_name);
+        } else {
+            warn!("Unknown field '{}' in payload, skipping", field_name);
+        }
+    }
+
+    Ok(())
+}
+
 async fn process_pending_entries(
     pool: &sqlx::PgPool,
     mqtt_client: &AsyncClient,
@@ -139,90 +239,87 @@ async fn process_pending_entries(
     info!("Found {} pending entries to process", entries.len());
 
     for entry in &entries {
-        // Use fixed topic for ThermIQ write commands
-        let topic = "thermiq_heatpump/write";
-
-        // Parse the payload JSON
-        let payload_obj = entry
-            .payload
-            .as_object()
-            .ok_or("Payload is not a JSON object")?;
-
-        // Convert each field to ThermIQ "d" parameter and publish separately
-        let mut all_published = true;
-        for (field_name, field_value) in payload_obj {
-            if let Some(thermiq_param) = map_field_to_thermiq_param(field_name) {
-                // Build single-field payload: {"d50": 21}
-                let thermiq_payload = serde_json::json!({
-                    thermiq_param: field_value
-                });
-                let payload_str = thermiq_payload.to_string();
-
+        // Route based on aggregate_type
+        let publish_result = match entry.aggregate_type.as_str() {
+            "power_plug" => {
                 info!(
-                    "Publishing outbox entry {} field '{}' to topic '{}': {}",
-                    entry.id, field_name, topic, payload_str
+                    "Processing power plug command (id={}, event_type={})",
+                    entry.id, entry.event_type
                 );
+                publish_plug_command(mqtt_client, entry).await
+            }
+            "heatpump_setting" => {
+                info!(
+                    "Processing heatpump setting command (id={}, event_type={})",
+                    entry.id, entry.event_type
+                );
+                publish_heatpump_command(mqtt_client, entry).await
+            }
+            unknown => {
+                warn!(
+                    "Unknown aggregate_type '{}' for entry {}, skipping",
+                    unknown, entry.id
+                );
+                // Mark as failed since we don't know how to process it
+                let _ = outbox::mark_failed(
+                    pool,
+                    entry.id,
+                    &format!("Unknown aggregate_type: {}", unknown),
+                )
+                .await;
+                continue;
+            }
+        };
 
-                // Publish to MQTT
-                match mqtt_client
-                    .publish(topic, QoS::AtLeastOnce, false, payload_str.as_bytes())
-                    .await
-                {
+        match publish_result {
+            Ok(_) => {
+                // Mark as published
+                match outbox::mark_published(pool, entry.id).await {
                     Ok(_) => {
-                        info!("✓ Published field '{}'", field_name);
+                        info!("Marked outbox entry {} as published", entry.id);
                     }
                     Err(e) => {
-                        error!("Failed to publish field '{}': {}", field_name, e);
-                        all_published = false;
-                        break;
+                        error!("Failed to mark entry {} as published: {}", entry.id, e);
                     }
                 }
-            } else {
-                warn!("Unknown field '{}' in payload, skipping", field_name);
             }
-        }
-
-        // Mark as published only if all fields were successfully published
-        if all_published {
-            match outbox::mark_published(pool, entry.id).await {
-                Ok(_) => {
-                    info!("✓ Published outbox entry {}", entry.id);
-                }
-                Err(e) => {
-                    error!("Failed to mark entry {} as published: {}", entry.id, e);
-                }
-            }
-        } else {
-            // Failed to publish - handle retry logic
-            if entry.retry_count + 1 >= entry.max_retries {
-                warn!(
-                    "Entry {} exceeded max retries ({}), marking as failed",
-                    entry.id, entry.max_retries
+            Err(e) => {
+                error!(
+                    "Failed to publish entry {} (aggregate_type={}): {}",
+                    entry.id, entry.aggregate_type, e
                 );
-                match outbox::mark_failed(pool, entry.id, "Failed to publish to MQTT").await {
-                    Ok(_) => {
-                        error!("✗ Marked outbox entry {} as failed", entry.id);
+
+                // Handle retry logic
+                if entry.retry_count + 1 >= entry.max_retries {
+                    warn!(
+                        "Entry {} exceeded max retries ({}), marking as failed",
+                        entry.id, entry.max_retries
+                    );
+                    match outbox::mark_failed(pool, entry.id, &e.to_string()).await {
+                        Ok(_) => {
+                            error!("Marked outbox entry {} as failed", entry.id);
+                        }
+                        Err(db_err) => {
+                            error!("Failed to mark entry {} as failed: {}", entry.id, db_err);
+                        }
                     }
-                    Err(db_err) => {
-                        error!("Failed to mark entry {} as failed: {}", entry.id, db_err);
-                    }
-                }
-            } else {
-                // Increment retry count
-                match outbox::increment_retry(pool, entry.id, "MQTT publish failed").await {
-                    Ok(_) => {
-                        warn!(
-                            "↻ Incremented retry count for entry {} ({}/{})",
-                            entry.id,
-                            entry.retry_count + 1,
-                            entry.max_retries
-                        );
-                    }
-                    Err(db_err) => {
-                        error!(
-                            "Failed to increment retry for entry {}: {}",
-                            entry.id, db_err
-                        );
+                } else {
+                    // Increment retry count
+                    match outbox::increment_retry(pool, entry.id, &e.to_string()).await {
+                        Ok(_) => {
+                            warn!(
+                                "Incremented retry count for entry {} ({}/{})",
+                                entry.id,
+                                entry.retry_count + 1,
+                                entry.max_retries
+                            );
+                        }
+                        Err(db_err) => {
+                            error!(
+                                "Failed to increment retry for entry {}: {}",
+                                entry.id, db_err
+                            );
+                        }
                     }
                 }
             }
