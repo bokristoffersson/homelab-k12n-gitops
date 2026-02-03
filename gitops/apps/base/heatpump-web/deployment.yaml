@@ -21,7 +21,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: web
-          image: ghcr.io/bokristoffersson/heatpump-web:latest
+          image: ghcr.io/bokristoffersson/heatpump-web:main
           imagePullPolicy: Always
           ports:
             - containerPort: 80
