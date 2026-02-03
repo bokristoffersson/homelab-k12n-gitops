@@ -523,4 +523,8 @@ docs/
 - Don't commit `node_modules/` (already in .gitignore)
 - Cloudflare Tunnel handles TLS termination
 - Internal cluster traffic uses HTTP
-- All API routes use CORS middleware for `https://heatpump.k12n.com` and `http://localhost:5173`
+- **CORS Configuration**: Traefik CORS middleware (`gitops/apps/base/traefik-middlewares/cors.yaml`) allows:
+  - `https://homelab.k12n.com`
+  - `http://localhost:5173`
+  - `http://localhost:8080`
+- **CORS Preflight**: A dedicated Traefik route handles OPTIONS requests for `/api/*` paths at priority 210, ensuring preflight requests succeed without requiring Authorization headers

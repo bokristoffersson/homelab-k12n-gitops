@@ -8,6 +8,21 @@ spec:
   entryPoints:
     - web
   routes:
+    # CORS Preflight Handler - Must handle OPTIONS before auth routes
+    # Handles OPTIONS requests that don't include Authorization header
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api`) && Method(`OPTIONS`)
+      kind: Rule
+      priority: 210
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+      services:
+        - name: homelab-api
+          namespace: homelab-api
+          port: 8080
+
     # OAuth2 Proxy Callbacks (public - must be highest priority)
     - match: Host(`homelab.k12n.com`) && PathPrefix(`/oauth2`)
       kind: Rule
