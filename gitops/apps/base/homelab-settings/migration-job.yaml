@@ -29,9 +29,15 @@ spec:
             - name: PGPORT
               value: "5432"
             - name: PGUSER
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_USERNAME
             - name: PGPASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_PASSWORD
             - name: PGDATABASE
               value: postgres
           volumeMounts:
