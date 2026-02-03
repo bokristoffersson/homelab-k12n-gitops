@@ -1,0 +1,11 @@
+site_name: Homelab Settings Service
+site_description: Service for managing homelab settings including heat pump configuration
+
+nav:
+  - Overview: index.md
+  - Redpanda Connect: redpanda-connect.md
+
+theme:
+  name: material
+  palette:
+    primary: orange

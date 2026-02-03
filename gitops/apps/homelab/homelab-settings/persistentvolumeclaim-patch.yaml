@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: homelab-settings
+spec:
+  # Update storageClassName to match your production storage class
+  # Common options: longhorn, rook-ceph-block, local-path, nfs-client
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10Gi

@@ -69,4 +69,4 @@ Grafana dashboards are available for monitoring cluster health, throughput, and 
 
 - **mqtt-kafka-bridge**: Redpanda Connect pipeline from MQTT to Redpanda
 - **redpanda-sink**: Consumer writing telemetry to TimescaleDB
-- **heatpump-settings-api**: Consumer managing heatpump settings
+- **homelab-settings-api**: Consumer managing homelab settings

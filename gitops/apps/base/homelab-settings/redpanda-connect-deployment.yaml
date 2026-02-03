@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redpanda-connect
+  namespace: homelab-settings
+  labels:
+    app: redpanda-connect
+    backstage.io/kubernetes-id: homelab-settings
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda-connect
+  template:
+    metadata:
+      labels:
+        app: redpanda-connect
+        backstage.io/kubernetes-id: homelab-settings
+    spec:
+      containers:
+        - name: redpanda-connect
+          image: redpandadata/connect:latest
+          args:
+            - streams
+            - /config/*.yaml
+          ports:
+            - containerPort: 4195
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 4195
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 4195
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: homelab-settings-config

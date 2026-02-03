@@ -1,0 +1,37 @@
+# Application configuration
+database:
+  url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres.homelab-settings.svc.cluster.local:5432/homelab_settings"
+  max_connections: 10
+  min_connections: 2
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+
+kafka:
+  brokers:
+    - "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+  topic: "homelab-heatpump-telemetry"
+  consumer_group: "homelab-settings-api"
+  auto_offset_reset: "latest"
+  session_timeout_ms: 6000
+  enable_auto_commit: true
+  auto_commit_interval_ms: 5000
+
+auth:
+  issuers:
+    # Homelab macOS - Native app (public client, JWT validation via JWKS)
+    - name: homelab-macos
+      issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
+      jwks_url: "https://authentik.k12n.com/application/o/homelab-macos/jwks/"
+
+    # oauth2-proxy - Web app (opaque token, requires introspection)
+    - name: oauth2-proxy
+      issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+      introspection_url: "https://authentik.k12n.com/application/o/introspect/"
+      introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
+      introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
+
+logging:
+  level: "info"
+  format: "json"

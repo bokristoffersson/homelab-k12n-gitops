@@ -97,13 +97,13 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: heatpump-settings
-  description: Heat pump settings service
+  name: homelab-settings
+  description: Homelab settings service
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
-    backstage.io/kubernetes-id: heatpump-settings
-    backstage.io/techdocs-ref: dir:./applications/heatpump-settings
-    kafka.apache.org/consumer-groups: redpanda-v2/heatpump-settings
+    backstage.io/kubernetes-id: homelab-settings
+    backstage.io/techdocs-ref: dir:./applications/homelab-settings-api
+    kafka.apache.org/consumer-groups: redpanda-v2/homelab-settings
 spec:
   type: service
   lifecycle: production
@@ -168,14 +168,14 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: redpanda-sink-heatpump-settings
-  description: Redpanda Connect processor for heatpump settings data
+  name: redpanda-sink-homelab-settings
+  description: Redpanda Connect processor for homelab settings data
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: redpanda-connect
-    backstage.io/kubernetes-namespace: heatpump-settings
-    backstage.io/techdocs-ref: dir:./gitops/apps/base/heatpump-settings/docs
-    kafka.apache.org/consumer-groups: redpanda-v2/heatpump-settings
+    backstage.io/kubernetes-namespace: homelab-settings
+    backstage.io/techdocs-ref: dir:./gitops/apps/base/homelab-settings/docs
+    kafka.apache.org/consumer-groups: redpanda-v2/homelab-settings
 spec:
   type: service
   lifecycle: production

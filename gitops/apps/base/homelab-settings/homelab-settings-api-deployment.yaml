@@ -1,0 +1,78 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homelab-settings-api
+  namespace: homelab-settings
+  labels:
+    app: homelab-settings-api
+    backstage.io/kubernetes-id: homelab-settings
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homelab-settings-api
+  template:
+    metadata:
+      labels:
+        app: homelab-settings-api
+        backstage.io/kubernetes-id: homelab-settings
+    spec:
+      containers:
+        - name: homelab-settings-api
+          image: ghcr.io/bokristoffersson/homelab-settings-api:main
+          env:
+            - name: APP_CONFIG
+              value: /config/config.yaml
+            - name: RUST_LOG
+              value: "info"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_USERNAME
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_PASSWORD
+            - name: INTROSPECTION_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-settings-api-introspection
+                  key: client-id
+            - name: INTROSPECTION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-settings-api-introspection
+                  key: client-secret
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: homelab-settings-api-config

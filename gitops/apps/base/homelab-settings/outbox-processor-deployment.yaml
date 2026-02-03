@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homelab-settings-outbox-processor
+  namespace: homelab-settings
+  labels:
+    app: homelab-settings-outbox-processor
+    backstage.io/kubernetes-id: homelab-settings
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: homelab-settings-outbox-processor
+  template:
+    metadata:
+      labels:
+        app: homelab-settings-outbox-processor
+        backstage.io/kubernetes-id: homelab-settings
+    spec:
+      containers:
+        - name: outbox-processor
+          image: ghcr.io/bokristoffersson/homelab-settings-outbox-processor:main
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: "postgresql://postgres:postgres@postgres.homelab-settings.svc.cluster.local:5432/homelab_settings"
+            - name: MQTT_BROKER
+              value: "mosquitto.mosquitto.svc.cluster.local:1883"
+            - name: MQTT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mqtt-credentials
+                  key: username
+            - name: MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mqtt-credentials
+                  key: password
+            - name: POLL_INTERVAL_SECS
+              value: "5"
+            - name: RUST_LOG
+              value: "info"
+            - name: KAFKA_BROKERS
+              value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "homelab-heatpump-telemetry"
+            - name: KAFKA_GROUP_ID
+              value: "homelab-settings-outbox-processor"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

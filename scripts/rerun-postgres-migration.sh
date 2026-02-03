@@ -4,7 +4,7 @@
 
 set -e
 
-NAMESPACE="${NAMESPACE:-heatpump-settings}"
+NAMESPACE="${NAMESPACE:-homelab-settings}"
 JOB_NAME="${JOB_NAME:-postgres-migration}"
 
 echo "🔄 Rerunning postgres migrations in namespace: $NAMESPACE"

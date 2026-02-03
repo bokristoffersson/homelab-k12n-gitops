@@ -30,7 +30,7 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 ### Applications
 - **homelab-api**: Rust/Axum read-only REST API serving TimescaleDB data (energy, heatpump, temperature)
 - **heatpump-web**: React/TypeScript frontend SPA
-- **heatpump-settings-api**: Rust/Axum API managing heatpump settings (Kafka consumer: `heatpump-settings-api` group)
+- **homelab-settings-api**: Rust/Axum API managing homelab settings including heatpump (Kafka consumer: `homelab-settings-api` group)
 - **energy-ws**: Rust/Axum WebSocket server streaming real-time energy data from Redpanda
 - **redpanda-sink**: Kafka consumer writing telemetry to TimescaleDB
 - **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
@@ -148,7 +148,7 @@ kubeseal \
 
 **Migration Locations**:
 - **TimescaleDB**: `gitops/apps/base/timescaledb/migrations/`
-- **Heatpump Settings (PostgreSQL)**: `gitops/apps/base/heatpump-settings/migrations/`
+- **Homelab Settings (PostgreSQL)**: `gitops/apps/base/homelab-settings/migrations/`
 - **Authentik (PostgreSQL)**: Managed by Authentik application
 
 **Migration Workflow**:
@@ -170,7 +170,7 @@ kubeseal \
 
 2. **Update kustomization.yaml** to include the new migration file:
    - **TimescaleDB**: Edit `gitops/apps/base/timescaledb/kustomization.yaml`
-   - **Heatpump Settings**: Edit `gitops/apps/base/heatpump-settings/kustomization.yaml`
+   - **Homelab Settings**: Edit `gitops/apps/base/homelab-settings/kustomization.yaml`
 
    Add the new migration file to the `configMapGenerator` section:
    ```yaml
@@ -191,12 +191,12 @@ kubeseal \
 6. **Manually restart migration jobs** to apply the new migrations:
    ```bash
    kubectl delete job -n timescaledb timescaledb-migration
-   kubectl delete job -n heatpump-settings postgres-migration
+   kubectl delete job -n homelab-settings postgres-migration
    ```
 7. **Verify migration** completed successfully:
    ```bash
    kubectl logs -n timescaledb job/timescaledb-migration
-   kubectl logs -n heatpump-settings job/postgres-migration
+   kubectl logs -n homelab-settings job/postgres-migration
    ```
 
 **Migration File Naming**:
@@ -206,7 +206,7 @@ kubeseal \
 
 **Schema Migrations Table**:
 - **TimescaleDB**: `schema_migrations (version, name)`
-- **Heatpump Settings**: `schema_migrations (version, name, applied_at)`
+- **Homelab Settings**: `schema_migrations (version, name, applied_at)`
 
 **NEVER DO THIS**:
 ```bash
@@ -509,7 +509,8 @@ docs/
 
 ## Recent Changes
 
-- Deployed heatpump-settings-api service with separate Kafka consumer group (2026-01-11)
+- Renamed heatpump-settings to homelab-settings (namespace, database, services, images) (2026-02-03)
+- Deployed homelab-settings-api service with separate Kafka consumer group (2026-01-11)
 - Replaced Redpanda operator with rpk-based topic management (Job in redpanda-v2 namespace) (2026-01-11)
 - Created comprehensive TechDocs for redpanda-v2 with Backstage integration (2026-01-11)
 - Removed redpanda-operator and redpanda-system namespace (2026-01-11)
