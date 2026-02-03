@@ -1,6 +1,7 @@
 // Export all type definitions
 export * from './energy';
 export * from './heatpump';
+export * from './plugs';
 
 // API response types
 export interface ApiResponse<T> {
