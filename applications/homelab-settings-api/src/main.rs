@@ -16,7 +16,7 @@ use crate::{
     auth::JwtValidator,
     config::Config,
     kafka::KafkaConsumerService,
-    repositories::{OutboxRepository, SettingsRepository},
+    repositories::{OutboxRepository, PlugsRepository, SchedulesRepository, SettingsRepository},
 };
 
 #[tokio::main]
@@ -47,6 +47,8 @@ async fn main() -> Result<()> {
     // Create repositories
     let repository = Arc::new(SettingsRepository::new(db_pool.clone()));
     let outbox_repository = Arc::new(OutboxRepository::new(db_pool.clone()));
+    let plugs_repository = Arc::new(PlugsRepository::new(db_pool.clone()));
+    let schedules_repository = Arc::new(SchedulesRepository::new(db_pool.clone()));
 
     // Create Kafka consumer service
     tracing::info!("Initializing Kafka consumer...");
@@ -91,6 +93,8 @@ async fn main() -> Result<()> {
     let app_state = AppState {
         repository: repository.clone(),
         outbox_repository,
+        plugs_repository,
+        schedules_repository,
         pool: db_pool,
         jwt_validator,
     };
