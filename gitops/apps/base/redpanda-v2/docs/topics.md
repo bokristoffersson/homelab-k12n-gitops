@@ -25,6 +25,7 @@ Topics in Redpanda are managed directly via `rpk` commands executed in a Kuberne
 | `homelab-settings` | 1 | 1 | 7 days | Homelab settings configuration changes |
 | `heatpump-telemetry` | 1 | 1 | 1 hour | General heatpump telemetry |
 | `sensor-state` | 1 | 1 | 24 hours | IoT sensor state changes |
+| `homelab-plug-telemetry` | 1 | 1 | 24 hours | Tasmota power plug state telemetry |
 
 ### Legacy Topics
 

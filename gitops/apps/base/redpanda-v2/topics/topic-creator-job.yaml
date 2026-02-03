@@ -68,6 +68,13 @@ spec:
                 --topic-config retention.ms=86400000 \
                 --topic-config segment.ms=3600000 || echo "Topic sensor-state already exists"
 
+              rpk topic create homelab-plug-telemetry \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=86400000 \
+                --topic-config segment.ms=3600000 || echo "Topic homelab-plug-telemetry already exists"
+
               echo "All topics created successfully!"
 
               # List topics to verify

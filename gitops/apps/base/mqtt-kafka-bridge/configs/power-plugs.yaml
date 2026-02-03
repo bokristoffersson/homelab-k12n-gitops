@@ -1,0 +1,30 @@
+input:
+  mqtt:
+    urls:
+      - tcp://mosquitto.mosquitto.svc.cluster.local:1883
+    topics:
+      - tele/+/STATE
+    client_id: mqtt-redpanda-bridge-power-plugs
+    user: ${MQTT_USER}
+    password: ${MQTT_PASSWORD}
+    clean_session: true
+    qos: 1
+    keepalive: 30
+
+pipeline:
+  processors:
+    - mapping: |
+        root.ts = now().ts_format("2006-01-02T15:04:05.999999999Z07:00")
+        root.plug_id = meta("mqtt_topic").split("/").index(1)
+        root.status = if this.POWER == "ON" { true } else { false }
+        root.wifi_rssi = this.Wifi.RSSI | null
+        root.uptime_seconds = this.UptimeSec | null
+
+output:
+  kafka:
+    addresses:
+      - ${REDPANDA_BROKERS}
+    topic: homelab-plug-telemetry
+    client_id: mqtt-redpanda-bridge-power-plugs
+    compression: snappy
+    max_in_flight: 10

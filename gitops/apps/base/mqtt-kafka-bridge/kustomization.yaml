@@ -12,3 +12,4 @@ configMapGenerator:
       - configs/energy.yaml
       - configs/temperature-indoor.yaml
       - configs/heatpump.yaml
+      - configs/power-plugs.yaml
