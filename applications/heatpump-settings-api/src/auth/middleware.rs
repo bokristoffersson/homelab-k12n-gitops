@@ -25,14 +25,14 @@ fn extract_bearer_token(auth_header: Option<&str>) -> Option<&str> {
 /// 1. Traefik middleware enforcement - all external requests to protected routes must pass
 ///    through oauth2-proxy-auth middleware before reaching this service
 /// 2. Network isolation - this service is only accessible within the Kubernetes cluster
-/// 3. Multiple header validation - we require BOTH X-Auth-Request-User AND X-Auth-Request-Email
-///    headers to be present, making header spoofing more difficult
+/// 3. Header validation - we require X-Auth-Request-User header to be present
 ///
 /// oauth2-proxy sets these headers after validating the user's session cookie against Authentik.
 fn is_authenticated_by_proxy(request: &Request<Body>) -> Option<String> {
     let headers = request.headers();
 
-    // Require both headers to be present - oauth2-proxy always sets both
+    // Require X-Auth-Request-User header (email is optional)
+    // This matches homelab-api behavior for consistency
     let user = headers
         .get("X-Auth-Request-User")
         .and_then(|h| h.to_str().ok())
@@ -41,10 +41,13 @@ fn is_authenticated_by_proxy(request: &Request<Body>) -> Option<String> {
     let email = headers
         .get("X-Auth-Request-Email")
         .and_then(|h| h.to_str().ok())
-        .filter(|s| !s.is_empty())?;
+        .filter(|s| !s.is_empty());
 
-    // Both headers present and non-empty - this request came through oauth2-proxy
-    Some(format!("{} ({})", user, email))
+    // User header present and non-empty - this request came through oauth2-proxy
+    match email {
+        Some(email) => Some(format!("{} ({})", user, email)),
+        None => Some(user.to_string()),
+    }
 }
 
 pub async fn require_jwt_auth(
@@ -116,10 +119,11 @@ mod tests {
     }
 
     #[test]
-    fn test_proxy_auth_missing_email() {
+    fn test_proxy_auth_user_only() {
+        // Email is optional - user header alone should work
         let request = make_request_with_headers(vec![("X-Auth-Request-User", "testuser")]);
         let result = is_authenticated_by_proxy(&request);
-        assert_eq!(result, None);
+        assert_eq!(result, Some("testuser".to_string()));
     }
 
     #[test]
@@ -141,12 +145,13 @@ mod tests {
 
     #[test]
     fn test_proxy_auth_empty_email() {
+        // Empty email should be treated as missing - user alone works
         let request = make_request_with_headers(vec![
             ("X-Auth-Request-User", "testuser"),
             ("X-Auth-Request-Email", ""),
         ]);
         let result = is_authenticated_by_proxy(&request);
-        assert_eq!(result, None);
+        assert_eq!(result, Some("testuser".to_string()));
     }
 
     #[test]
