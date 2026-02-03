@@ -8,17 +8,27 @@ use tokio::time;
 
 use crate::{
     config::KafkaConfig,
-    repositories::{settings::SettingUpdate, SettingsRepository},
+    repositories::{
+        plugs::{PlugsRepository, PowerPlugTelemetry},
+        settings::SettingUpdate,
+        SettingsRepository,
+    },
 };
 
 pub struct KafkaConsumerService {
     consumer: StreamConsumer,
-    topic: String,
-    repository: SettingsRepository,
+    settings_topic: String,
+    plug_topic: Option<String>,
+    settings_repository: SettingsRepository,
+    plugs_repository: PlugsRepository,
 }
 
 impl KafkaConsumerService {
-    pub fn new(config: &KafkaConfig, repository: SettingsRepository) -> anyhow::Result<Self> {
+    pub fn new(
+        config: &KafkaConfig,
+        settings_repository: SettingsRepository,
+        plugs_repository: PlugsRepository,
+    ) -> anyhow::Result<Self> {
         let consumer: StreamConsumer = ClientConfig::new()
             .set("group.id", &config.consumer_group)
             .set("bootstrap.servers", config.brokers.join(","))
@@ -31,38 +41,56 @@ impl KafkaConsumerService {
             .set("auto.offset.reset", &config.auto_offset_reset)
             .create()?;
 
-        consumer.subscribe(&[&config.topic])?;
+        // Build list of topics to subscribe to
+        let mut topics: Vec<&str> = vec![&config.topic];
+        if let Some(ref plug_topic) = config.plug_topic {
+            topics.push(plug_topic);
+        }
+
+        consumer.subscribe(&topics)?;
 
         tracing::info!(
-            "Kafka consumer initialized for topic: {}, group: {}",
-            config.topic,
+            "Kafka consumer initialized for topics: {:?}, group: {}",
+            topics,
             config.consumer_group
         );
 
         Ok(Self {
             consumer,
-            topic: config.topic.clone(),
-            repository,
+            settings_topic: config.topic.clone(),
+            plug_topic: config.plug_topic.clone(),
+            settings_repository,
+            plugs_repository,
         })
     }
 
     pub async fn run(self) {
-        tracing::info!("Starting Kafka consumer for topic: {}", self.topic);
+        tracing::info!(
+            "Starting Kafka consumer for topics: settings={}, plugs={:?}",
+            self.settings_topic,
+            self.plug_topic
+        );
 
         loop {
             match self.consumer.recv().await {
                 Ok(message) => {
                     if let Some(payload) = message.payload() {
-                        match self.process_message(payload).await {
+                        let topic = message.topic();
+                        match self.process_message(topic, payload).await {
                             Ok(_) => {
                                 tracing::debug!(
-                                    "Successfully processed message from partition {} offset {}",
+                                    "Successfully processed message from topic {} partition {} offset {}",
+                                    topic,
                                     message.partition(),
                                     message.offset()
                                 );
                             }
                             Err(e) => {
-                                tracing::error!("Error processing message: {:?}. Continuing...", e);
+                                tracing::error!(
+                                    "Error processing message from topic {}: {:?}. Continuing...",
+                                    topic,
+                                    e
+                                );
                             }
                         }
                     }
@@ -75,7 +103,54 @@ impl KafkaConsumerService {
         }
     }
 
-    async fn process_message(&self, payload: &[u8]) -> anyhow::Result<()> {
+    async fn process_message(&self, topic: &str, payload: &[u8]) -> anyhow::Result<()> {
+        // Route based on topic
+        if Some(topic.to_string()) == self.plug_topic {
+            self.process_plug_telemetry(payload).await
+        } else {
+            self.process_settings_message(payload).await
+        }
+    }
+
+    async fn process_plug_telemetry(&self, payload: &[u8]) -> anyhow::Result<()> {
+        // Parse JSON message from mqtt-kafka-bridge
+        let data: Value = serde_json::from_slice(payload)?;
+
+        let plug_id = data
+            .get("plug_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow::anyhow!("Missing plug_id in telemetry message"))?;
+
+        let status = data
+            .get("status")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        let wifi_rssi = data.get("wifi_rssi").and_then(|v| v.as_i64()).map(|v| v as i32);
+
+        let uptime_seconds = data
+            .get("uptime_seconds")
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32);
+
+        let telemetry = PowerPlugTelemetry {
+            plug_id: plug_id.to_string(),
+            status,
+            wifi_rssi,
+            uptime_seconds,
+        };
+
+        self.plugs_repository.upsert_telemetry(&telemetry).await?;
+        tracing::info!(
+            "Upserted plug telemetry for plug: {} (status: {})",
+            plug_id,
+            if status { "ON" } else { "OFF" }
+        );
+
+        Ok(())
+    }
+
+    async fn process_settings_message(&self, payload: &[u8]) -> anyhow::Result<()> {
         // Parse JSON message
         let data: Value = serde_json::from_slice(payload)?;
 
@@ -103,7 +178,7 @@ impl KafkaConsumerService {
 
         // Only upsert if we have at least one setting field
         if has_settings_data(&update) {
-            self.repository.upsert(&update).await?;
+            self.settings_repository.upsert(&update).await?;
             tracing::info!("Upserted settings for device: {}", device_id);
         } else {
             tracing::debug!("Message for device {} contains no settings data", device_id);

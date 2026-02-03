@@ -30,6 +30,8 @@ pub struct ApiConfig {
 pub struct KafkaConfig {
     pub brokers: Vec<String>,
     pub topic: String,
+    #[serde(default)]
+    pub plug_topic: Option<String>,
     pub consumer_group: String,
     pub auto_offset_reset: String,
     pub session_timeout_ms: u32,

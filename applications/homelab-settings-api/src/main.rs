@@ -52,8 +52,11 @@ async fn main() -> Result<()> {
 
     // Create Kafka consumer service
     tracing::info!("Initializing Kafka consumer...");
-    let kafka_consumer =
-        KafkaConsumerService::new(&config.kafka, SettingsRepository::new(db_pool.clone()))?;
+    let kafka_consumer = KafkaConsumerService::new(
+        &config.kafka,
+        SettingsRepository::new(db_pool.clone()),
+        PlugsRepository::new(db_pool.clone()),
+    )?;
 
     // Spawn Kafka consumer task
     let kafka_handle = tokio::spawn(async move {

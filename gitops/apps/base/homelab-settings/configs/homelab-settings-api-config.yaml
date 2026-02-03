@@ -12,6 +12,7 @@ kafka:
   brokers:
     - "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
   topic: "homelab-heatpump-telemetry"
+  plug_topic: "homelab-plug-telemetry"
   consumer_group: "homelab-settings-api"
   auto_offset_reset: "latest"
   session_timeout_ms: 6000
