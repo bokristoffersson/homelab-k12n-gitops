@@ -23,6 +23,12 @@ export default function Layout() {
             >
               Settings
             </NavLink>
+            <NavLink
+              to="/plugs"
+              className={({ isActive }) => isActive ? 'tab active' : 'tab'}
+            >
+              Plugs
+            </NavLink>
           </div>
           <div className="navbar-actions">
             <span className="last-update">
