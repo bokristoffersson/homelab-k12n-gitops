@@ -57,6 +57,10 @@ spec:
     console:
       enabled: true
       config:
+        # Server config for subpath hosting at /admin/redpanda
+        server:
+          basePath: /admin/redpanda
+          stripPrefix: false  # Traefik already strips the prefix
         authentication:
           useSecureCookies: true
           oidc:
