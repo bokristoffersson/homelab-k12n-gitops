@@ -103,7 +103,7 @@ spec:
           namespace: energy-ws
           port: 8080
 
-    # Heatpump Settings API - Native apps with Bearer token (JWT validated by API)
+    # Homelab Settings API - Native apps with Bearer token (JWT validated by API)
     - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
       kind: Rule
       priority: 130
@@ -115,8 +115,8 @@ spec:
         - name: security-headers
           namespace: traefik
       services:
-        - name: heatpump-settings-api
-          namespace: heatpump-settings
+        - name: homelab-settings-api
+          namespace: homelab-settings
           port: 8080
 
     # Homelab API - Native apps with Bearer token (JWT validated by API)
@@ -151,7 +151,7 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # Heatpump Settings API - Web apps (protected by OAuth2 Proxy)
+    # Homelab Settings API - Web apps (protected by OAuth2 Proxy)
     - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/heatpump/settings`)
       kind: Rule
       priority: 100
@@ -165,8 +165,8 @@ spec:
         - name: security-headers
           namespace: traefik
       services:
-        - name: heatpump-settings-api
-          namespace: heatpump-settings
+        - name: homelab-settings-api
+          namespace: homelab-settings
           port: 8080
 
     # Homelab API - Web apps (protected by OAuth2 Proxy)

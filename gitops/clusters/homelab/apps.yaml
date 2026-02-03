@@ -219,14 +219,14 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: heatpump-settings
+  name: homelab-settings
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/heatpump-settings
+  path: ./gitops/apps/homelab/homelab-settings
   prune: true
   wait: true
   dependsOn:
@@ -235,14 +235,14 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: heatpump-settings-api
+  name: homelab-settings-api
   namespace: flux-system
 spec:
   interval: 10m0s
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/heatpump-settings-api
+  path: ./gitops/apps/homelab/homelab-settings-api
   prune: true
   wait: true
   dependsOn:

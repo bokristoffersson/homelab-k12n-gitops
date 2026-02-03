@@ -1,0 +1,45 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-migration
+  namespace: homelab-settings
+  annotations:
+    # Force job to recreate on each apply to run migrations
+    kustomize.toolkit.fluxcd.io/force: "true"
+spec:
+  ttlSecondsAfterFinished: 86400  # Clean up after 24 hours
+  template:
+    metadata:
+      labels:
+        app: postgres-migration
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: postgres:16-alpine
+          command:
+            - /bin/sh
+            - -c
+            - |
+              /migrations/run_migrations.sh
+          env:
+            - name: PGHOST
+              value: postgres
+            - name: PGPORT
+              value: "5432"
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              value: postgres
+            - name: PGDATABASE
+              value: postgres
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+              readOnly: true
+      volumes:
+        - name: migrations
+          configMap:
+            name: postgres-migrations
+            defaultMode: 0755

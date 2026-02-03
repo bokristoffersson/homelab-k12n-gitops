@@ -44,8 +44,8 @@ else
 fi
 
 # Check backend vulnerabilities
-echo "🦀 Checking backend (heatpump-settings-api) dependencies..."
-cd "$REPO_ROOT/applications/heatpump-settings-api"
+echo "🦀 Checking backend (homelab-settings-api) dependencies..."
+cd "$REPO_ROOT/applications/homelab-settings-api"
 
 if [ -f "Cargo.toml" ]; then
     # Check if cargo-audit is installed
@@ -83,7 +83,7 @@ else
     echo "Next steps:"
     echo "1. Review the vulnerabilities above"
     echo "2. Run 'npm audit fix' in applications/heatpump-web/ for frontend"
-    echo "3. Update Cargo.toml dependencies in applications/heatpump-settings-api/ for backend"
+    echo "3. Update Cargo.toml dependencies in applications/homelab-settings-api/ for backend"
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 

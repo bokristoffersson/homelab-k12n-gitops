@@ -22,7 +22,7 @@ Topics in Redpanda are managed directly via `rpk` commands executed in a Kuberne
 |-------|------------|----------|-----------|---------|
 | `energy-realtime` | 1 | 1 | 24 hours | Real-time energy consumption data |
 | `heatpump-realtime` | 1 | 1 | 1 hour | Real-time heatpump telemetry |
-| `heatpump-settings` | 1 | 1 | 7 days | Heatpump configuration changes |
+| `homelab-settings` | 1 | 1 | 7 days | Homelab settings configuration changes |
 | `heatpump-telemetry` | 1 | 1 | 1 hour | General heatpump telemetry |
 | `sensor-state` | 1 | 1 | 24 hours | IoT sensor state changes |
 
@@ -124,8 +124,8 @@ kubectl exec -n redpanda-v2 redpanda-v2-0 -c redpanda -- \\
 
 | Consumer Group | Topics | Purpose |
 |----------------|--------|---------|
-| `heatpump-settings` | `homelab-heatpump-telemetry` | Legacy redpanda-connect processor |
-| `heatpump-settings-api` | `homelab-heatpump-telemetry` | New Rust-based processor |
+| `homelab-settings` | `homelab-heatpump-telemetry` | Redpanda-connect processor |
+| `homelab-settings-api` | `homelab-heatpump-telemetry` | Rust-based processor |
 | `timescaledb-sink` | `homelab-heatpump-telemetry`, `homelab-energy-realtime` | Writes to TimescaleDB |
 
 ## Monitoring
