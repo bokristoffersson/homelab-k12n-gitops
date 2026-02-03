@@ -31,7 +31,8 @@ async fn main() -> anyhow::Result<()> {
     info!("Configuration loaded from: {}", config_path);
 
     // Create broadcast channel for Kafka messages
-    let (broadcast_tx, _broadcast_rx) = broadcast::channel(100);
+    // Note: We only need the Sender; receivers are created per-connection via subscribe()
+    let (broadcast_tx, _) = broadcast::channel::<serde_json::Value>(100);
 
     // Create Kafka consumer
     let consumer = create_consumer(
