@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: pihole-admin
+  namespace: pihole
+spec:
+  encryptedData:
+    password: AgAxTjDCHC8/kZjcwJZ412XZBiWbWIBAzr/9BCAOk62dBJjYni4zeBRQ24hj0UbQsOgg1nqH7WsNkeWWoA3x69xeh8d+y5zzjIQLRPpa9QfFSefBOF9UMuuvAiAKihFb2jeKatF1gli4r6Ro1HKGtHB2TORQRxcMe6F7LJhizpIw7E/AVs7v84S7mQhMOXvu9syyYTUYbmY0f1lIsyPsC4DrLdQTHsyxS/RNvcAtT2il516xaJsWbJi6LQ/YVl/03uyii4zJm9rzp3+529erkVm4kZnLTORBFTf6ycoZJi/DVkb9pP1M8seZ8Gnc0IpUeAUagZb/oLsJ9Qxc8hWLJM2ax3E4lgWGEaD7xU9JsNus86FQgHi+Bx2s0KPBqpFqK+azOqrJazKV1IAgKWtExUMReINeG3R2F5FLCwulF0fKOgmjhkkY4TIJocQtYqgF3gIz2B84IuOvwSjxLyya3+drdGqIoLWWGKeOL6FC3nuEsOANq8TupeWskyX95WXtV4OetKE7fGDrzgxZVLkXE8WyIJKI3CZwRm+9li2SY4ns9yiBrisulhty8Ld9hEwDFODLxSo/228aFF+KEmCQyuKyE+DrKybdJCddGZUPsFQ6ffiYEV8Ftsed1gPd4lTDeXBuUcjdP1MCtq/3k4XdZya9sKGzSzuQvYanCL+u3C7eir6h+kyZQlqBpKn//cZlnYLTUcm5dj4Z/HZLkZhFJXGa0VYbuw==
+  template:
+    metadata:
+      name: pihole-admin
+      namespace: pihole

@@ -1,0 +1,62 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: pihole
+  namespace: pihole
+spec:
+  interval: 5m
+  install:
+    timeout: 15m
+  upgrade:
+    timeout: 15m
+  chart:
+    spec:
+      chart: pihole
+      version: "2.29.*"
+      sourceRef:
+        kind: HelmRepository
+        name: mojo2600
+        namespace: flux-system
+  values:
+    replicaCount: 1
+
+    # DNS Service - LoadBalancer
+    serviceDns:
+      mixedService: true
+      type: LoadBalancer
+      port: 53
+      externalTrafficPolicy: Local
+
+    # DHCP disabled (router handles DHCP)
+    serviceDhcp:
+      enabled: false
+
+    # Web Service - ClusterIP (Traefik handles ingress)
+    serviceWeb:
+      type: ClusterIP
+      http:
+        enabled: true
+        port: 80
+      https:
+        enabled: false
+
+    # Admin password from sealed secret
+    admin:
+      enabled: true
+      existingSecret: pihole-admin
+      passwordKey: password
+
+    # Persistence with Longhorn
+    persistentVolumeClaim:
+      enabled: true
+      storageClassName: longhorn
+      size: "1Gi"
+
+    # Resources for Raspberry Pi
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
