@@ -88,6 +88,10 @@ data:
       - hostname: grafana.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80
 
+      # Pi-hole DNS Admin (via Traefik)
+      - hostname: pihole.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:80
+
       # Whoami (via Traefik) - testing
       - hostname: whoami.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80

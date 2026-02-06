@@ -53,25 +53,6 @@ spec:
           namespace: backstage
           port: 7007
 
-    # Admin: Pi-hole DNS Admin (protected by OAuth2 Proxy)
-    - match: Host(`homelab.k12n.com`) && PathPrefix(`/admin/pihole`)
-      kind: Rule
-      priority: 165
-      middlewares:
-        - name: https-scheme
-          namespace: traefik
-        - name: oauth2-proxy-auth
-          namespace: traefik
-        - name: pihole-stripprefix
-          namespace: traefik
-        - name: pihole-addprefix
-          namespace: traefik
-        - name: security-headers
-          namespace: traefik
-      services:
-        - name: pihole-web
-          namespace: pihole
-          port: 80
 
     # Admin: Redpanda Console (protected by OAuth2 Proxy)
     # Uses X-Forwarded-Prefix header for subpath hosting (console reads this automatically)
