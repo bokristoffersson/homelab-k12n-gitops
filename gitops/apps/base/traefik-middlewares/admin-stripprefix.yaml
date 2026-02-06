@@ -33,6 +33,16 @@ spec:
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
+  name: pihole-stripprefix
+  namespace: traefik
+spec:
+  stripPrefix:
+    prefixes:
+      - /admin/pihole
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
   name: mcp-kubernetes-stripprefix
   namespace: traefik
 spec:
