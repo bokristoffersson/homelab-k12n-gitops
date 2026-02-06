@@ -18,6 +18,9 @@ spec:
         name: mojo2600
         namespace: flux-system
   values:
+    image:
+      tag: "2025.11.1"
+
     replicaCount: 1
 
     # DNS Service - LoadBalancer
