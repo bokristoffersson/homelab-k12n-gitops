@@ -8,12 +8,10 @@ spec:
   entryPoints:
     - web
   routes:
-    # Pi-hole DNS Admin (protected by OAuth2 Proxy)
+    # Pi-hole DNS Admin (Pi-hole has built-in login)
     - match: Host(`pihole.k12n.com`)
       kind: Rule
       middlewares:
-        - name: oauth2-proxy-auth
-          namespace: traefik
         - name: security-headers
           namespace: traefik
       services:
