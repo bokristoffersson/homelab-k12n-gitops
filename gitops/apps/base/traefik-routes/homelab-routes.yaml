@@ -64,6 +64,8 @@ spec:
           namespace: traefik
         - name: pihole-stripprefix
           namespace: traefik
+        - name: pihole-addprefix
+          namespace: traefik
         - name: security-headers
           namespace: traefik
       services:
