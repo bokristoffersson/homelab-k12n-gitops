@@ -9,6 +9,8 @@ spec:
     timeout: 15m
   upgrade:
     timeout: 15m
+    remediation:
+      remediateLastFailure: true
   chart:
     spec:
       chart: pihole
