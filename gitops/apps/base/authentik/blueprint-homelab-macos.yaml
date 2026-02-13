@@ -34,8 +34,10 @@ data:
           # Register this URL scheme in your app's Info.plist
           redirect_uris:
             - matching_mode: strict
-              url: "homelab-macos://oauth/callback"
+              url: "homelab-macos://oauth/callback" 
             # Loopback for development/testing (RFC 8252 Section 7.3)
+            - matching_mode: strict
+              url: "homelab://oauth/callback"
             - matching_mode: strict
               url: "http://127.0.0.1:9876/callback"
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
