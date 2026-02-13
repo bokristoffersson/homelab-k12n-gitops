@@ -1,0 +1,2422 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Homelab API",
+    "version": "1.0.0",
+    "description": "Homelab backend API specification covering three services:\n\n- **homelab-api** — Read-only REST API serving energy, heatpump, and temperature data from TimescaleDB\n- **homelab-settings-api** — Read/write REST API for heatpump settings and power plug management\n- **energy-ws** — WebSocket server streaming real-time energy data from Redpanda\n\nAll services are exposed via Traefik ingress at `https://homelab.k12n.com`.",
+    "contact": {
+      "name": "Homelab"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://homelab.k12n.com",
+      "description": "Production (via Cloudflare Tunnel + Traefik)"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "health",
+      "description": "Health check endpoints"
+    },
+    {
+      "name": "auth",
+      "description": "Authentication and user info"
+    },
+    {
+      "name": "energy",
+      "description": "Energy consumption data (homelab-api)"
+    },
+    {
+      "name": "heatpump",
+      "description": "Heatpump telemetry data (homelab-api)"
+    },
+    {
+      "name": "temperature",
+      "description": "Temperature sensor data (homelab-api)"
+    },
+    {
+      "name": "settings",
+      "description": "Heatpump settings management (homelab-settings-api)"
+    },
+    {
+      "name": "plugs",
+      "description": "Power plug management (homelab-settings-api)"
+    },
+    {
+      "name": "schedules",
+      "description": "Power plug schedule management (homelab-settings-api)"
+    },
+    {
+      "name": "websocket",
+      "description": "Real-time energy data via WebSocket (energy-ws)"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "healthCheck",
+        "summary": "Health check",
+        "description": "Returns OK if the service is healthy. Each backend service exposes this endpoint independently.",
+        "tags": ["health"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "const": "OK"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/info": {
+      "get": {
+        "operationId": "getUserInfo",
+        "summary": "Get authenticated user info",
+        "description": "Returns user information and a proxied access token. Supports both oauth2-proxy header-based auth (web) and Bearer token auth (native apps).",
+        "tags": ["auth"],
+        "x-service": "homelab-api",
+        "responses": {
+          "200": {
+            "description": "User info retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInfoResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/energy/latest": {
+      "get": {
+        "operationId": "getEnergyLatest",
+        "summary": "Get latest energy reading",
+        "description": "Returns the most recent energy consumption measurement from the smart meter.",
+        "tags": ["energy"],
+        "x-service": "homelab-api",
+        "responses": {
+          "200": {
+            "description": "Latest energy reading",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnergyLatestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/energy/hourly-total": {
+      "get": {
+        "operationId": "getEnergyHourlyTotal",
+        "summary": "Get current hour energy total",
+        "description": "Returns the total energy consumption for the current hour so far.",
+        "tags": ["energy"],
+        "x-service": "homelab-api",
+        "responses": {
+          "200": {
+            "description": "Current hour energy total",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HourlyTotalResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/energy/history": {
+      "get": {
+        "operationId": "getEnergyHistory",
+        "summary": "Get hourly energy history",
+        "description": "Returns hourly energy consumption data for the specified time range.",
+        "tags": ["energy"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/fromRequired"
+          },
+          {
+            "$ref": "#/components/parameters/toOptional"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hourly energy history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnergyHourlyResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/energy/daily-summary": {
+      "get": {
+        "operationId": "getEnergyDailySummary",
+        "summary": "Get daily energy summary",
+        "description": "Returns daily energy consumption aggregates for the specified time range.",
+        "tags": ["energy"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/fromRequired"
+          },
+          {
+            "$ref": "#/components/parameters/toOptional"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily energy summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnergySummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/energy/monthly-summary": {
+      "get": {
+        "operationId": "getEnergyMonthlySummary",
+        "summary": "Get monthly energy summary",
+        "description": "Returns monthly energy consumption aggregates for the specified time range.",
+        "tags": ["energy"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/fromRequired"
+          },
+          {
+            "$ref": "#/components/parameters/toOptional"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Monthly energy summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnergySummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/energy/yearly-summary": {
+      "get": {
+        "operationId": "getEnergyYearlySummary",
+        "summary": "Get yearly energy summary",
+        "description": "Returns yearly energy consumption aggregates for the specified time range.",
+        "tags": ["energy"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/fromRequired"
+          },
+          {
+            "$ref": "#/components/parameters/toOptional"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Yearly energy summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EnergySummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/heatpump/latest": {
+      "get": {
+        "operationId": "getHeatpumpLatest",
+        "summary": "Get latest heatpump reading",
+        "description": "Returns the most recent heatpump telemetry data. Optionally filter by device ID.",
+        "tags": ["heatpump"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "description": "Filter by specific heatpump device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest heatpump reading",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeatpumpLatestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "No heatpump data found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/heatpump/daily-summary": {
+      "get": {
+        "operationId": "getHeatpumpDailySummary",
+        "summary": "Get daily heatpump summary",
+        "description": "Returns daily heatpump performance aggregates including compressor runtime, temperatures, and heater usage.",
+        "tags": ["heatpump"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/fromRequired"
+          },
+          {
+            "$ref": "#/components/parameters/toOptional"
+          },
+          {
+            "name": "device_id",
+            "in": "query",
+            "required": false,
+            "description": "Filter by specific heatpump device ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily heatpump summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HeatpumpDailySummaryResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/temperature/latest": {
+      "get": {
+        "operationId": "getTemperatureLatest",
+        "summary": "Get latest temperature for a location",
+        "description": "Returns the most recent temperature reading for the specified sensor location. Returns null if no data exists for the location.",
+        "tags": ["temperature"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "name": "location",
+            "in": "query",
+            "required": true,
+            "description": "Temperature sensor location identifier",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Latest temperature reading (null if not found)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/TemperatureLatest"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/temperature/all-latest": {
+      "get": {
+        "operationId": "getTemperatureAllLatest",
+        "summary": "Get latest readings from all temperature sensors",
+        "description": "Returns the most recent temperature reading from every known sensor location.",
+        "tags": ["temperature"],
+        "x-service": "homelab-api",
+        "responses": {
+          "200": {
+            "description": "Latest readings from all sensors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemperatureLatest"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/temperature/history": {
+      "get": {
+        "operationId": "getTemperatureHistory",
+        "summary": "Get temperature history for a location",
+        "description": "Returns temperature readings for a sensor location over the specified number of hours (default 24).",
+        "tags": ["temperature"],
+        "x-service": "homelab-api",
+        "parameters": [
+          {
+            "name": "location",
+            "in": "query",
+            "required": true,
+            "description": "Temperature sensor location identifier",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "description": "Number of hours of history to retrieve (default: 24)",
+            "schema": {
+              "type": "integer",
+              "default": 24
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Temperature history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemperatureReading"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/heatpump/settings": {
+      "get": {
+        "operationId": "listHeatpumpSettings",
+        "summary": "List all heatpump settings",
+        "description": "Returns settings for all registered heatpump devices.",
+        "tags": ["settings"],
+        "x-service": "homelab-settings-api",
+        "responses": {
+          "200": {
+            "description": "List of all device settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/heatpump/settings/{device_id}": {
+      "get": {
+        "operationId": "getHeatpumpSettings",
+        "summary": "Get heatpump settings for a device",
+        "description": "Returns the current settings for a specific heatpump device.",
+        "tags": ["settings"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Device settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateHeatpumpSettings",
+        "summary": "Update heatpump settings",
+        "description": "Partially updates settings for a specific heatpump device. Uses the transactional outbox pattern: changes are recorded and published asynchronously to the device via Kafka. Returns 202 with an outbox ID to track command delivery status.",
+        "tags": ["settings"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Settings update accepted. Use the returned outbox_id to track delivery status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Device not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/heatpump/settings/{device_id}/outbox": {
+      "get": {
+        "operationId": "listHeatpumpSettingsOutbox",
+        "summary": "List recent outbox entries for a device",
+        "description": "Returns the last 10 outbox entries for a heatpump device, showing the status of recent setting change commands.",
+        "tags": ["settings"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/deviceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent outbox entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboxEntriesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/heatpump/settings/outbox/{id}": {
+      "get": {
+        "operationId": "getOutboxStatus",
+        "summary": "Get outbox entry status",
+        "description": "Returns the delivery status of a specific outbox command.",
+        "tags": ["settings"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Outbox entry ID",
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Outbox entry status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboxStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Outbox entry not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/plugs": {
+      "get": {
+        "operationId": "listPlugs",
+        "summary": "List all power plugs",
+        "description": "Returns all registered power plugs.",
+        "tags": ["plugs"],
+        "x-service": "homelab-settings-api",
+        "responses": {
+          "200": {
+            "description": "List of power plugs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlugsListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPlug",
+        "summary": "Register a new power plug",
+        "description": "Registers a new power plug with the given ID and name.",
+        "tags": ["plugs"],
+        "x-service": "homelab-settings-api",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PowerPlugCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Power plug created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlugResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/plugs/{plug_id}": {
+      "get": {
+        "operationId": "getPlug",
+        "summary": "Get a power plug",
+        "description": "Returns details for a specific power plug.",
+        "tags": ["plugs"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Power plug details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlugResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Plug not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updatePlug",
+        "summary": "Update a power plug",
+        "description": "Updates the name of an existing power plug.",
+        "tags": ["plugs"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PowerPlugUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Power plug updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlugResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Plug not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "togglePlug",
+        "summary": "Toggle a power plug on/off",
+        "description": "Toggles the power state of a plug. Uses the transactional outbox pattern for reliable delivery to the physical device via Kafka.",
+        "tags": ["plugs"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PowerPlugToggle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Toggle command accepted. Use the returned outbox_id to track delivery status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlugResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Plug not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePlug",
+        "summary": "Delete a power plug",
+        "description": "Removes a power plug and all its associated schedules.",
+        "tags": ["plugs"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Plug deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Plug not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/plugs/{plug_id}/schedules": {
+      "get": {
+        "operationId": "listPlugSchedules",
+        "summary": "List schedules for a power plug",
+        "description": "Returns all schedules configured for the specified power plug.",
+        "tags": ["schedules"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of plug schedules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchedulesListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPlugSchedule",
+        "summary": "Create a schedule for a power plug",
+        "description": "Creates a new time-based schedule to automatically toggle a power plug on or off.",
+        "tags": ["schedules"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Schedule created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/plugs/{plug_id}/schedules/{schedule_id}": {
+      "get": {
+        "operationId": "getPlugSchedule",
+        "summary": "Get a specific plug schedule",
+        "description": "Returns details for a specific schedule.",
+        "tags": ["schedules"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          },
+          {
+            "$ref": "#/components/parameters/scheduleId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Schedule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updatePlugSchedule",
+        "summary": "Update a plug schedule",
+        "description": "Updates an existing schedule. All fields are optional; only provided fields are changed.",
+        "tags": ["schedules"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          },
+          {
+            "$ref": "#/components/parameters/scheduleId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Schedule updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Schedule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deletePlugSchedule",
+        "summary": "Delete a plug schedule",
+        "description": "Removes a schedule from a power plug.",
+        "tags": ["schedules"],
+        "x-service": "homelab-settings-api",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/plugId"
+          },
+          {
+            "$ref": "#/components/parameters/scheduleId"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Schedule deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Schedule not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/ws/energy": {
+      "get": {
+        "operationId": "connectEnergyWebSocket",
+        "summary": "Connect to real-time energy data stream",
+        "description": "Upgrades the HTTP connection to a WebSocket for streaming real-time energy data from Redpanda.\n\n## Authentication\nJWT token is passed as a query parameter (not in the Authorization header, since WebSocket clients cannot set custom headers during the upgrade handshake).\n\n## Protocol\nAfter connecting, the client receives all energy messages from the Redpanda `energy` topic.\n\n### Client Messages (JSON)\n\n**Subscribe** — Request to subscribe to streams:\n```json\n{\"type\": \"subscribe\", \"streams\": [\"energy\"]}\n```\n\n**Unsubscribe** — Request to unsubscribe from streams:\n```json\n{\"type\": \"unsubscribe\", \"streams\": [\"energy\"]}\n```\n\n**Ping** — Keep-alive ping:\n```json\n{\"type\": \"ping\"}\n```\n\n### Server Messages (JSON)\n\n**Data** — Real-time energy measurement:\n```json\n{\"type\": \"data\", \"stream\": \"energy\", \"timestamp\": \"2026-01-15T10:30:45Z\", \"data\": {...}}\n```\n\n**Pong** — Response to client ping:\n```json\n{\"type\": \"pong\", \"timestamp\": \"2026-01-15T10:30:45Z\"}\n```\n\n**Subscribed** — Subscription confirmation:\n```json\n{\"type\": \"subscribed\", \"streams\": [\"energy\"]}\n```\n\n**Unsubscribed** — Unsubscription confirmation:\n```json\n{\"type\": \"unsubscribed\", \"streams\": [\"energy\"]}\n```\n\n**Error** — Error notification:\n```json\n{\"type\": \"error\", \"message\": \"description\", \"code\": \"ERROR_CODE\"}\n```\n\nSee component schemas `WsClientMessage` and `WsServerMessage` for full type definitions.",
+        "tags": ["websocket"],
+        "x-service": "energy-ws",
+        "x-websocket": true,
+        "security": [],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "description": "JWT token for authentication (WebSocket connections cannot use Authorization headers during upgrade)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "101": {
+            "description": "WebSocket connection established"
+          },
+          "401": {
+            "description": "Invalid or expired JWT token"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT token obtained from Authentik OIDC provider at `https://authentik.k12n.com`. Use the Authorization Code flow with PKCE for native apps."
+      }
+    },
+    "parameters": {
+      "fromRequired": {
+        "name": "from",
+        "in": "query",
+        "required": true,
+        "description": "Start of time range (RFC 3339 format)",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "example": "2026-01-01T00:00:00Z"
+      },
+      "toOptional": {
+        "name": "to",
+        "in": "query",
+        "required": false,
+        "description": "End of time range (RFC 3339 format). Defaults to current time if omitted.",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "example": "2026-01-31T23:59:59Z"
+      },
+      "deviceId": {
+        "name": "device_id",
+        "in": "path",
+        "required": true,
+        "description": "Heatpump device identifier",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "plugId": {
+        "name": "plug_id",
+        "in": "path",
+        "required": true,
+        "description": "Power plug identifier",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "scheduleId": {
+        "name": "schedule_id",
+        "in": "path",
+        "required": true,
+        "description": "Schedule identifier",
+        "schema": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Invalid request parameters",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid authentication token",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Human-readable error message"
+          }
+        }
+      },
+      "UserInfoResponse": {
+        "type": "object",
+        "required": ["token", "username", "expires_in"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Access token (proxied from oauth2-proxy or the original Bearer token)"
+          },
+          "username": {
+            "type": "string",
+            "description": "Authenticated username"
+          },
+          "email": {
+            "type": ["string", "null"],
+            "description": "User email address if available"
+          },
+          "expires_in": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Token expiration time in seconds",
+            "example": 3600
+          }
+        }
+      },
+      "EnergyLatestResponse": {
+        "type": "object",
+        "required": ["ts"],
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Measurement timestamp"
+          },
+          "consumption_total_w": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Total consumption in watts"
+          },
+          "consumption_total_actual_w": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Total actual consumption in watts"
+          },
+          "consumption_l1_actual_w": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Phase L1 actual consumption in watts"
+          },
+          "consumption_l2_actual_w": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Phase L2 actual consumption in watts"
+          },
+          "consumption_l3_actual_w": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Phase L3 actual consumption in watts"
+          }
+        }
+      },
+      "HourlyTotalResponse": {
+        "type": "object",
+        "required": ["total_kwh", "hour_start", "current_time"],
+        "properties": {
+          "total_kwh": {
+            "type": "number",
+            "format": "double",
+            "description": "Total energy consumed in the current hour (kWh)"
+          },
+          "hour_start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start of the current hour"
+          },
+          "current_time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Current server time"
+          }
+        }
+      },
+      "EnergyHourlyResponse": {
+        "type": "object",
+        "required": ["hour_start", "hour_end", "measurement_count"],
+        "properties": {
+          "hour_start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Start of the hour bucket"
+          },
+          "hour_end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "End of the hour bucket"
+          },
+          "total_energy_kwh": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Total energy consumed in this hour (kWh)"
+          },
+          "avg_power_l1_kw": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average power on phase L1 (kW)"
+          },
+          "avg_power_l2_kw": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average power on phase L2 (kW)"
+          },
+          "avg_power_l3_kw": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average power on phase L3 (kW)"
+          },
+          "avg_power_total_kw": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average total power (kW)"
+          },
+          "measurement_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of measurements in this hour"
+          }
+        }
+      },
+      "EnergySummaryResponse": {
+        "type": "object",
+        "required": ["measurement_count"],
+        "description": "Energy consumption summary. The populated time range fields depend on the summary type: daily (day_start/day_end), monthly (month_start/month_end), or yearly (year_start/year_end).",
+        "properties": {
+          "day_start": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Start of the day (daily summary)"
+          },
+          "day_end": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "End of the day (daily summary)"
+          },
+          "month_start": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Start of the month (monthly summary)"
+          },
+          "month_end": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "End of the month (monthly summary)"
+          },
+          "year_start": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Start of the year (yearly summary)"
+          },
+          "year_end": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "End of the year (yearly summary)"
+          },
+          "energy_consumption_kwh": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Total energy consumed in the period (kWh)"
+          },
+          "measurement_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Number of measurements in the period"
+          }
+        }
+      },
+      "HeatpumpLatestResponse": {
+        "type": "object",
+        "required": ["ts"],
+        "properties": {
+          "ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Measurement timestamp"
+          },
+          "device_id": {
+            "type": ["string", "null"],
+            "description": "Heatpump device identifier"
+          },
+          "compressor_on": {
+            "type": ["boolean", "null"],
+            "description": "Whether the compressor is running"
+          },
+          "hotwater_production": {
+            "type": ["boolean", "null"],
+            "description": "Whether hot water is being produced"
+          },
+          "flowlinepump_on": {
+            "type": ["boolean", "null"],
+            "description": "Whether the flow line pump is running"
+          },
+          "brinepump_on": {
+            "type": ["boolean", "null"],
+            "description": "Whether the brine pump is running"
+          },
+          "aux_heater_3kw_on": {
+            "type": ["boolean", "null"],
+            "description": "Whether the 3kW auxiliary heater is on"
+          },
+          "aux_heater_6kw_on": {
+            "type": ["boolean", "null"],
+            "description": "Whether the 6kW auxiliary heater is on"
+          },
+          "outdoor_temp": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Outdoor temperature (tenths of degrees Celsius)"
+          },
+          "supplyline_temp": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Supply line temperature (tenths of degrees Celsius)"
+          },
+          "returnline_temp": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Return line temperature (tenths of degrees Celsius)"
+          },
+          "hotwater_temp": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Hot water temperature (tenths of degrees Celsius)"
+          },
+          "brine_out_temp": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Brine outlet temperature (tenths of degrees Celsius)"
+          },
+          "brine_in_temp": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Brine inlet temperature (tenths of degrees Celsius)"
+          },
+          "integral": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Heatpump integral value"
+          },
+          "integral_trend": {
+            "type": ["string", "null"],
+            "enum": ["rising", "stable", "falling", null],
+            "description": "Trend indicator based on integral change over the last 5 minutes. Compares the current value against the average from 1-5 minutes ago."
+          }
+        }
+      },
+      "HeatpumpDailySummaryResponse": {
+        "type": "object",
+        "required": ["day"],
+        "properties": {
+          "day": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date of the summary"
+          },
+          "daily_runtime_compressor_increase": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Compressor runtime increase in minutes"
+          },
+          "daily_runtime_hotwater_increase": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "Hot water production runtime increase in minutes"
+          },
+          "daily_runtime_3kw_increase": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "3kW auxiliary heater runtime increase in minutes"
+          },
+          "daily_runtime_6kw_increase": {
+            "type": ["integer", "null"],
+            "format": "int64",
+            "description": "6kW auxiliary heater runtime increase in minutes"
+          },
+          "avg_outdoor_temp": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average outdoor temperature"
+          },
+          "avg_supplyline_temp": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average supply line temperature"
+          },
+          "avg_returnline_temp": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average return line temperature"
+          },
+          "avg_hotwater_temp": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average hot water temperature"
+          },
+          "avg_brine_out_temp": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average brine outlet temperature"
+          },
+          "avg_brine_in_temp": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Average brine inlet temperature"
+          }
+        }
+      },
+      "TemperatureLatest": {
+        "type": "object",
+        "required": ["time"],
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Measurement timestamp"
+          },
+          "location": {
+            "type": ["string", "null"],
+            "description": "Sensor location identifier"
+          },
+          "temperature_c": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Temperature in degrees Celsius"
+          },
+          "humidity": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Relative humidity percentage"
+          },
+          "battery_percent": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Sensor battery level percentage"
+          }
+        }
+      },
+      "TemperatureReading": {
+        "type": "object",
+        "required": ["time"],
+        "properties": {
+          "time": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Measurement timestamp"
+          },
+          "device_id": {
+            "type": ["string", "null"],
+            "description": "Sensor device identifier"
+          },
+          "mac_address": {
+            "type": ["string", "null"],
+            "description": "Sensor MAC address"
+          },
+          "location": {
+            "type": ["string", "null"],
+            "description": "Sensor location identifier"
+          },
+          "temperature_c": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Temperature in degrees Celsius"
+          },
+          "temperature_f": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Temperature in degrees Fahrenheit"
+          },
+          "humidity": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Relative humidity percentage"
+          },
+          "wifi_rssi": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "WiFi signal strength (dBm)"
+          },
+          "battery_voltage": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Battery voltage"
+          },
+          "battery_percent": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Battery level percentage"
+          }
+        }
+      },
+      "Setting": {
+        "type": "object",
+        "required": ["device_id", "updated_at"],
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Heatpump device identifier"
+          },
+          "indoor_target_temp": {
+            "type": ["number", "null"],
+            "format": "double",
+            "description": "Target indoor temperature in degrees Celsius (15.0-30.0)",
+            "minimum": 15.0,
+            "maximum": 30.0
+          },
+          "mode": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Operating mode (0-3)",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "curve": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Heating curve value"
+          },
+          "curve_min": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Heating curve minimum"
+          },
+          "curve_max": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Heating curve maximum"
+          },
+          "curve_plus_5": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Heating curve value at +5 degrees"
+          },
+          "curve_zero": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Heating curve value at 0 degrees"
+          },
+          "curve_minus_5": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Heating curve value at -5 degrees"
+          },
+          "heatstop": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Heat stop temperature"
+          },
+          "integral_setting": {
+            "type": ["integer", "null"],
+            "format": "int16",
+            "description": "Integral setting value"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        }
+      },
+      "SettingResponse": {
+        "description": "Heatpump setting with optional outbox tracking fields. When a PATCH creates an outbox entry, outbox_id and outbox_status are included.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Setting"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "outbox_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Outbox entry ID for tracking command delivery (only present after PATCH)"
+              },
+              "outbox_status": {
+                "type": "string",
+                "enum": ["pending", "published", "confirmed", "failed"],
+                "description": "Current outbox delivery status (only present after PATCH)"
+              }
+            }
+          }
+        ]
+      },
+      "SettingsListResponse": {
+        "type": "object",
+        "required": ["settings"],
+        "properties": {
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Setting"
+            }
+          }
+        }
+      },
+      "SettingPatch": {
+        "type": "object",
+        "description": "Partial update for heatpump settings. Only provided fields are updated.",
+        "properties": {
+          "indoor_target_temp": {
+            "type": "number",
+            "format": "double",
+            "description": "Target indoor temperature in degrees Celsius",
+            "minimum": 15.0,
+            "maximum": 30.0
+          },
+          "mode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Operating mode",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "curve": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Heating curve value"
+          },
+          "curve_min": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Heating curve minimum"
+          },
+          "curve_max": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Heating curve maximum"
+          },
+          "curve_plus_5": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Heating curve value at +5 degrees"
+          },
+          "curve_zero": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Heating curve value at 0 degrees"
+          },
+          "curve_minus_5": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Heating curve value at -5 degrees"
+          },
+          "heatstop": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Heat stop temperature"
+          },
+          "integral_setting": {
+            "type": "integer",
+            "format": "int16",
+            "description": "Integral setting value"
+          }
+        }
+      },
+      "OutboxEntry": {
+        "type": "object",
+        "required": ["id", "aggregate_type", "aggregate_id", "event_type", "payload", "status", "created_at", "retry_count", "max_retries"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Outbox entry ID"
+          },
+          "aggregate_type": {
+            "type": "string",
+            "enum": ["heatpump_setting", "power_plug"],
+            "description": "Type of aggregate this entry belongs to"
+          },
+          "aggregate_id": {
+            "type": "string",
+            "description": "ID of the aggregate (device_id or plug_id)"
+          },
+          "event_type": {
+            "type": "string",
+            "enum": ["setting_update", "plug_toggle", "plug_schedule"],
+            "description": "Type of event"
+          },
+          "payload": {
+            "type": "object",
+            "description": "Event payload (JSON object with the change data)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "published", "confirmed", "failed"],
+            "description": "Current delivery status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the entry was created"
+          },
+          "published_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the entry was published to Kafka"
+          },
+          "confirmed_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the device confirmed receipt"
+          },
+          "error_message": {
+            "type": ["string", "null"],
+            "description": "Error message if delivery failed"
+          },
+          "retry_count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of delivery attempts"
+          },
+          "max_retries": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Maximum number of delivery attempts"
+          }
+        }
+      },
+      "OutboxEntriesResponse": {
+        "type": "object",
+        "required": ["data"],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutboxEntry"
+            }
+          }
+        }
+      },
+      "OutboxStatusResponse": {
+        "type": "object",
+        "required": ["id", "status", "created_at", "retry_count"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Outbox entry ID"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "published", "confirmed", "failed"],
+            "description": "Current delivery status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the command was created"
+          },
+          "published_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the command was published to Kafka"
+          },
+          "confirmed_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "When the device confirmed receipt"
+          },
+          "error_message": {
+            "type": ["string", "null"],
+            "description": "Error message if delivery failed"
+          },
+          "retry_count": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Number of delivery attempts"
+          }
+        }
+      },
+      "PowerPlug": {
+        "type": "object",
+        "required": ["plug_id", "name", "status", "updated_at"],
+        "properties": {
+          "plug_id": {
+            "type": "string",
+            "description": "Power plug identifier"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable plug name"
+          },
+          "status": {
+            "type": "boolean",
+            "description": "Current power state (true = on, false = off)"
+          },
+          "wifi_rssi": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "WiFi signal strength (dBm)"
+          },
+          "uptime_seconds": {
+            "type": ["integer", "null"],
+            "format": "int32",
+            "description": "Device uptime in seconds"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Last update timestamp"
+          }
+        }
+      },
+      "PlugResponse": {
+        "description": "Power plug with optional outbox tracking fields. When a PATCH creates an outbox entry, outbox_id and outbox_status are included.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PowerPlug"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "outbox_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Outbox entry ID for tracking command delivery (only present after PATCH)"
+              },
+              "outbox_status": {
+                "type": "string",
+                "enum": ["pending", "published", "confirmed", "failed"],
+                "description": "Current outbox delivery status (only present after PATCH)"
+              }
+            }
+          }
+        ]
+      },
+      "PlugsListResponse": {
+        "type": "object",
+        "required": ["plugs"],
+        "properties": {
+          "plugs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PowerPlug"
+            }
+          }
+        }
+      },
+      "PowerPlugCreate": {
+        "type": "object",
+        "required": ["plug_id", "name"],
+        "properties": {
+          "plug_id": {
+            "type": "string",
+            "description": "Unique identifier for the power plug"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable name for the plug"
+          }
+        }
+      },
+      "PowerPlugUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New name for the plug"
+          }
+        }
+      },
+      "PowerPlugToggle": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "boolean",
+            "description": "Desired power state (true = on, false = off)"
+          }
+        }
+      },
+      "PowerPlugSchedule": {
+        "type": "object",
+        "required": ["id", "plug_id", "action", "time_of_day", "enabled", "created_at", "updated_at"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Schedule identifier"
+          },
+          "plug_id": {
+            "type": "string",
+            "description": "Associated power plug identifier"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["on", "off"],
+            "description": "Action to perform at the scheduled time"
+          },
+          "time_of_day": {
+            "type": "string",
+            "pattern": "^\\d{2}:\\d{2}(:\\d{2})?$",
+            "description": "Time of day to trigger the action (HH:MM or HH:MM:SS format)",
+            "example": "07:30:00"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this schedule is active"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the schedule was created"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the schedule was last updated"
+          }
+        }
+      },
+      "ScheduleResponse": {
+        "description": "Power plug schedule.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PowerPlugSchedule"
+          }
+        ]
+      },
+      "SchedulesListResponse": {
+        "type": "object",
+        "required": ["schedules"],
+        "properties": {
+          "schedules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PowerPlugSchedule"
+            }
+          }
+        }
+      },
+      "ScheduleCreate": {
+        "type": "object",
+        "required": ["action", "time_of_day"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["on", "off"],
+            "description": "Action to perform at the scheduled time"
+          },
+          "time_of_day": {
+            "type": "string",
+            "pattern": "^\\d{2}:\\d{2}(:\\d{2})?$",
+            "description": "Time of day to trigger the action (HH:MM or HH:MM:SS format)",
+            "example": "07:30"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether this schedule is active (defaults to true)"
+          }
+        }
+      },
+      "ScheduleUpdate": {
+        "type": "object",
+        "description": "Partial update for a schedule. Only provided fields are updated.",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["on", "off"],
+            "description": "Action to perform at the scheduled time"
+          },
+          "time_of_day": {
+            "type": "string",
+            "pattern": "^\\d{2}:\\d{2}(:\\d{2})?$",
+            "description": "Time of day to trigger the action (HH:MM or HH:MM:SS format)",
+            "example": "08:00"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether this schedule is active"
+          }
+        }
+      },
+      "WsClientMessage": {
+        "description": "Messages sent from client to server over the WebSocket connection. Discriminated by the `type` field.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WsSubscribeMessage"
+          },
+          {
+            "$ref": "#/components/schemas/WsUnsubscribeMessage"
+          },
+          {
+            "$ref": "#/components/schemas/WsPingMessage"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "subscribe": "#/components/schemas/WsSubscribeMessage",
+            "unsubscribe": "#/components/schemas/WsUnsubscribeMessage",
+            "ping": "#/components/schemas/WsPingMessage"
+          }
+        }
+      },
+      "WsSubscribeMessage": {
+        "type": "object",
+        "required": ["type", "streams"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "subscribe"
+          },
+          "streams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Stream names to subscribe to",
+            "example": ["energy"]
+          }
+        }
+      },
+      "WsUnsubscribeMessage": {
+        "type": "object",
+        "required": ["type", "streams"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "unsubscribe"
+          },
+          "streams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Stream names to unsubscribe from",
+            "example": ["energy"]
+          }
+        }
+      },
+      "WsPingMessage": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ping"
+          }
+        }
+      },
+      "WsServerMessage": {
+        "description": "Messages sent from server to client over the WebSocket connection. Discriminated by the `type` field.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WsDataMessage"
+          },
+          {
+            "$ref": "#/components/schemas/WsPongMessage"
+          },
+          {
+            "$ref": "#/components/schemas/WsErrorMessage"
+          },
+          {
+            "$ref": "#/components/schemas/WsSubscribedMessage"
+          },
+          {
+            "$ref": "#/components/schemas/WsUnsubscribedMessage"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "data": "#/components/schemas/WsDataMessage",
+            "pong": "#/components/schemas/WsPongMessage",
+            "error": "#/components/schemas/WsErrorMessage",
+            "subscribed": "#/components/schemas/WsSubscribedMessage",
+            "unsubscribed": "#/components/schemas/WsUnsubscribedMessage"
+          }
+        }
+      },
+      "WsDataMessage": {
+        "type": "object",
+        "required": ["type", "stream", "timestamp", "data"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "data"
+          },
+          "stream": {
+            "type": "string",
+            "description": "Stream identifier",
+            "example": "energy"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Server-side timestamp when the message was forwarded (RFC 3339)"
+          },
+          "data": {
+            "type": "object",
+            "description": "Energy measurement data from Redpanda (arbitrary JSON object)"
+          }
+        }
+      },
+      "WsPongMessage": {
+        "type": "object",
+        "required": ["type", "timestamp"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "pong"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Server timestamp (RFC 3339)"
+          }
+        }
+      },
+      "WsErrorMessage": {
+        "type": "object",
+        "required": ["type", "message", "code"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "error"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable error message"
+          },
+          "code": {
+            "type": "string",
+            "description": "Machine-readable error code"
+          }
+        }
+      },
+      "WsSubscribedMessage": {
+        "type": "object",
+        "required": ["type", "streams"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "subscribed"
+          },
+          "streams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Confirmed subscribed streams"
+          }
+        }
+      },
+      "WsUnsubscribedMessage": {
+        "type": "object",
+        "required": ["type", "streams"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "unsubscribed"
+          },
+          "streams": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Confirmed unsubscribed streams"
+          }
+        }
+      }
+    }
+  }
+}

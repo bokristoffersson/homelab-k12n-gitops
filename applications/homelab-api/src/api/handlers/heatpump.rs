@@ -35,6 +35,10 @@ pub async fn get_latest(
 
     tracing::debug!(time = ?reading.time, "successfully fetched heatpump reading");
 
+    let integral_trend = HeatpumpRepository::get_integral_trend(&pool, device_id)
+        .await
+        .unwrap_or(None);
+
     Ok(Json(HeatpumpLatestResponse {
         ts: reading.time,
         device_id: reading.device_id,
@@ -51,6 +55,7 @@ pub async fn get_latest(
         brine_out_temp: reading.brine_out_temp,
         brine_in_temp: reading.brine_in_temp,
         integral: reading.integral,
+        integral_trend,
     }))
 }
 

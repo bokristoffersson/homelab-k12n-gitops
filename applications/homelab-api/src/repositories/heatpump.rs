@@ -191,6 +191,56 @@ impl HeatpumpRepository {
         }
     }
 
+    pub async fn get_integral_trend(
+        pool: &DbPool,
+        device_id: Option<&str>,
+    ) -> Result<Option<String>, AppError> {
+        let row: (Option<i16>, Option<i16>) = if let Some(device_id) = device_id {
+            sqlx::query_as(
+                r#"
+                SELECT
+                    (SELECT integral FROM heatpump_status
+                     WHERE device_id = $1 ORDER BY time DESC LIMIT 1) AS current_integral,
+                    (SELECT avg(integral)::int2 FROM heatpump_status
+                     WHERE device_id = $1
+                       AND time >= NOW() - INTERVAL '5 minutes'
+                       AND time < NOW() - INTERVAL '1 minute') AS past_integral
+                "#,
+            )
+            .bind(device_id)
+            .fetch_one(pool)
+            .await
+            .map_err(AppError::Db)?
+        } else {
+            sqlx::query_as(
+                r#"
+                SELECT
+                    (SELECT integral FROM heatpump_status
+                     ORDER BY time DESC LIMIT 1) AS current_integral,
+                    (SELECT avg(integral)::int2 FROM heatpump_status
+                     WHERE time >= NOW() - INTERVAL '5 minutes'
+                       AND time < NOW() - INTERVAL '1 minute') AS past_integral
+                "#,
+            )
+            .fetch_one(pool)
+            .await
+            .map_err(AppError::Db)?
+        };
+
+        match (row.0, row.1) {
+            (Some(current), Some(past)) => {
+                if current > past {
+                    Ok(Some("rising".to_string()))
+                } else if current < past {
+                    Ok(Some("falling".to_string()))
+                } else {
+                    Ok(Some("stable".to_string()))
+                }
+            }
+            _ => Ok(None),
+        }
+    }
+
     pub async fn get_cycle_counts(
         pool: &DbPool,
         from: DateTime<Utc>,
