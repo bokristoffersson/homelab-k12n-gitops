@@ -9,7 +9,9 @@ use axum::{
 use tracing::{debug, warn};
 
 // User info extracted from authentication (either oauth2-proxy headers or JWT)
+// Fields are stored in request extensions for future use by handlers
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct AuthenticatedUser {
     pub username: String,
     pub email: Option<String>,
