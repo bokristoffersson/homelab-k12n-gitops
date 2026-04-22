@@ -5,6 +5,7 @@ import Layout from './components/Layout/Layout';
 import Dashboard from './components/Dashboard/Dashboard';
 import Settings from './components/Settings/Settings';
 import Plugs from './components/Plugs/Plugs';
+import Chat from './components/Chat/Chat';
 import AuthLogin from './components/Auth/AuthLogin';
 
 const queryClient = new QueryClient({
@@ -32,6 +33,7 @@ function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="settings" element={<Settings />} />
               <Route path="plugs" element={<Plugs />} />
+              <Route path="chat" element={<Chat />} />
             </Route>
           </Routes>
         </BrowserRouter>
