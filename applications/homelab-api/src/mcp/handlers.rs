@@ -1,9 +1,10 @@
+use crate::api::middleware::AuthenticatedUser;
 use crate::auth::AppState;
 use crate::db::DbPool;
 use crate::mcp::types::{JsonRpcRequest, ToolCallParams, ToolDefinition};
-use crate::repositories::{EnergyRepository, HeatpumpRepository};
+use crate::repositories::{EnergyRepository, HeatpumpRepository, TemperatureRepository};
 use axum::{
-    extract::State,
+    extract::{Extension, State},
     http::StatusCode,
     response::sse::{Event, KeepAlive, Sse},
     Json,
@@ -12,6 +13,11 @@ use chrono::{DateTime, Datelike, Timelike, Utc};
 use serde_json::{json, Value};
 use std::{convert::Infallible, time::Duration};
 use tokio_stream::{wrappers::IntervalStream, StreamExt};
+
+const SCOPE_READ_ENERGY: &str = "read:energy";
+const SCOPE_READ_HEATPUMP: &str = "read:heatpump";
+const SCOPE_READ_TEMPERATURE: &str = "read:temperature";
+const MCP_ERR_FORBIDDEN: i64 = -32001;
 
 pub async fn sse_handler(
     State((_pool, _config, _validator)): State<AppState>,
@@ -39,8 +45,10 @@ pub async fn sse_handler(
 
 pub async fn rpc_handler(
     State((pool, _config, _validator)): State<AppState>,
+    user: Option<Extension<AuthenticatedUser>>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, StatusCode> {
+    let scopes: Vec<String> = user.map(|Extension(u)| u.scopes).unwrap_or_default();
     let request: JsonRpcRequest = match serde_json::from_value(payload) {
         Ok(req) => req,
         Err(_) => {
@@ -69,7 +77,7 @@ pub async fn rpc_handler(
     let result = match request.method.as_str() {
         "initialize" => jsonrpc_ok(id, initialize_result()),
         "tools/list" => jsonrpc_ok(id, tools_list_result()),
-        "tools/call" => match handle_tool_call(&pool, request.params).await {
+        "tools/call" => match handle_tool_call(&pool, &scopes, request.params).await {
             Ok(result) => jsonrpc_ok(id, result),
             Err(err) => jsonrpc_error(id, err.code, err.message, err.data),
         },
@@ -86,7 +94,11 @@ struct ToolError {
     data: Option<Value>,
 }
 
-async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value, ToolError> {
+async fn handle_tool_call(
+    pool: &DbPool,
+    scopes: &[String],
+    params: Option<Value>,
+) -> Result<Value, ToolError> {
     let params = params.unwrap_or_else(|| json!({}));
     let tool_params: ToolCallParams = serde_json::from_value(params).map_err(|e| ToolError {
         code: -32602,
@@ -98,10 +110,54 @@ async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value,
 
     let result = match tool_params.name.as_str() {
         "get_server_time" => get_server_time(),
-        "energy_hourly_consumption" => energy_hourly_consumption(pool, &arguments).await?,
-        "energy_peak_hour_day" => energy_peak_hour_day(pool, &arguments).await?,
-        "heatpump_daily_summary" => heatpump_daily_summary(pool, &arguments).await?,
-        "heatpump_cycle_counts" => heatpump_cycle_counts(pool, &arguments).await?,
+        "energy_hourly_consumption" => {
+            require_tool_scope(scopes, SCOPE_READ_ENERGY, &tool_params.name)?;
+            energy_hourly_consumption(pool, &arguments).await?
+        }
+        "energy_peak_hour_day" => {
+            require_tool_scope(scopes, SCOPE_READ_ENERGY, &tool_params.name)?;
+            energy_peak_hour_day(pool, &arguments).await?
+        }
+        "energy_latest" => {
+            require_tool_scope(scopes, SCOPE_READ_ENERGY, &tool_params.name)?;
+            energy_latest(pool).await?
+        }
+        "energy_daily_summary" => {
+            require_tool_scope(scopes, SCOPE_READ_ENERGY, &tool_params.name)?;
+            energy_daily_summary(pool, &arguments).await?
+        }
+        "energy_monthly_summary" => {
+            require_tool_scope(scopes, SCOPE_READ_ENERGY, &tool_params.name)?;
+            energy_monthly_summary(pool, &arguments).await?
+        }
+        "energy_yearly_summary" => {
+            require_tool_scope(scopes, SCOPE_READ_ENERGY, &tool_params.name)?;
+            energy_yearly_summary(pool, &arguments).await?
+        }
+        "heatpump_daily_summary" => {
+            require_tool_scope(scopes, SCOPE_READ_HEATPUMP, &tool_params.name)?;
+            heatpump_daily_summary(pool, &arguments).await?
+        }
+        "heatpump_cycle_counts" => {
+            require_tool_scope(scopes, SCOPE_READ_HEATPUMP, &tool_params.name)?;
+            heatpump_cycle_counts(pool, &arguments).await?
+        }
+        "heatpump_latest" => {
+            require_tool_scope(scopes, SCOPE_READ_HEATPUMP, &tool_params.name)?;
+            heatpump_latest(pool, &arguments).await?
+        }
+        "temperature_latest" => {
+            require_tool_scope(scopes, SCOPE_READ_TEMPERATURE, &tool_params.name)?;
+            temperature_latest(pool, &arguments).await?
+        }
+        "temperature_all_latest" => {
+            require_tool_scope(scopes, SCOPE_READ_TEMPERATURE, &tool_params.name)?;
+            temperature_all_latest(pool).await?
+        }
+        "temperature_history" => {
+            require_tool_scope(scopes, SCOPE_READ_TEMPERATURE, &tool_params.name)?;
+            temperature_history(pool, &arguments).await?
+        }
         _ => {
             return Err(ToolError {
                 code: -32601,
@@ -120,6 +176,20 @@ async fn handle_tool_call(pool: &DbPool, params: Option<Value>) -> Result<Value,
         ],
         "isError": false
     }))
+}
+
+fn require_tool_scope(scopes: &[String], required: &str, tool: &str) -> Result<(), ToolError> {
+    if scopes.iter().any(|s| s == required) {
+        return Ok(());
+    }
+    Err(ToolError {
+        code: MCP_ERR_FORBIDDEN,
+        message: "Forbidden".to_string(),
+        data: Some(json!({
+            "tool": tool,
+            "required_scope": required,
+        })),
+    })
 }
 
 fn get_server_time() -> Value {
@@ -254,6 +324,211 @@ async fn heatpump_daily_summary(pool: &DbPool, args: &Value) -> Result<Value, To
         "count": days.len(),
         "days": days
     }))
+}
+
+async fn energy_latest(pool: &DbPool) -> Result<Value, ToolError> {
+    let reading = EnergyRepository::get_latest(pool).await.map_err(db_error)?;
+    Ok(json!({
+        "ts": reading.ts,
+        "consumption_total_w": reading.consumption_total_w,
+        "consumption_total_actual_w": reading.consumption_total_actual_w,
+        "consumption_l1_actual_w": reading.consumption_l1_actual_w,
+        "consumption_l2_actual_w": reading.consumption_l2_actual_w,
+        "consumption_l3_actual_w": reading.consumption_l3_actual_w,
+    }))
+}
+
+async fn energy_daily_summary(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
+    let from = parse_required_datetime(args, "from")?;
+    let to = parse_optional_datetime(args, "to").unwrap_or_else(Utc::now);
+    let summaries = EnergyRepository::get_daily_summary(pool, from, to)
+        .await
+        .map_err(db_error)?;
+    let days: Vec<Value> = summaries
+        .into_iter()
+        .map(|s| {
+            json!({
+                "day_start": s.day_start,
+                "day_end": s.day_end,
+                "energy_consumption_kwh": s.energy_consumption_w,
+                "measurement_count": s.measurement_count,
+            })
+        })
+        .collect();
+    Ok(json!({ "from": from, "to": to, "count": days.len(), "days": days }))
+}
+
+async fn energy_monthly_summary(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
+    let from = parse_required_datetime(args, "from")?;
+    let to = parse_optional_datetime(args, "to").unwrap_or_else(Utc::now);
+    let summaries = EnergyRepository::get_monthly_summary(pool, from, to)
+        .await
+        .map_err(db_error)?;
+    let months: Vec<Value> = summaries
+        .into_iter()
+        .map(|s| {
+            json!({
+                "month_start": s.month_start,
+                "month_end": s.month_end,
+                "energy_consumption_kwh": s.energy_consumption_w,
+                "measurement_count": s.measurement_count,
+            })
+        })
+        .collect();
+    Ok(json!({ "from": from, "to": to, "count": months.len(), "months": months }))
+}
+
+async fn energy_yearly_summary(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
+    let from = parse_required_datetime(args, "from")?;
+    let to = parse_optional_datetime(args, "to").unwrap_or_else(Utc::now);
+    let summaries = EnergyRepository::get_yearly_summary(pool, from, to)
+        .await
+        .map_err(db_error)?;
+    let years: Vec<Value> = summaries
+        .into_iter()
+        .map(|s| {
+            json!({
+                "year_start": s.year_start,
+                "year_end": s.year_end,
+                "energy_consumption_kwh": s.energy_consumption_w,
+                "measurement_count": s.measurement_count,
+            })
+        })
+        .collect();
+    Ok(json!({ "from": from, "to": to, "count": years.len(), "years": years }))
+}
+
+async fn heatpump_latest(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
+    let device_id = args.get("device_id").and_then(|v| v.as_str());
+    let reading = HeatpumpRepository::get_latest(pool, device_id)
+        .await
+        .map_err(db_error)?;
+    let integral_trend = HeatpumpRepository::get_integral_trend(pool, device_id)
+        .await
+        .unwrap_or(None);
+    Ok(json!({
+        "ts": reading.time,
+        "device_id": reading.device_id,
+        "compressor_on": reading.compressor_on,
+        "hotwater_production": reading.hotwater_production,
+        "flowlinepump_on": reading.flowlinepump_on,
+        "brinepump_on": reading.brinepump_on,
+        "aux_heater_3kw_on": reading.aux_heater_3kw_on,
+        "aux_heater_6kw_on": reading.aux_heater_6kw_on,
+        "outdoor_temp": reading.outdoor_temp,
+        "supplyline_temp": reading.supplyline_temp,
+        "returnline_temp": reading.returnline_temp,
+        "hotwater_temp": reading.hotwater_temp,
+        "brine_out_temp": reading.brine_out_temp,
+        "brine_in_temp": reading.brine_in_temp,
+        "integral": reading.integral,
+        "integral_trend": integral_trend,
+    }))
+}
+
+async fn temperature_latest(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
+    let location = args
+        .get("location")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ToolError {
+            code: -32602,
+            message: "Invalid params".to_string(),
+            data: Some(json!({ "detail": "Missing field: location" })),
+        })?;
+    let reading = TemperatureRepository::get_latest_by_location(pool, location)
+        .await
+        .map_err(db_error)?;
+    Ok(match reading {
+        Some(r) => json!({
+            "time": r.time,
+            "location": r.location,
+            "temperature_c": r.temperature_c,
+            "humidity": r.humidity,
+            "battery_percent": r.battery_percent,
+        }),
+        None => json!(null),
+    })
+}
+
+async fn temperature_all_latest(pool: &DbPool) -> Result<Value, ToolError> {
+    let readings = TemperatureRepository::get_all_latest(pool)
+        .await
+        .map_err(db_error)?;
+    let items: Vec<Value> = readings
+        .into_iter()
+        .map(|r| {
+            json!({
+                "time": r.time,
+                "location": r.location,
+                "temperature_c": r.temperature_c,
+                "humidity": r.humidity,
+                "battery_percent": r.battery_percent,
+            })
+        })
+        .collect();
+    Ok(json!({ "count": items.len(), "sensors": items }))
+}
+
+async fn temperature_history(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
+    let location_from_arg = args
+        .get("location")
+        .and_then(|v| v.as_str())
+        .or_else(|| args.get("sensor_id").and_then(|v| v.as_str()))
+        .ok_or_else(|| ToolError {
+            code: -32602,
+            message: "Invalid params".to_string(),
+            data: Some(json!({ "detail": "Missing field: location (or sensor_id)" })),
+        })?;
+
+    // Prefer explicit `from`/`to` if provided; otherwise fall back to an `hours` window.
+    let (hours, from_ts, to_ts) = if args.get("from").is_some() {
+        let from = parse_required_datetime(args, "from")?;
+        let to = parse_optional_datetime(args, "to").unwrap_or_else(Utc::now);
+        let delta_hours = ((to - from).num_seconds() / 3600).max(1) as i32;
+        (delta_hours, Some(from), Some(to))
+    } else {
+        let h = args.get("hours").and_then(|v| v.as_i64()).unwrap_or(24) as i32;
+        (h, None, None)
+    };
+
+    let readings = TemperatureRepository::get_history(pool, location_from_arg, hours)
+        .await
+        .map_err(db_error)?;
+
+    let filtered: Vec<Value> = readings
+        .into_iter()
+        .filter(|r| match (from_ts, to_ts) {
+            (Some(from), Some(to)) => r.time >= from && r.time < to,
+            _ => true,
+        })
+        .map(|r| {
+            json!({
+                "time": r.time,
+                "device_id": r.device_id,
+                "location": r.location,
+                "temperature_c": r.temperature_c,
+                "humidity": r.humidity,
+                "battery_percent": r.battery_percent,
+            })
+        })
+        .collect();
+
+    Ok(json!({
+        "location": location_from_arg,
+        "from": from_ts,
+        "to": to_ts,
+        "hours": hours,
+        "count": filtered.len(),
+        "readings": filtered,
+    }))
+}
+
+fn db_error(e: crate::error::AppError) -> ToolError {
+    ToolError {
+        code: -32603,
+        message: "Database error".to_string(),
+        data: Some(json!({ "detail": e.to_string() })),
+    }
 }
 
 async fn heatpump_cycle_counts(pool: &DbPool, args: &Value) -> Result<Value, ToolError> {
@@ -397,6 +672,104 @@ fn tools_list_result() -> Value {
                 "additionalProperties": false
             }),
         },
+        ToolDefinition {
+            name: "energy_latest".to_string(),
+            description: "Get the latest electricity power reading (instantaneous consumption per phase and cumulative meter values). Requires scope read:energy.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "energy_daily_summary".to_string(),
+            description: "Daily energy consumption totals (kWh) for a date range. Requires scope read:energy.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "from": {"type": "string", "description": "RFC3339 timestamp (inclusive)."},
+                    "to": {"type": "string", "description": "RFC3339 timestamp (exclusive). Defaults to now."}
+                },
+                "required": ["from"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "energy_monthly_summary".to_string(),
+            description: "Monthly energy consumption totals (kWh) for a date range. Requires scope read:energy.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "from": {"type": "string", "description": "RFC3339 timestamp (inclusive)."},
+                    "to": {"type": "string", "description": "RFC3339 timestamp (exclusive). Defaults to now."}
+                },
+                "required": ["from"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "energy_yearly_summary".to_string(),
+            description: "Yearly energy consumption totals (kWh) for a date range. Requires scope read:energy.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "from": {"type": "string", "description": "RFC3339 timestamp (inclusive)."},
+                    "to": {"type": "string", "description": "RFC3339 timestamp (exclusive). Defaults to now."}
+                },
+                "required": ["from"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "heatpump_latest".to_string(),
+            description: "Latest heat pump status reading (runtime flags, temperatures, integral and trend). Requires scope read:heatpump.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "device_id": {
+                        "type": "string",
+                        "description": "Optional heat pump device identifier to filter."
+                    }
+                },
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "temperature_latest".to_string(),
+            description: "Latest indoor/outdoor temperature reading for a given location. Requires scope read:temperature.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "Sensor location label."}
+                },
+                "required": ["location"],
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "temperature_all_latest".to_string(),
+            description: "Latest reading for every known temperature sensor location. Requires scope read:temperature.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+            }),
+        },
+        ToolDefinition {
+            name: "temperature_history".to_string(),
+            description: "Temperature history for a sensor location. Accepts either `hours` (default 24) or an explicit `from`/`to` RFC3339 window. `sensor_id` is accepted as a synonym for `location`. Requires scope read:temperature.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "Sensor location label."},
+                    "sensor_id": {"type": "string", "description": "Alias for location."},
+                    "from": {"type": "string", "description": "Optional RFC3339 start timestamp."},
+                    "to": {"type": "string", "description": "Optional RFC3339 end timestamp. Defaults to now when from is set."},
+                    "hours": {"type": "integer", "description": "Hours of history when from/to is omitted (default 24)."}
+                },
+                "additionalProperties": false
+            }),
+        },
     ];
 
     json!({ "tools": tools })
@@ -484,6 +857,37 @@ mod tests {
         assert!(names.contains(&"energy_hourly_consumption"));
         assert!(names.contains(&"energy_peak_hour_day"));
         assert!(names.contains(&"heatpump_daily_summary"));
+        assert!(names.contains(&"energy_latest"));
+        assert!(names.contains(&"energy_daily_summary"));
+        assert!(names.contains(&"energy_monthly_summary"));
+        assert!(names.contains(&"energy_yearly_summary"));
+        assert!(names.contains(&"heatpump_latest"));
+        assert!(names.contains(&"temperature_latest"));
+        assert!(names.contains(&"temperature_all_latest"));
+        assert!(names.contains(&"temperature_history"));
+    }
+
+    #[test]
+    fn require_tool_scope_rejects_missing_scope() {
+        let scopes: Vec<String> = vec!["read:heatpump".into()];
+        let err = require_tool_scope(&scopes, "read:energy", "energy_latest").unwrap_err();
+        assert_eq!(err.code, MCP_ERR_FORBIDDEN);
+        assert_eq!(err.message, "Forbidden");
+    }
+
+    #[test]
+    fn require_tool_scope_accepts_matching_scope() {
+        let scopes: Vec<String> = vec!["read:energy".into(), "read:temperature".into()];
+        assert!(require_tool_scope(&scopes, "read:energy", "energy_latest").is_ok());
+    }
+
+    // `get_server_time` has no scope requirement, so it should succeed with no scopes.
+    #[tokio::test]
+    async fn get_server_time_is_unscoped() {
+        // We can't build a DbPool in unit tests, but we can call the synchronous helper directly.
+        let result = get_server_time();
+        assert!(result.get("server_time_utc").is_some());
+        assert!(result.get("timezone").is_some());
     }
 
     #[test]

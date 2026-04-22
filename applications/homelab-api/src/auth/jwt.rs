@@ -1,7 +1,8 @@
 use alcoholic_jwt::{validate, Validation as JwksValidation, ValidationError, JWKS};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -15,6 +16,36 @@ pub struct Claims {
     pub iat: Option<usize>,    // issued at (optional)
     pub iss: Option<String>,   // issuer
     pub email: Option<String>, // email (from Authentik)
+    // Authentik emits `scope` as a space-separated string per RFC 8693;
+    // an array form is tolerated for compatibility with other IdPs.
+    #[serde(default, deserialize_with = "deserialize_scope")]
+    pub scope: Vec<String>,
+}
+
+impl Claims {
+    #[allow(dead_code)]
+    pub fn has_scope(&self, required: &str) -> bool {
+        self.scope.iter().any(|s| s == required)
+    }
+}
+
+fn deserialize_scope<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<Value>::deserialize(deserializer)?;
+    Ok(parse_scope_value(value.as_ref()))
+}
+
+fn parse_scope_value(value: Option<&Value>) -> Vec<String> {
+    match value {
+        Some(Value::String(s)) => s.split_whitespace().map(|part| part.to_string()).collect(),
+        Some(Value::Array(items)) => items
+            .iter()
+            .filter_map(|item| item.as_str().map(|s| s.to_string()))
+            .collect(),
+        _ => Vec::new(),
+    }
 }
 
 // Token introspection response from Authentik
@@ -35,6 +66,8 @@ struct IntrospectionResponse {
     username: Option<String>,
     #[serde(default)]
     preferred_username: Option<String>,
+    #[serde(default)]
+    scope: Option<Value>,
 }
 
 // Single issuer configuration
@@ -319,6 +352,7 @@ impl JwtValidator {
             iat: introspection.iat,
             iss: introspection.iss,
             email: introspection.email,
+            scope: parse_scope_value(introspection.scope.as_ref()),
         })
     }
 
@@ -360,6 +394,7 @@ pub fn create_token(username: &str, secret: &str, expiry_hours: u64) -> Result<S
         iat: Some(now.timestamp() as usize),
         iss: None,
         email: None,
+        scope: Vec::new(),
     };
 
     encode(
@@ -411,5 +446,62 @@ mod tests {
         assert_eq!("a.b.c".split('.').count(), 3);
         // Opaque token doesn't
         assert_ne!("opaque-token-abc123".split('.').count(), 3);
+    }
+
+    #[test]
+    fn parse_scope_value_handles_string() {
+        let value = serde_json::json!("read:energy read:heatpump");
+        let scopes = parse_scope_value(Some(&value));
+        assert_eq!(scopes, vec!["read:energy", "read:heatpump"]);
+    }
+
+    #[test]
+    fn parse_scope_value_handles_array() {
+        let value = serde_json::json!(["read:temperature", "write:plugs"]);
+        let scopes = parse_scope_value(Some(&value));
+        assert_eq!(scopes, vec!["read:temperature", "write:plugs"]);
+    }
+
+    #[test]
+    fn parse_scope_value_handles_missing_and_empty() {
+        assert!(parse_scope_value(None).is_empty());
+        assert!(parse_scope_value(Some(&serde_json::json!(""))).is_empty());
+        assert!(parse_scope_value(Some(&serde_json::json!(null))).is_empty());
+    }
+
+    #[test]
+    fn claims_deserializes_scope_string() {
+        let raw = serde_json::json!({
+            "sub": "alice",
+            "exp": 9_999_999_999_usize,
+            "scope": "read:energy read:heatpump"
+        });
+        let claims: Claims = serde_json::from_value(raw).unwrap();
+        assert!(claims.has_scope("read:energy"));
+        assert!(claims.has_scope("read:heatpump"));
+        assert!(!claims.has_scope("write:plugs"));
+    }
+
+    #[test]
+    fn claims_deserializes_scope_array() {
+        let raw = serde_json::json!({
+            "sub": "alice",
+            "exp": 9_999_999_999_usize,
+            "scope": ["read:temperature"]
+        });
+        let claims: Claims = serde_json::from_value(raw).unwrap();
+        assert!(claims.has_scope("read:temperature"));
+        assert!(!claims.has_scope("read:energy"));
+    }
+
+    #[test]
+    fn claims_without_scope_is_empty() {
+        let raw = serde_json::json!({
+            "sub": "alice",
+            "exp": 9_999_999_999_usize
+        });
+        let claims: Claims = serde_json::from_value(raw).unwrap();
+        assert!(claims.scope.is_empty());
+        assert!(!claims.has_scope("read:energy"));
     }
 }
