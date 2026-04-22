@@ -10,6 +10,6 @@ data:
   AGENT_CLIENT_ID: "homelab-chat-agent"
   HOMELAB_API_MCP_URL: "http://homelab-api.homelab-api:8080/mcp"
   HOMELAB_SETTINGS_API_MCP_URL: "http://homelab-settings-api.homelab-settings:8080/mcp"
-  LLM_PROVIDER: "mlx"
+  LLM_PROVIDER: "anthropic"
+  LLM_MODEL: "claude-sonnet-4-6"
   MLX_SERVER_URL: "http://Bos-MacBook-Pro.local:8080/v1"
-  LLM_MODEL: "mlx-community/Llama-3.3-70B-Instruct-4bit"
