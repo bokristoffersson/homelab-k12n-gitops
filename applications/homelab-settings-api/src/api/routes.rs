@@ -10,7 +10,7 @@ use crate::auth::{require_jwt_auth, require_scope};
 use crate::mcp::handlers as mcp;
 
 pub fn create_router(state: AppState) -> Router {
-    let read_heatpump_routes = Router::new()
+    let read_settings_routes = Router::new()
         .route("/api/v1/heatpump/settings", get(settings::get_all_settings))
         .route(
             "/api/v1/heatpump/settings/{device_id}",
@@ -25,16 +25,16 @@ pub fn create_router(state: AppState) -> Router {
             get(settings::get_outbox_status),
         )
         .route_layer(middleware::from_fn(|req, next| {
-            require_scope("read:heatpump", req, next)
+            require_scope("read:settings", req, next)
         }));
 
-    let write_heatpump_routes = Router::new()
+    let write_settings_routes = Router::new()
         .route(
             "/api/v1/heatpump/settings/{device_id}",
             patch(settings::update_setting),
         )
         .route_layer(middleware::from_fn(|req, next| {
-            require_scope("write:heatpump", req, next)
+            require_scope("write:settings", req, next)
         }));
 
     let read_plugs_routes = Router::new()
@@ -73,8 +73,8 @@ pub fn create_router(state: AppState) -> Router {
         }));
 
     let protected_routes = Router::new()
-        .merge(read_heatpump_routes)
-        .merge(write_heatpump_routes)
+        .merge(read_settings_routes)
+        .merge(write_settings_routes)
         .merge(read_plugs_routes)
         .merge(write_plugs_routes)
         .route_layer(middleware::from_fn_with_state(

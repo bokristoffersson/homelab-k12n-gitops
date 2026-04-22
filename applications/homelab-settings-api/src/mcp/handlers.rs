@@ -155,11 +155,11 @@ async fn handle_tool_call(
             toggle_plug(state, &arguments).await?
         }
         "list_heatpump_settings" => {
-            require_scope(auth, "read:heatpump")?;
+            require_scope(auth, "read:settings")?;
             list_heatpump_settings(state).await?
         }
         "get_heatpump_settings" => {
-            require_scope(auth, "read:heatpump")?;
+            require_scope(auth, "read:settings")?;
             get_heatpump_settings(state, &arguments).await?
         }
         _ => {
