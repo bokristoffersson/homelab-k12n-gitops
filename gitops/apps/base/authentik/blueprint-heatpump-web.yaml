@@ -115,6 +115,45 @@ data:
               "write:settings": True
             }
 
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-read-temperature
+        identifiers:
+          scope_name: read:temperature
+        attrs:
+          name: Read Temperature Data
+          scope_name: read:temperature
+          description: Read temperature and humidity telemetry
+          expression: |
+            return {
+              "read:temperature": True
+            }
+
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-read-plugs
+        identifiers:
+          scope_name: read:plugs
+        attrs:
+          name: Read Plug State
+          scope_name: read:plugs
+          description: Read smart plug state and metadata
+          expression: |
+            return {
+              "read:plugs": True
+            }
+
+      - model: authentik_providers_oauth2.scopemapping
+        id: scope-write-plugs
+        identifiers:
+          scope_name: write:plugs
+        attrs:
+          name: Write Plug State
+          scope_name: write:plugs
+          description: Toggle smart plugs on or off
+          expression: |
+            return {
+              "write:plugs": True
+            }
+
       # Add custom scopes to the provider
       - model: authentik_providers_oauth2.oauth2provider
         id: heatpump-web-provider-scopes
@@ -130,3 +169,6 @@ data:
             - !KeyOf scope-read-heatpump
             - !KeyOf scope-read-settings
             - !KeyOf scope-write-settings
+            - !KeyOf scope-read-temperature
+            - !KeyOf scope-read-plugs
+            - !KeyOf scope-write-plugs

@@ -86,6 +86,7 @@ data:
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, "read:energy"]]
             - !Find [authentik_providers_oauth2.scopemapping, [scope_name, "read:heatpump"]]
+            - !Find [authentik_providers_oauth2.scopemapping, [scope_name, "read:settings"]]
             - !KeyOf scope-read-temperature
             - !KeyOf scope-read-plugs
             - !KeyOf scope-write-plugs
