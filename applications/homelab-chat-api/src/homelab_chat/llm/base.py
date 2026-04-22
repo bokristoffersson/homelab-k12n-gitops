@@ -65,14 +65,15 @@ class ProviderUnavailable(ProviderError):
 class LLMProvider(Protocol):
     """An LLM backend capable of streaming tool-calling completions."""
 
-    async def stream(
+    def stream(
         self,
         messages: list[Message],
         tools: list[ToolSchema],
     ) -> AsyncIterator[ProviderEvent]:
         """Stream a single completion turn.
 
-        The iterator yields :class:`ProviderEvent` instances until the turn completes.
-        The final event must have ``finish=True``.
+        Implementations are async generators, so calling this method returns an
+        :class:`AsyncIterator` directly. The iterator yields :class:`ProviderEvent`
+        instances until the turn completes; the final event must have ``finish=True``.
         """
         ...

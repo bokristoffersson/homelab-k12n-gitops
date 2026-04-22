@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -19,8 +19,6 @@ from homelab_chat.llm.base import (
 from homelab_chat.mcp_client import MCPError, ToolRouter
 
 logger = logging.getLogger(__name__)
-
-ProviderFactory = Callable[[], LLMProvider]
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,9 +72,8 @@ class Agent:
             assistant_text_parts: list[str] = []
             tool_calls: list[ToolCall] = []
 
-            stream = self._open_stream(provider, conversation, tools)
             try:
-                async for event in stream:
+                async for event in provider.stream(conversation, tools):
                     if event.text_delta is not None:
                         assistant_text_parts.append(event.text_delta)
                         yield SSEEvent(event="token", data={"text": event.text_delta})
@@ -121,14 +118,6 @@ class Agent:
                 "reason": "max_iterations_reached",
             },
         )
-
-    def _open_stream(
-        self,
-        provider: LLMProvider,
-        conversation: list[Message],
-        tools: list[ToolSchema],
-    ) -> AsyncIterator[Any]:
-        return provider.stream(conversation, tools)
 
     async def _execute_tool(self, call: ToolCall) -> Message:
         try:

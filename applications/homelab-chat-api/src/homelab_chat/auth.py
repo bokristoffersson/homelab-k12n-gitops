@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import httpx
@@ -38,7 +39,7 @@ class AgentTokenProvider:
         client_id: str,
         client_secret: str,
         http_client: httpx.AsyncClient,
-        clock: "callable[[], float] | None" = None,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self._token_url = token_url
         self._client_id = client_id
