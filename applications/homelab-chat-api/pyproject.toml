@@ -25,12 +25,11 @@ dev = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.5.0,<0.6.0"]
-build-backend = "uv_build"
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
 
-[tool.uv.build-backend]
-module-name = "homelab_chat"
-module-root = "src"
+[tool.hatch.build.targets.wheel]
+packages = ["src/homelab_chat"]
 
 [tool.ruff]
 line-length = 100
