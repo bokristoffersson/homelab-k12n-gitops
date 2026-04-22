@@ -8,8 +8,35 @@ use axum::{
 use tracing::{debug, warn};
 
 use crate::api::handlers::AppState;
+use crate::auth::jwt::Claims;
 
-/// Extract Bearer token from Authorization header
+/// Authentication context attached to the request after auth middleware succeeds.
+///
+/// Two variants reflect the two trusted paths into the service:
+/// - `Proxy` = oauth2-proxy validated the session cookie upstream; we trust the proxy
+///   and grant all scopes (no token is available to inspect).
+/// - `Jwt` = a Bearer JWT was validated locally; scope checks consult the `Claims.scope`.
+#[derive(Clone, Debug)]
+pub enum AuthContext {
+    /// Trusted proxy (oauth2-proxy) validated an upstream session. We grant all scopes
+    /// under the existing network-perimeter trust model; the principal string is kept
+    /// for downstream logging/audit.
+    Proxy {
+        #[allow(dead_code)]
+        user: String,
+    },
+    Jwt(Claims),
+}
+
+impl AuthContext {
+    pub fn has_scope(&self, required: &str) -> bool {
+        match self {
+            AuthContext::Proxy { .. } => true,
+            AuthContext::Jwt(claims) => claims.has_scope(required),
+        }
+    }
+}
+
 fn extract_bearer_token(auth_header: Option<&str>) -> Option<&str> {
     match auth_header {
         Some(header) if header.starts_with("Bearer ") => Some(&header[7..]),
@@ -31,8 +58,6 @@ fn extract_bearer_token(auth_header: Option<&str>) -> Option<&str> {
 fn is_authenticated_by_proxy(request: &Request<Body>) -> Option<String> {
     let headers = request.headers();
 
-    // Require X-Auth-Request-User header (email is optional)
-    // This matches homelab-api behavior for consistency
     let user = headers
         .get("X-Auth-Request-User")
         .and_then(|h| h.to_str().ok())
@@ -43,7 +68,6 @@ fn is_authenticated_by_proxy(request: &Request<Body>) -> Option<String> {
         .and_then(|h| h.to_str().ok())
         .filter(|s| !s.is_empty());
 
-    // User header present and non-empty - this request came through oauth2-proxy
     match email {
         Some(email) => Some(format!("{} ({})", user, email)),
         None => Some(user.to_string()),
@@ -52,13 +76,14 @@ fn is_authenticated_by_proxy(request: &Request<Body>) -> Option<String> {
 
 pub async fn require_jwt_auth(
     State(state): State<AppState>,
-    request: Request<Body>,
+    mut request: Request<Body>,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // Check for oauth2-proxy authentication headers
-    // Requires BOTH X-Auth-Request-User AND X-Auth-Request-Email to be present
     if let Some(proxy_user) = is_authenticated_by_proxy(&request) {
         debug!("Request authenticated via oauth2-proxy for: {}", proxy_user);
+        request
+            .extensions_mut()
+            .insert(AuthContext::Proxy { user: proxy_user });
         return Ok(next.run(request).await);
     }
 
@@ -86,6 +111,7 @@ pub async fn require_jwt_auth(
     match jwt_validator.validate_token(token).await {
         Ok(claims) => {
             debug!("JWT validated for user: {}", claims.sub);
+            request.extensions_mut().insert(AuthContext::Jwt(claims));
             Ok(next.run(request).await)
         }
         Err(e) => {
@@ -95,10 +121,39 @@ pub async fn require_jwt_auth(
     }
 }
 
+/// Middleware that enforces a single required scope.
+///
+/// Must be layered **after** `require_jwt_auth` so that an `AuthContext` is present in
+/// the request extensions. Returns 403 when the authenticated principal lacks the scope.
+pub async fn require_scope(
+    required: &'static str,
+    request: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let authorized = match request.extensions().get::<AuthContext>() {
+        Some(auth) => auth.has_scope(required),
+        None => {
+            debug!(
+                "No AuthContext found on request; scope '{}' check skipped",
+                required
+            );
+            true
+        }
+    };
+
+    if !authorized {
+        warn!("Request missing required scope: {}", required);
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(next.run(request).await)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::http::Request;
+    use axum::{body::to_bytes, http::Request, middleware, routing::get, Router};
+    use tower::ServiceExt;
 
     fn make_request_with_headers(headers: Vec<(&str, &str)>) -> Request<Body> {
         let mut builder = Request::builder().uri("/test").method("GET");
@@ -106,6 +161,108 @@ mod tests {
             builder = builder.header(name, value);
         }
         builder.body(Body::empty()).unwrap()
+    }
+
+    fn jwt_claims(scope: Option<&str>) -> Claims {
+        Claims {
+            sub: "user".into(),
+            exp: 0,
+            iat: None,
+            iss: None,
+            email: None,
+            scope: scope.map(str::to_owned),
+        }
+    }
+
+    async fn inject_context(
+        ctx: Option<AuthContext>,
+    ) -> impl Fn(
+        Request<Body>,
+        Next,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Response, StatusCode>> + Send>,
+    > + Clone {
+        move |mut req: Request<Body>, next: Next| {
+            let ctx = ctx.clone();
+            Box::pin(async move {
+                if let Some(ctx) = ctx {
+                    req.extensions_mut().insert(ctx);
+                }
+                Ok(next.run(req).await)
+            })
+        }
+    }
+
+    async fn run_with_scope(
+        ctx: Option<AuthContext>,
+        scope: &'static str,
+    ) -> axum::http::StatusCode {
+        let injector = inject_context(ctx).await;
+        let app = Router::new()
+            .route("/test", get(|| async { "ok" }))
+            .layer(middleware::from_fn(move |req, next| {
+                require_scope(scope, req, next)
+            }))
+            .layer(middleware::from_fn(injector));
+
+        let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+
+        app.oneshot(request).await.unwrap().status()
+    }
+
+    #[tokio::test]
+    async fn require_scope_allows_matching_jwt_scope() {
+        let ctx = AuthContext::Jwt(jwt_claims(Some("read:plugs write:plugs")));
+        let status = run_with_scope(Some(ctx), "read:plugs").await;
+        assert_eq!(status, StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn require_scope_rejects_missing_jwt_scope() {
+        let ctx = AuthContext::Jwt(jwt_claims(Some("read:heatpump")));
+        let status = run_with_scope(Some(ctx), "write:plugs").await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn require_scope_rejects_empty_scope_claim() {
+        let ctx = AuthContext::Jwt(jwt_claims(None));
+        let status = run_with_scope(Some(ctx), "read:plugs").await;
+        assert_eq!(status, StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn require_scope_allows_proxy_auth() {
+        let ctx = AuthContext::Proxy {
+            user: "testuser".into(),
+        };
+        let status = run_with_scope(Some(ctx), "write:plugs").await;
+        assert_eq!(status, StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn require_scope_allows_when_no_auth_context() {
+        // Simulates JWT validator disabled: no AuthContext present, scope check skipped.
+        let status = run_with_scope(None, "read:plugs").await;
+        assert_eq!(status, StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn require_scope_returns_forbidden_body() {
+        let ctx = AuthContext::Jwt(jwt_claims(Some("read:heatpump")));
+        let injector = inject_context(Some(ctx)).await;
+        let app = Router::new()
+            .route("/test", get(|| async { "ok" }))
+            .layer(middleware::from_fn(|req, next| {
+                require_scope("write:plugs", req, next)
+            }))
+            .layer(middleware::from_fn(injector));
+
+        let request = Request::builder().uri("/test").body(Body::empty()).unwrap();
+        let response = app.oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        let bytes = to_bytes(response.into_body(), 1024).await.unwrap();
+        assert!(bytes.is_empty());
     }
 
     #[test]
@@ -120,7 +277,6 @@ mod tests {
 
     #[test]
     fn test_proxy_auth_user_only() {
-        // Email is optional - user header alone should work
         let request = make_request_with_headers(vec![("X-Auth-Request-User", "testuser")]);
         let result = is_authenticated_by_proxy(&request);
         assert_eq!(result, Some("testuser".to_string()));
@@ -145,7 +301,6 @@ mod tests {
 
     #[test]
     fn test_proxy_auth_empty_email() {
-        // Empty email should be treated as missing - user alone works
         let request = make_request_with_headers(vec![
             ("X-Auth-Request-User", "testuser"),
             ("X-Auth-Request-Email", ""),
@@ -195,21 +350,18 @@ mod tests {
 
     #[test]
     fn test_extract_bearer_token_bearer_only() {
-        // "Bearer " with nothing after
         let token = extract_bearer_token(Some("Bearer "));
         assert_eq!(token, Some(""));
     }
 
     #[test]
     fn test_extract_bearer_token_lowercase() {
-        // "bearer" lowercase should not match
         let token = extract_bearer_token(Some("bearer abc123"));
         assert_eq!(token, None);
     }
 
     #[test]
     fn test_extract_bearer_token_no_space() {
-        // "Bearerabc" without space should not match
         let token = extract_bearer_token(Some("Bearerabc123"));
         assert_eq!(token, None);
     }
