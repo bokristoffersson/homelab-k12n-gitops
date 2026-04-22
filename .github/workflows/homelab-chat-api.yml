@@ -1,0 +1,110 @@
+name: homelab-chat-api CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "applications/homelab-chat-api/**"
+      - ".github/workflows/homelab-chat-api.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "applications/homelab-chat-api/**"
+      - ".github/workflows/homelab-chat-api.yml"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: bokristoffersson/homelab-chat-api
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04-arm
+    defaults:
+      run:
+        working-directory: applications/homelab-chat-api
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a  # v5.1.0
+        with:
+          version: "0.5.14"
+          enable-cache: true
+          cache-dependency-glob: "applications/homelab-chat-api/uv.lock"
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run ruff check
+
+      - name: Ruff format check
+        run: uv run ruff format --check
+
+      - name: Type check (ty)
+        run: uv run ty check src
+
+      - name: Run pytest
+        run: uv run pytest
+
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-24.04-arm
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349  # v3.7.1
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567  # v3.3.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@906ecf0fc0a80f9110f79d9e6c04b1080f4a2621  # v5.6.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=main
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355  # v6.10.0
+        with:
+          context: ./applications/homelab-chat-api
+          platforms: linux/arm64,linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=chat-api
+          cache-to: type=gha,mode=max,scope=chat-api
+
+      - name: Verify push
+        run: |
+          echo "Tags that were pushed:"
+          echo "${{ steps.meta.outputs.tags }}" | while IFS= read -r tag; do
+            echo "  - $tag"
+          done
+          sleep 10
+          if docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main" >/dev/null 2>&1; then
+            echo "Image confirmed in registry (main tag exists)"
+          else
+            echo "Image NOT found in registry (main tag missing)" >&2
+            exit 1
+          fi

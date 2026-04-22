@@ -1,0 +1,84 @@
+[project]
+name = "homelab-chat-api"
+version = "0.1.0"
+description = "LLM-backed chat agent for the homelab that calls MCP tools"
+readme = "README.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "fastapi==0.118.0",
+    "uvicorn[standard]==0.37.0",
+    "httpx==0.28.1",
+    "anthropic==0.69.0",
+    "pydantic==2.11.3",
+    "pydantic-settings==2.7.1",
+    "sse-starlette==3.0.2",
+    "python-json-logger==3.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.4",
+    "pytest-asyncio==0.25.2",
+    "respx==0.22.0",
+    "ruff==0.14.0",
+    "ty==0.0.1a22",
+]
+
+[build-system]
+requires = ["uv_build>=0.5.0,<0.6.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "homelab_chat"
+module-root = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "SIM",
+    "RUF",
+    "ASYNC",
+    "S",
+    "A",
+    "C4",
+    "PT",
+]
+ignore = [
+    "S101",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S106", "S105"]
+
+[tool.ruff.lint.isort]
+force-single-line = false
+known-first-party = ["homelab_chat"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra -q"
+
+[tool.ty.rules]
+unresolved-import = "error"
+possibly-unbound-attribute = "error"
+possibly-unbound-import = "error"
+invalid-argument-type = "error"
+invalid-return-type = "error"
+missing-argument = "error"
+unknown-argument = "error"
