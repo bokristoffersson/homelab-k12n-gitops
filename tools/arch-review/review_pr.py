@@ -16,6 +16,12 @@ GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
 REPO_NAME = os.environ["GITHUB_REPOSITORY"]
 PR_NUMBER = int(os.environ["PR_NUMBER"])
 
+# Upper bound on per-file diff payload forwarded to Claude. 5000 chars
+# cut most new files mid-function and caused false "incomplete code"
+# flags. 50k comfortably fits a large new file and still leaves headroom
+# for multi-file PRs in Claude's 200k-token context window.
+PER_FILE_DIFF_LIMIT = 50_000
+
 
 def get_changed_files(repo_path, base_ref, head_ref):
     """Get list of changed files with diffs."""
@@ -45,10 +51,19 @@ def get_changed_files(repo_path, base_ref, head_ref):
         except:
             diff_text = "(Binary file or diff unavailable)"
 
+        if len(diff_text) > PER_FILE_DIFF_LIMIT:
+            omitted = len(diff_text) - PER_FILE_DIFF_LIMIT
+            diff_text = (
+                diff_text[:PER_FILE_DIFF_LIMIT]
+                + f"\n... [diff truncated here for review payload size: "
+                + f"{omitted} additional characters omitted. "
+                + "The file on disk is complete; this is a review-tool cap, not an incomplete file.]"
+            )
+
         changed_files.append({
             "path": file_path,
             "status": status,
-            "diff": diff_text[:5000]  # Limit diff size to avoid token limits
+            "diff": diff_text
         })
 
     return changed_files
@@ -154,7 +169,7 @@ Be thorough but concise. Focus on actual architectural issues, not style prefere
 
     response = client.messages.create(
         model="claude-sonnet-4-5-20250929",
-        max_tokens=4096,
+        max_tokens=8192,
         messages=[{"role": "user", "content": prompt}]
     )
 

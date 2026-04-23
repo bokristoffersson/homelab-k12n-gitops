@@ -24,6 +24,7 @@ resources:
   - blueprint-backstage.yaml
   - blueprint-claude-mcp.yaml
   - blueprint-redpanda-console.yaml
+  - blueprint-homelab-chat-agent.yaml
   - blueprint-apply-job.yaml
 
   - postgres-secret-sealed.yaml

@@ -156,6 +156,24 @@ spec:
           namespace: homelab-api
           port: 8080
 
+    # Homelab Chat API - Web app streaming endpoint (protected by OAuth2 Proxy)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/chat`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: homelab-chat-api
+          namespace: homelab-chat-api
+          port: 8080
+
     # Homelab Settings API - Web apps (protected by OAuth2 Proxy)
     # Routes: /api/v1/heatpump/settings, /api/v1/plugs
     - match: Host(`homelab.k12n.com`) && (PathPrefix(`/api/v1/heatpump/settings`) || PathPrefix(`/api/v1/plugs`))
