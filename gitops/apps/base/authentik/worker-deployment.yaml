@@ -59,3 +59,27 @@ spec:
             limits:
               cpu: 500m
               memory: 1Gi
+          volumeMounts:
+            - name: blueprints
+              mountPath: /blueprints/custom
+              readOnly: true
+      volumes:
+        - name: blueprints
+          projected:
+            sources:
+              - configMap:
+                  name: blueprint-heatpump-web
+              - configMap:
+                  name: blueprint-oauth2-proxy
+              - configMap:
+                  name: blueprint-backstage
+              - configMap:
+                  name: blueprint-claude-mcp
+              - configMap:
+                  name: blueprint-redpanda-console
+              - configMap:
+                  name: blueprint-homelab-macos
+              - configMap:
+                  name: blueprint-homelab-api-backend
+              - configMap:
+                  name: blueprint-homelab-chat-agent
