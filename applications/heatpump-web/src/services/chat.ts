@@ -139,7 +139,7 @@ export async function streamChat(
   let sawDone = false;
 
   try {
-    while (true) {
+    for (;;) {
       const { value, done } = await reader.read();
       if (done) {
         break;
