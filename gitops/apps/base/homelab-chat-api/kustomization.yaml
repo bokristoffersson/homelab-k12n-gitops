@@ -6,6 +6,7 @@ resources:
   - configmap.yaml
   - deployment.yaml
   - service.yaml
+  - homelab-chat-api-secrets-sealed.yaml
 
 labels:
   - pairs:
