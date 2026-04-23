@@ -58,7 +58,7 @@ class ProviderError(RuntimeError):
     """Raised when the provider call fails for a reason the caller may want to handle."""
 
 
-class ProviderUnavailable(ProviderError):
+class ProviderUnavailableError(ProviderError):
     """The provider endpoint is unreachable or returned a server error."""
 
 

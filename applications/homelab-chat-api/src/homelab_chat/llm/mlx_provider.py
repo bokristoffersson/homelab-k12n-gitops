@@ -12,9 +12,9 @@ import httpx
 from homelab_chat.llm.base import (
     LLMProvider,
     Message,
-    ProviderEvent,
     ProviderError,
-    ProviderUnavailable,
+    ProviderEvent,
+    ProviderUnavailableError,
     ToolCall,
     ToolSchema,
 )
@@ -73,18 +73,16 @@ class MLXProvider(LLMProvider):
         try:
             response = await self._http.post(url, json=payload)
         except (httpx.ConnectError, httpx.TimeoutException) as exc:
-            raise ProviderUnavailable(f"mlx endpoint unreachable: {exc}") from exc
+            raise ProviderUnavailableError(f"mlx endpoint unreachable: {exc}") from exc
         except httpx.HTTPError as exc:
             raise ProviderError(f"mlx request failed: {exc}") from exc
 
         if response.status_code >= 500:
-            raise ProviderUnavailable(
+            raise ProviderUnavailableError(
                 f"mlx server returned {response.status_code}: {response.text}"
             )
         if response.status_code >= 400:
-            raise ProviderError(
-                f"mlx server returned {response.status_code}: {response.text}"
-            )
+            raise ProviderError(f"mlx server returned {response.status_code}: {response.text}")
 
         body = response.json()
         choices = body.get("choices") or []
@@ -102,9 +100,7 @@ class MLXProvider(LLMProvider):
             function = call.get("function") or {}
             raw_args = function.get("arguments") or "{}"
             try:
-                parsed_args = (
-                    raw_args if isinstance(raw_args, dict) else json.loads(raw_args)
-                )
+                parsed_args = raw_args if isinstance(raw_args, dict) else json.loads(raw_args)
             except json.JSONDecodeError:
                 logger.warning("mlx tool call had non-JSON arguments: %r", raw_args)
                 parsed_args = {}

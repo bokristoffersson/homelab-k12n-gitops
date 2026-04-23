@@ -6,16 +6,16 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
-from anthropic import AsyncAnthropic
 from anthropic import APIConnectionError as AnthropicConnectionError
 from anthropic import APIStatusError as AnthropicStatusError
+from anthropic import AsyncAnthropic
 
 from homelab_chat.llm.base import (
     LLMProvider,
     Message,
-    ProviderEvent,
     ProviderError,
-    ProviderUnavailable,
+    ProviderEvent,
+    ProviderUnavailableError,
     ToolCall,
     ToolSchema,
 )
@@ -58,10 +58,10 @@ class AnthropicProvider(LLMProvider):
                 async for event in _translate_stream(stream):
                     yield event
         except AnthropicConnectionError as exc:
-            raise ProviderUnavailable(f"Anthropic connection error: {exc}") from exc
+            raise ProviderUnavailableError(f"Anthropic connection error: {exc}") from exc
         except AnthropicStatusError as exc:
             if exc.status_code >= 500:
-                raise ProviderUnavailable(
+                raise ProviderUnavailableError(
                     f"Anthropic returned {exc.status_code}: {exc.message}"
                 ) from exc
             raise ProviderError(f"Anthropic returned {exc.status_code}: {exc.message}") from exc

@@ -131,10 +131,7 @@ def get_agent(request: Request) -> Agent:
 
     primary = _build_provider(settings, settings.llm_provider, http_client)
     fallback: LLMProvider | None = None
-    if (
-        settings.llm_provider is LLMProviderName.MLX
-        and settings.anthropic_api_key
-    ):
+    if settings.llm_provider is LLMProviderName.MLX and settings.anthropic_api_key:
         fallback = _build_provider(settings, LLMProviderName.ANTHROPIC, http_client)
 
     return Agent(

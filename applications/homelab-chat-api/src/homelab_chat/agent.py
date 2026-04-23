@@ -12,7 +12,7 @@ from homelab_chat.llm.base import (
     LLMProvider,
     Message,
     ProviderError,
-    ProviderUnavailable,
+    ProviderUnavailableError,
     ToolCall,
     ToolSchema,
 )
@@ -81,7 +81,7 @@ class Agent:
                         tool_calls.append(event.tool_call)
                     if event.finish:
                         break
-            except ProviderUnavailable as exc:
+            except ProviderUnavailableError as exc:
                 if used_fallback or self._fallback is None:
                     raise
                 logger.warning(
@@ -124,9 +124,7 @@ class Agent:
             result = await self._router.call(call.name, call.arguments)
         except MCPError as exc:
             logger.warning("tool %s failed: %s", call.name, exc)
-            error_payload = json.dumps(
-                {"error": {"code": exc.code, "message": exc.message}}
-            )
+            error_payload = json.dumps({"error": {"code": exc.code, "message": exc.message}})
             return Message(
                 role="tool",
                 content=error_payload,

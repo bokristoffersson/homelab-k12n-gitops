@@ -12,7 +12,7 @@ from homelab_chat.llm.base import (
     LLMProvider,
     Message,
     ProviderEvent,
-    ProviderUnavailable,
+    ProviderUnavailableError,
     ToolCall,
     ToolSchema,
 )
@@ -80,9 +80,7 @@ async def test_agent_runs_tool_then_returns_final_text() -> None:
     provider = FakeProvider(
         [
             [
-                ProviderEvent(
-                    tool_call=ToolCall(id="t1", name="energy_latest", arguments={})
-                ),
+                ProviderEvent(tool_call=ToolCall(id="t1", name="energy_latest", arguments={})),
                 ProviderEvent(finish=True),
             ],
             [
@@ -120,9 +118,7 @@ async def test_agent_stops_at_max_iterations_when_tool_loop_never_resolves() -> 
     provider = FakeProvider(
         [
             [
-                ProviderEvent(
-                    tool_call=ToolCall(id=f"t{i}", name="energy_latest", arguments={})
-                ),
+                ProviderEvent(tool_call=ToolCall(id=f"t{i}", name="energy_latest", arguments={})),
                 ProviderEvent(finish=True),
             ]
             for i in range(5)
@@ -150,9 +146,7 @@ async def test_agent_emits_tool_result_error_when_mcp_call_fails() -> None:
     provider = FakeProvider(
         [
             [
-                ProviderEvent(
-                    tool_call=ToolCall(id="t1", name="broken", arguments={"a": 1})
-                ),
+                ProviderEvent(tool_call=ToolCall(id="t1", name="broken", arguments={"a": 1})),
                 ProviderEvent(finish=True),
             ],
             [
@@ -187,7 +181,7 @@ async def test_agent_falls_back_when_primary_unavailable() -> None:
             messages: list[Message],
             tools: list[ToolSchema],
         ) -> AsyncIterator[ProviderEvent]:
-            raise ProviderUnavailable("mlx down")
+            raise ProviderUnavailableError("mlx down")
             yield  # pragma: no cover - unreachable, makes this an async generator
 
     fallback = FakeProvider(

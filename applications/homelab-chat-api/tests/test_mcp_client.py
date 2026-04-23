@@ -52,9 +52,7 @@ async def test_list_tools_parses_response_and_sends_bearer_auth() -> None:
         )
 
         provider = await _token_provider(http_client)
-        client = MCPClient(
-            url=MCP_URL_A, http_client=http_client, token_provider=provider
-        )
+        client = MCPClient(url=MCP_URL_A, http_client=http_client, token_provider=provider)
         tools = await client.list_tools()
 
         assert len(tools) == 1
@@ -89,9 +87,7 @@ async def test_call_tool_raises_mcp_error_on_rpc_error() -> None:
         )
 
         provider = await _token_provider(http_client)
-        client = MCPClient(
-            url=MCP_URL_A, http_client=http_client, token_provider=provider
-        )
+        client = MCPClient(url=MCP_URL_A, http_client=http_client, token_provider=provider)
 
         with pytest.raises(MCPError) as exc_info:
             await client.call_tool("missing", {})
@@ -152,12 +148,8 @@ async def test_tool_router_routes_calls_to_correct_client() -> None:
         )
 
         provider = await _token_provider(http_client)
-        client_a = MCPClient(
-            url=MCP_URL_A, http_client=http_client, token_provider=provider
-        )
-        client_b = MCPClient(
-            url=MCP_URL_B, http_client=http_client, token_provider=provider
-        )
+        client_a = MCPClient(url=MCP_URL_A, http_client=http_client, token_provider=provider)
+        client_b = MCPClient(url=MCP_URL_B, http_client=http_client, token_provider=provider)
         router = ToolRouter([client_a, client_b])
 
         tools = await router.load()
