@@ -103,6 +103,12 @@ pub async fn require_jwt_auth(
 // Best-effort scope extraction from an already-validated upstream JWT.
 // oauth2-proxy has already authenticated the session, so we trust the payload here
 // for scope propagation only; signature validation remains Authentik's responsibility.
+//
+// Accepts three shapes, in priority order:
+//   1. `scope`: space-separated string (RFC 8693 style)
+//   2. `scope`: array of strings
+//   3. Top-level boolean claims whose name contains `:` and value is `true`
+//      (Authentik's scope-mapping `expression` emits scopes this way.)
 fn extract_scopes_from_jwt(token: &str) -> Vec<String> {
     let parts: Vec<&str> = token.split('.').collect();
     if parts.len() != 3 {
@@ -115,15 +121,30 @@ fn extract_scopes_from_jwt(token: &str) -> Vec<String> {
     let Ok(value) = serde_json::from_slice::<serde_json::Value>(&payload) else {
         return Vec::new();
     };
-    let scope_value = value.get("scope");
-    match scope_value {
-        Some(serde_json::Value::String(s)) => s.split_whitespace().map(|p| p.to_string()).collect(),
-        Some(serde_json::Value::Array(items)) => items
-            .iter()
-            .filter_map(|item| item.as_str().map(|s| s.to_string()))
-            .collect(),
-        _ => Vec::new(),
+    match value.get("scope") {
+        Some(serde_json::Value::String(s)) => {
+            return s.split_whitespace().map(|p| p.to_string()).collect();
+        }
+        Some(serde_json::Value::Array(items)) => {
+            return items
+                .iter()
+                .filter_map(|item| item.as_str().map(|s| s.to_string()))
+                .collect();
+        }
+        _ => {}
     }
+    let serde_json::Value::Object(map) = value else {
+        return Vec::new();
+    };
+    map.iter()
+        .filter_map(|(k, v)| {
+            if k.contains(':') && v.as_bool().unwrap_or(false) {
+                Some(k.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 // Required scope, passed as middleware state so route builders can specify it per group.
@@ -192,6 +213,58 @@ pub async fn require_auth(request: Request, next: Next) -> Result<Response, Stat
 mod tests {
     use super::*;
     use crate::auth::jwt::create_token;
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+
+    fn make_jwt_with_payload(payload: serde_json::Value) -> String {
+        let header = URL_SAFE_NO_PAD.encode(br#"{"alg":"RS256","typ":"JWT"}"#);
+        let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload).unwrap());
+        format!("{header}.{body}.sig")
+    }
+
+    #[test]
+    fn extract_scopes_reads_space_separated_string() {
+        let token =
+            make_jwt_with_payload(serde_json::json!({"scope": "read:energy read:heatpump"}));
+        let scopes = extract_scopes_from_jwt(&token);
+        assert!(scopes.contains(&"read:energy".to_string()));
+        assert!(scopes.contains(&"read:heatpump".to_string()));
+    }
+
+    #[test]
+    fn extract_scopes_reads_array() {
+        let token =
+            make_jwt_with_payload(serde_json::json!({"scope": ["read:energy", "read:heatpump"]}));
+        let scopes = extract_scopes_from_jwt(&token);
+        assert!(scopes.contains(&"read:energy".to_string()));
+        assert!(scopes.contains(&"read:heatpump".to_string()));
+    }
+
+    #[test]
+    fn extract_scopes_reads_top_level_boolean_claims() {
+        // Shape Authentik actually emits: each scope is a top-level
+        // boolean claim whose key contains ':'.
+        let token = make_jwt_with_payload(serde_json::json!({
+            "sub": "user-1",
+            "read:energy": true,
+            "read:heatpump": true,
+            "email_verified": true,
+            "write:plugs": true,
+        }));
+        let scopes = extract_scopes_from_jwt(&token);
+        assert!(scopes.contains(&"read:energy".to_string()));
+        assert!(scopes.contains(&"read:heatpump".to_string()));
+        assert!(scopes.contains(&"write:plugs".to_string()));
+        assert!(
+            !scopes.contains(&"email_verified".to_string()),
+            "non-scope boolean claim (no colon) must not be picked up"
+        );
+    }
+
+    #[test]
+    fn extract_scopes_returns_empty_on_invalid_token() {
+        assert!(extract_scopes_from_jwt("not.a.jwt").is_empty());
+        assert!(extract_scopes_from_jwt("onlyone").is_empty());
+    }
 
     #[test]
     fn test_bearer_token_extraction() {
