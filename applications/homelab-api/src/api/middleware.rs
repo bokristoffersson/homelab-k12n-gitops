@@ -15,6 +15,13 @@ use tracing::{debug, warn};
 pub struct AuthenticatedUser {
     pub username: String,
     pub email: Option<String>,
+    pub scopes: Vec<String>,
+}
+
+impl AuthenticatedUser {
+    pub fn has_scope(&self, required: &str) -> bool {
+        self.scopes.iter().any(|s| s == required)
+    }
 }
 
 // Middleware that validates Bearer tokens using the multi-issuer JwtValidator
@@ -41,9 +48,18 @@ pub async fn require_jwt_auth(
 
     if let Some(username) = oauth2_user {
         debug!("Authenticated via oauth2-proxy: {}", username);
+        // oauth2-proxy forwards the upstream access token; try to extract scopes from it
+        // so downstream scope checks work even when the session-cookie flow is used.
+        let scopes = request
+            .headers()
+            .get("x-auth-request-access-token")
+            .and_then(|h| h.to_str().ok())
+            .map(extract_scopes_from_jwt)
+            .unwrap_or_default();
         request.extensions_mut().insert(AuthenticatedUser {
             username,
             email: oauth2_email,
+            scopes,
         });
         return Ok(next.run(request).await);
     }
@@ -78,7 +94,62 @@ pub async fn require_jwt_auth(
     request.extensions_mut().insert(AuthenticatedUser {
         username: claims.sub,
         email: claims.email,
+        scopes: claims.scope,
     });
+
+    Ok(next.run(request).await)
+}
+
+// Best-effort scope extraction from an already-validated upstream JWT.
+// oauth2-proxy has already authenticated the session, so we trust the payload here
+// for scope propagation only; signature validation remains Authentik's responsibility.
+fn extract_scopes_from_jwt(token: &str) -> Vec<String> {
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return Vec::new();
+    }
+    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+    let Ok(payload) = URL_SAFE_NO_PAD.decode(parts[1]) else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&payload) else {
+        return Vec::new();
+    };
+    let scope_value = value.get("scope");
+    match scope_value {
+        Some(serde_json::Value::String(s)) => s.split_whitespace().map(|p| p.to_string()).collect(),
+        Some(serde_json::Value::Array(items)) => items
+            .iter()
+            .filter_map(|item| item.as_str().map(|s| s.to_string()))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+// Required scope, passed as middleware state so route builders can specify it per group.
+#[derive(Clone)]
+pub struct RequiredScope(pub &'static str);
+
+// Scope-gating middleware. Runs after `require_jwt_auth`, so `AuthenticatedUser`
+// is expected in request extensions. Missing scope returns 403; missing user returns 401.
+pub async fn require_scope(
+    State(RequiredScope(required)): State<RequiredScope>,
+    request: Request,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let user = request
+        .extensions()
+        .get::<AuthenticatedUser>()
+        .cloned()
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
+    if !user.has_scope(required) {
+        debug!(
+            "scope check failed: user={} missing={}",
+            user.username, required
+        );
+        return Err(StatusCode::FORBIDDEN);
+    }
 
     Ok(next.run(request).await)
 }
@@ -173,5 +244,65 @@ mod tests {
         // Test that we understand the error codes used
         assert_eq!(StatusCode::UNAUTHORIZED.as_u16(), 401);
         assert_eq!(StatusCode::INTERNAL_SERVER_ERROR.as_u16(), 500);
+    }
+
+    use axum::{routing::get, Router};
+    use axum_test::TestServer;
+
+    async fn seed_user(
+        mut request: Request,
+        next: Next,
+        user: AuthenticatedUser,
+    ) -> Result<Response, StatusCode> {
+        request.extensions_mut().insert(user);
+        Ok(next.run(request).await)
+    }
+
+    fn test_app(user: Option<AuthenticatedUser>, required: &'static str) -> Router {
+        let mut router: Router = Router::new().route("/guarded", get(|| async { "ok" }));
+        router = router.layer(axum::middleware::from_fn_with_state(
+            RequiredScope(required),
+            require_scope,
+        ));
+        if let Some(user) = user {
+            router = router.layer(axum::middleware::from_fn(
+                move |req: Request, next: Next| {
+                    let user = user.clone();
+                    async move { seed_user(req, next, user).await }
+                },
+            ));
+        }
+        router
+    }
+
+    #[tokio::test]
+    async fn require_scope_returns_403_when_scope_missing() {
+        let user = AuthenticatedUser {
+            username: "alice".into(),
+            email: None,
+            scopes: vec!["read:heatpump".into()],
+        };
+        let server = TestServer::new(test_app(Some(user), "read:energy")).unwrap();
+        let response = server.get("/guarded").await;
+        assert_eq!(response.status_code(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn require_scope_returns_200_when_scope_present() {
+        let user = AuthenticatedUser {
+            username: "alice".into(),
+            email: None,
+            scopes: vec!["read:energy".into(), "read:heatpump".into()],
+        };
+        let server = TestServer::new(test_app(Some(user), "read:energy")).unwrap();
+        let response = server.get("/guarded").await;
+        assert_eq!(response.status_code(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn require_scope_returns_401_when_user_missing() {
+        let server = TestServer::new(test_app(None, "read:energy")).unwrap();
+        let response = server.get("/guarded").await;
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
     }
 }
