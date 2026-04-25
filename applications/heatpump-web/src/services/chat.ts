@@ -144,7 +144,9 @@ export async function streamChat(
       if (done) {
         break;
       }
-      buffer += decoder.decode(value, { stream: true });
+      // sse-starlette emits CRLF between fields and CRLF CRLF between events.
+      // Normalize so the splitter below works regardless of upstream framing.
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
 
       let separatorIndex = buffer.indexOf('\n\n');
       while (separatorIndex !== -1) {
