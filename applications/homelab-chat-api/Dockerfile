@@ -13,7 +13,9 @@ COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /usr/local/bin/uv
 WORKDIR /app
 
 # Install dependencies first so the layer is cached when only source changes.
-COPY pyproject.toml uv.lock ./
+# README.md is referenced by pyproject.toml's `readme = "README.md"` and is
+# required by hatchling when the project itself is installed below.
+COPY pyproject.toml uv.lock README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
