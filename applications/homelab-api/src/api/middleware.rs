@@ -91,10 +91,11 @@ pub async fn require_jwt_auth(
     })?;
 
     debug!("Authenticated via JWT: sub={}", claims.sub);
+    let scopes = claims.all_scopes();
     request.extensions_mut().insert(AuthenticatedUser {
         username: claims.sub,
         email: claims.email,
-        scopes: claims.scope,
+        scopes,
     });
 
     Ok(next.run(request).await)
