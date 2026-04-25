@@ -42,6 +42,25 @@ impl Claims {
         }
         matches!(self.extra.get(required), Some(Value::Bool(true)))
     }
+
+    // Merge `scope` and the Authentik-style top-level boolean scope claims
+    // into a single list. Used when downstream code wants to iterate over
+    // scopes rather than ask `has_scope` per name.
+    pub fn all_scopes(&self) -> Vec<String> {
+        let mut scopes = self.scope.clone();
+        for (key, value) in &self.extra {
+            if !key.contains(':') {
+                continue;
+            }
+            if !matches!(value, Value::Bool(true)) {
+                continue;
+            }
+            if !scopes.iter().any(|s| s == key) {
+                scopes.push(key.clone());
+            }
+        }
+        scopes
+    }
 }
 
 fn deserialize_scope<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
@@ -520,6 +539,25 @@ mod tests {
         let claims: Claims = serde_json::from_value(raw).unwrap();
         assert!(claims.scope.is_empty());
         assert!(!claims.has_scope("read:energy"));
+    }
+
+    #[test]
+    fn claims_all_scopes_merges_scope_and_boolean_claims() {
+        let raw = serde_json::json!({
+            "sub": "agent",
+            "exp": 9_999_999_999_usize,
+            "scope": "read:settings",
+            "read:energy": true,
+            "read:heatpump": true,
+            "email_verified": true
+        });
+        let claims: Claims = serde_json::from_value(raw).unwrap();
+        let mut scopes = claims.all_scopes();
+        scopes.sort();
+        assert_eq!(
+            scopes,
+            vec!["read:energy", "read:heatpump", "read:settings"]
+        );
     }
 
     #[test]
