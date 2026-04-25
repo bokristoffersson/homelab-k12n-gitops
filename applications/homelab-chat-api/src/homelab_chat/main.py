@@ -64,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         token_url=settings.authentik_token_url,
         client_id=settings.agent_client_id,
         client_secret=settings.agent_client_secret,
+        scope=settings.agent_scopes,
         http_client=http_client,
     )
 

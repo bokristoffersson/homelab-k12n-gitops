@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     authentik_token_url: str = Field(alias="AUTHENTIK_TOKEN_URL")
     agent_client_id: str = Field(alias="AGENT_CLIENT_ID")
     agent_client_secret: str = Field(alias="AGENT_CLIENT_SECRET")
+    # Space-separated list of scopes to request at the token endpoint.
+    # If empty, Authentik returns only the issuer's default scope set,
+    # which excludes the API scopes the agent needs.
+    agent_scopes: str | None = Field(default=None, alias="AGENT_SCOPES")
 
     homelab_api_mcp_url: str = Field(alias="HOMELAB_API_MCP_URL")
     homelab_settings_api_mcp_url: str = Field(alias="HOMELAB_SETTINGS_API_MCP_URL")
