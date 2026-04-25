@@ -17,7 +17,7 @@ export interface SettingsResponse {
   settings: HeatpumpSetting[];
 }
 
-export interface SettingResponse extends HeatpumpSetting {}
+export type SettingResponse = HeatpumpSetting;
 
 export interface SettingPatch {
   indoor_target_temp?: number;

@@ -29,6 +29,12 @@ export default function Layout() {
             >
               Plugs
             </NavLink>
+            <NavLink
+              to="/chat"
+              className={({ isActive }) => isActive ? 'tab active' : 'tab'}
+            >
+              Chat
+            </NavLink>
           </div>
           <div className="navbar-actions">
             <span className="last-update">
