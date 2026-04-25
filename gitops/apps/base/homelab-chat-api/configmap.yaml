@@ -8,6 +8,7 @@ data:
   AUTHENTIK_ISSUER: "https://authentik.k12n.com/application/o/homelab-chat-agent/"
   AUTHENTIK_TOKEN_URL: "https://authentik.k12n.com/application/o/token/"
   AGENT_CLIENT_ID: "homelab-chat-agent"
+  AGENT_SCOPES: "openid profile read:energy read:heatpump read:temperature read:settings read:plugs write:plugs"
   HOMELAB_API_MCP_URL: "http://homelab-api.homelab-api:8080/mcp"
   HOMELAB_SETTINGS_API_MCP_URL: "http://homelab-settings-api.homelab-settings:8080/mcp"
   LLM_PROVIDER: "anthropic"

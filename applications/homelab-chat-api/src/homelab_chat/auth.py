@@ -39,11 +39,13 @@ class AgentTokenProvider:
         client_id: str,
         client_secret: str,
         http_client: httpx.AsyncClient,
+        scope: str | None = None,
         clock: Callable[[], float] | None = None,
     ) -> None:
         self._token_url = token_url
         self._client_id = client_id
         self._client_secret = client_secret
+        self._scope = scope
         self._http = http_client
         self._clock = clock or time.monotonic
         self._cached: CachedToken | None = None
@@ -66,13 +68,16 @@ class AgentTokenProvider:
             return token.access_token
 
     async def _fetch_new_token(self) -> CachedToken:
+        data: dict[str, str] = {
+            "grant_type": "client_credentials",
+            "client_id": self._client_id,
+            "client_secret": self._client_secret,
+        }
+        if self._scope:
+            data["scope"] = self._scope
         response = await self._http.post(
             self._token_url,
-            data={
-                "grant_type": "client_credentials",
-                "client_id": self._client_id,
-                "client_secret": self._client_secret,
-            },
+            data=data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         if response.status_code >= 400:
