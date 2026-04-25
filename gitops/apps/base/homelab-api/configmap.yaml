@@ -40,5 +40,10 @@ data:
           issuer: "https://authentik.k12n.com/application/o/claude-mcp/"
           jwks_url: "https://authentik.k12n.com/application/o/claude-mcp/jwks/"
 
+        # Homelab Chat Agent - Server-to-server (confidential client, JWT tokens)
+        - name: homelab-chat-agent
+          issuer: "https://authentik.k12n.com/application/o/homelab-chat-agent/"
+          jwks_url: "https://authentik.k12n.com/application/o/homelab-chat-agent/jwks/"
+
       # Placeholder for config parsing compatibility (legacy)
       jwt_secret: "placeholder"

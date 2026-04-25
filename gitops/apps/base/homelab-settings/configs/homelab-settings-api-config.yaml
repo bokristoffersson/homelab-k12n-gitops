@@ -33,6 +33,11 @@ auth:
       introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
       introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
 
+    # Homelab Chat Agent - Server-to-server (confidential client, JWT tokens)
+    - name: homelab-chat-agent
+      issuer: "https://authentik.k12n.com/application/o/homelab-chat-agent/"
+      jwks_url: "https://authentik.k12n.com/application/o/homelab-chat-agent/jwks/"
+
 logging:
   level: "info"
   format: "json"
