@@ -171,6 +171,7 @@ mod tests {
             iss: None,
             email: None,
             scope: scope.map(str::to_owned),
+            extra: std::collections::HashMap::new(),
         }
     }
 

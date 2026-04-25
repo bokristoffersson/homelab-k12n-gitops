@@ -16,16 +16,31 @@ pub struct Claims {
     pub iat: Option<usize>,    // issued at (optional)
     pub iss: Option<String>,   // issuer
     pub email: Option<String>, // email (from Authentik)
-    // Authentik emits `scope` as a space-separated string per RFC 8693;
-    // an array form is tolerated for compatibility with other IdPs.
+    // RFC 8693 `scope`: space-separated string. Array form tolerated.
     #[serde(default, deserialize_with = "deserialize_scope")]
     pub scope: Vec<String>,
+    // Authentik also emits each granted scope as its own top-level boolean
+    // claim (e.g. `"read:energy": true`) and never populates the standard
+    // `scope` claim. Capture the rest of the payload so `has_scope` can
+    // consult both shapes.
+    #[serde(flatten)]
+    #[serde(default)]
+    extra: HashMap<String, Value>,
 }
 
 impl Claims {
     #[allow(dead_code)]
     pub fn has_scope(&self, required: &str) -> bool {
-        self.scope.iter().any(|s| s == required)
+        if self.scope.iter().any(|s| s == required) {
+            return true;
+        }
+        // Authentik's scope-as-boolean shape: only treat keys that look like
+        // OAuth2 scope names (contain `:`) so we never match e.g.
+        // `email_verified: true` as if it were a scope.
+        if !required.contains(':') {
+            return false;
+        }
+        matches!(self.extra.get(required), Some(Value::Bool(true)))
     }
 }
 
@@ -353,6 +368,7 @@ impl JwtValidator {
             iss: introspection.iss,
             email: introspection.email,
             scope: parse_scope_value(introspection.scope.as_ref()),
+            extra: HashMap::new(),
         })
     }
 
@@ -395,6 +411,7 @@ pub fn create_token(username: &str, secret: &str, expiry_hours: u64) -> Result<S
         iss: None,
         email: None,
         scope: Vec::new(),
+        extra: HashMap::new(),
     };
 
     encode(
@@ -503,5 +520,27 @@ mod tests {
         let claims: Claims = serde_json::from_value(raw).unwrap();
         assert!(claims.scope.is_empty());
         assert!(!claims.has_scope("read:energy"));
+    }
+
+    #[test]
+    fn claims_has_scope_reads_top_level_boolean_claims() {
+        // Authentik's actual JWT shape: each scope is a top-level boolean claim,
+        // and there is no `scope` field at all.
+        let raw = serde_json::json!({
+            "sub": "homelab-chat-agent",
+            "exp": 9_999_999_999_usize,
+            "read:energy": true,
+            "read:heatpump": true,
+            "write:plugs": true,
+            "email_verified": true
+        });
+        let claims: Claims = serde_json::from_value(raw).unwrap();
+        assert!(claims.scope.is_empty());
+        assert!(claims.has_scope("read:energy"));
+        assert!(claims.has_scope("read:heatpump"));
+        assert!(claims.has_scope("write:plugs"));
+        assert!(!claims.has_scope("write:heatpump"));
+        // Non-scope booleans must not match by accident.
+        assert!(!claims.has_scope("email_verified"));
     }
 }
