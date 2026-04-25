@@ -420,6 +420,7 @@ mod tests {
             iss: None,
             email: None,
             scope: Some(scope.to_string()),
+            extra: std::collections::HashMap::new(),
         })
     }
 

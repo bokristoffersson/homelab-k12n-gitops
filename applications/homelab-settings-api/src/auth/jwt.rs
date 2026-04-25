@@ -18,14 +18,28 @@ pub struct Claims {
     pub email: Option<String>,
     #[serde(default, deserialize_with = "deserialize_scope")]
     pub scope: Option<String>,
+    // Authentik never populates the standard `scope` claim; it emits each
+    // granted scope as its own top-level boolean claim. Capture the rest of
+    // the payload so `has_scope` can consult both shapes.
+    #[serde(flatten)]
+    #[serde(default)]
+    pub(crate) extra: HashMap<String, Value>,
 }
 
 impl Claims {
     pub fn has_scope(&self, required: &str) -> bool {
-        self.scope
+        let from_string = self
+            .scope
             .as_deref()
             .map(|value| value.split_whitespace().any(|s| s == required))
-            .unwrap_or(false)
+            .unwrap_or(false);
+        if from_string {
+            return true;
+        }
+        if !required.contains(':') {
+            return false;
+        }
+        matches!(self.extra.get(required), Some(Value::Bool(true)))
     }
 }
 
@@ -317,6 +331,7 @@ impl JwtValidator {
             iss: introspection.iss,
             email: introspection.email,
             scope: introspection.scope,
+            extra: HashMap::new(),
         })
     }
 }
@@ -441,6 +456,7 @@ mod tests {
             iss: None,
             email: None,
             scope: Some("read:heatpump write:heatpump read:plugs".into()),
+            extra: HashMap::new(),
         };
         assert!(claims.has_scope("read:heatpump"));
         assert!(claims.has_scope("write:heatpump"));
@@ -457,6 +473,7 @@ mod tests {
             iss: None,
             email: None,
             scope: Some("read:plugs".into()),
+            extra: HashMap::new(),
         };
         assert!(!claims.has_scope("read:plug"));
         assert!(!claims.has_scope("read:plugsx"));
@@ -471,8 +488,29 @@ mod tests {
             iss: None,
             email: None,
             scope: None,
+            extra: HashMap::new(),
         };
         assert!(!claims.has_scope("read:plugs"));
+    }
+
+    #[test]
+    fn has_scope_reads_top_level_boolean_claims() {
+        // Authentik shape: each granted scope is a top-level boolean claim,
+        // and `scope` is absent.
+        let raw = serde_json::json!({
+            "sub": "homelab-chat-agent",
+            "exp": 9_999_999_999_usize,
+            "read:plugs": true,
+            "write:plugs": true,
+            "email_verified": true
+        });
+        let claims: Claims = serde_json::from_value(raw).unwrap();
+        assert!(claims.scope.is_none());
+        assert!(claims.has_scope("read:plugs"));
+        assert!(claims.has_scope("write:plugs"));
+        assert!(!claims.has_scope("write:settings"));
+        // Non-scope booleans must not match.
+        assert!(!claims.has_scope("email_verified"));
     }
 
     #[test]
