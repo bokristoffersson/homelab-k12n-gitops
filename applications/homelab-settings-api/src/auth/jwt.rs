@@ -1,5 +1,6 @@
 use alcoholic_jwt::{validate, Validation as JwksValidation, ValidationError, JWKS};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -15,6 +16,41 @@ pub struct Claims {
     pub iat: Option<usize>,
     pub iss: Option<String>,
     pub email: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_scope")]
+    pub scope: Option<String>,
+}
+
+impl Claims {
+    pub fn has_scope(&self, required: &str) -> bool {
+        self.scope
+            .as_deref()
+            .map(|value| value.split_whitespace().any(|s| s == required))
+            .unwrap_or(false)
+    }
+}
+
+// Authentik and most OAuth2 providers return `scope` as a space-separated string, but
+// some tools (and spec extensions) emit an array. Accept either representation.
+fn deserialize_scope<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value: Option<Value> = Option::deserialize(deserializer)?;
+    match value {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(s)) => Ok(Some(s)),
+        Some(Value::Array(items)) => {
+            let parts: Vec<String> = items
+                .into_iter()
+                .filter_map(|v| v.as_str().map(str::to_owned))
+                .collect();
+            Ok(Some(parts.join(" ")))
+        }
+        Some(other) => Err(serde::de::Error::custom(format!(
+            "unsupported scope type: {}",
+            other
+        ))),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -34,6 +70,8 @@ struct IntrospectionResponse {
     username: Option<String>,
     #[serde(default)]
     preferred_username: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_scope")]
+    scope: Option<String>,
 }
 
 #[derive(Clone)]
@@ -278,6 +316,7 @@ impl JwtValidator {
             iat: introspection.iat,
             iss: introspection.iss,
             email: introspection.email,
+            scope: introspection.scope,
         })
     }
 }
@@ -351,7 +390,8 @@ mod tests {
             "exp": 9999999999,
             "iat": 1234567890,
             "iss": "https://example.com/",
-            "email": "user@example.com"
+            "email": "user@example.com",
+            "scope": "read:plugs write:plugs"
         }"#;
 
         let claims: Claims = serde_json::from_str(json).unwrap();
@@ -360,6 +400,7 @@ mod tests {
         assert_eq!(claims.iat, Some(1234567890));
         assert_eq!(claims.iss, Some("https://example.com/".to_string()));
         assert_eq!(claims.email, Some("user@example.com".to_string()));
+        assert_eq!(claims.scope.as_deref(), Some("read:plugs write:plugs"));
     }
 
     #[test]
@@ -373,6 +414,65 @@ mod tests {
         assert_eq!(claims.iat, None);
         assert_eq!(claims.iss, None);
         assert_eq!(claims.email, None);
+        assert_eq!(claims.scope, None);
+    }
+
+    #[test]
+    fn test_claims_scope_as_array() {
+        let json = r#"{
+            "sub": "user123",
+            "exp": 9999999999,
+            "scope": ["read:plugs", "write:plugs"]
+        }"#;
+
+        let claims: Claims = serde_json::from_str(json).unwrap();
+        assert_eq!(claims.scope.as_deref(), Some("read:plugs write:plugs"));
+        assert!(claims.has_scope("read:plugs"));
+        assert!(claims.has_scope("write:plugs"));
+        assert!(!claims.has_scope("read:heatpump"));
+    }
+
+    #[test]
+    fn test_has_scope_matches_whitespace_separated() {
+        let claims = Claims {
+            sub: "user".into(),
+            exp: 0,
+            iat: None,
+            iss: None,
+            email: None,
+            scope: Some("read:heatpump write:heatpump read:plugs".into()),
+        };
+        assert!(claims.has_scope("read:heatpump"));
+        assert!(claims.has_scope("write:heatpump"));
+        assert!(claims.has_scope("read:plugs"));
+        assert!(!claims.has_scope("write:plugs"));
+    }
+
+    #[test]
+    fn test_has_scope_rejects_prefix_match() {
+        let claims = Claims {
+            sub: "user".into(),
+            exp: 0,
+            iat: None,
+            iss: None,
+            email: None,
+            scope: Some("read:plugs".into()),
+        };
+        assert!(!claims.has_scope("read:plug"));
+        assert!(!claims.has_scope("read:plugsx"));
+    }
+
+    #[test]
+    fn test_has_scope_missing_scope_claim() {
+        let claims = Claims {
+            sub: "user".into(),
+            exp: 0,
+            iat: None,
+            iss: None,
+            email: None,
+            scope: None,
+        };
+        assert!(!claims.has_scope("read:plugs"));
     }
 
     #[test]
