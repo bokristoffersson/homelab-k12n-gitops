@@ -1,0 +1,92 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homebridge-config
+  namespace: homebridge
+data:
+  config.json: |
+    {
+      "bridge": {
+        "name": "Homelab",
+        "username": "CC:22:3D:E3:CE:30",
+        "port": 51826,
+        "pin": "031-45-154",
+        "advertiser": "ciao"
+      },
+      "platforms": [
+        {
+          "platform": "config",
+          "name": "Config",
+          "port": 8581,
+          "auth": "form",
+          "theme": "auto",
+          "tempUnits": "c",
+          "lang": "auto"
+        },
+        {
+          "platform": "mqttthing",
+          "name": "MQTT Thing",
+          "url": "mqtt://mosquitto.mosquitto.svc.cluster.local:1883",
+          "username": "@MQTT_USER@",
+          "password": "@MQTT_PASSWORD@",
+          "accessories": [
+            {
+              "type": "lightbulb",
+              "name": "Lampa Exempel",
+              "topics": {
+                "getOn": {
+                  "topic": "tele/REPLACE_WITH_PLUG_ID/STATE",
+                  "apply": "return JSON.parse(message).POWER === 'ON';"
+                },
+                "setOn": {
+                  "topic": "cmnd/REPLACE_WITH_PLUG_ID/POWER",
+                  "apply": "return message ? 'ON' : 'OFF';"
+                }
+              }
+            },
+            {
+              "type": "thermostat",
+              "name": "Värmepump",
+              "topics": {
+                "getCurrentTemperature": {
+                  "topic": "thermiq_heatpump/data",
+                  "apply": "return JSON.parse(message).INDR_T;"
+                },
+                "getTargetTemperature": {
+                  "topic": "thermiq_heatpump/data",
+                  "apply": "return JSON.parse(message).d50;"
+                },
+                "setTargetTemperature": {
+                  "topic": "thermiq_heatpump/write",
+                  "apply": "return JSON.stringify({ d50: message });"
+                }
+              },
+              "minTemperature": 15,
+              "maxTemperature": 30
+            },
+            {
+              "type": "temperatureSensor",
+              "name": "Inomhustemperatur",
+              "topics": {
+                "getCurrentTemperature": {
+                  "topic": "shellyhtg3-e4b32322a0f4/events/rpc",
+                  "apply": "var p = JSON.parse(message).params; return p && p['temperature:0'] ? p['temperature:0'].tC : undefined;"
+                }
+              }
+            },
+            {
+              "type": "humiditySensor",
+              "name": "Inomhusfuktighet",
+              "topics": {
+                "getCurrentRelativeHumidity": {
+                  "topic": "shellyhtg3-e4b32322a0f4/events/rpc",
+                  "apply": "var p = JSON.parse(message).params; return p && p['humidity:0'] ? p['humidity:0'].rh : undefined;"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "accessories": []
+    }

@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homebridge
+  namespace: homebridge
+  labels:
+    app: homebridge
+    backstage.io/kubernetes-id: homebridge
+spec:
+  type: ClusterIP
+  ports:
+    - name: ui
+      port: 8581
+      targetPort: 8581
+      protocol: TCP
+  selector:
+    app: homebridge
