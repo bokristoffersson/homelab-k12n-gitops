@@ -1,0 +1,100 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homebridge
+  namespace: homebridge
+  labels:
+    app: homebridge
+    backstage.io/kubernetes-id: homebridge
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: homebridge
+  template:
+    metadata:
+      labels:
+        app: homebridge
+        backstage.io/kubernetes-id: homebridge
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        kubernetes.io/hostname: p0
+      initContainers:
+        - name: render-config
+          image: ghcr.io/bokristoffersson/homebridge:main
+          imagePullPolicy: Always
+          command: ["node", "-e"]
+          args:
+            - |
+              const fs = require('fs');
+              let c = fs.readFileSync('/tmp/config-template/config.json', 'utf8');
+              c = c.replace(/@MQTT_USER@/g, process.env.MQTT_USER || '');
+              c = c.replace(/@MQTT_PASSWORD@/g, process.env.MQTT_PASSWORD || '');
+              fs.writeFileSync('/homebridge/config.json', c);
+              console.log('Rendered /homebridge/config.json');
+          env:
+            - name: MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: homebridge-mqtt-credentials
+                  key: MQTT_USER
+            - name: MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homebridge-mqtt-credentials
+                  key: MQTT_PASSWORD
+          volumeMounts:
+            - name: config-template
+              mountPath: /tmp/config-template
+            - name: storage
+              mountPath: /homebridge
+      containers:
+        - name: homebridge
+          image: ghcr.io/bokristoffersson/homebridge:main
+          imagePullPolicy: Always
+          ports:
+            - name: hap
+              containerPort: 51826
+              protocol: TCP
+            - name: ui
+              containerPort: 8581
+              protocol: TCP
+          env:
+            - name: HOMEBRIDGE_CONFIG_UI
+              value: "1"
+            - name: HOMEBRIDGE_CONFIG_UI_PORT
+              value: "8581"
+            - name: TZ
+              value: "Europe/Stockholm"
+          volumeMounts:
+            - name: storage
+              mountPath: /homebridge
+          livenessProbe:
+            tcpSocket:
+              port: 51826
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 8581
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config-template
+          configMap:
+            name: homebridge-config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: homebridge-storage
