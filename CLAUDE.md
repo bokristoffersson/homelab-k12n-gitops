@@ -60,6 +60,11 @@ IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → Timesca
                                                               heatpump-web (SPA)
 ```
 
+### Write Paths to Devices
+
+- **Primary**: `heatpump-web` → `homelab-settings-api` (REST + outbox) → MQTT → device. DB is updated atomically with the outbox entry; the outbox processor publishes to MQTT and tracks delivery. Used for all UI-driven mutations.
+- **Exception — `homebridge`**: HomeKit/Siri commands publish directly to Mosquitto (`cmnd/{plug_id}/POWER`, `thermiq_heatpump/write`) without going through `homelab-settings-api`. DB state stays consistent because the device echoes its new state on the telemetry topic, which `mqtt-kafka-bridge` already forwards to Redpanda → TimescaleDB. Accepted tradeoff for homelab scale: avoids a custom Homebridge plugin and Authentik service-account JWT in exchange for losing per-command audit in the outbox table.
+
 ### Backup Strategy
 - **TimescaleDB**: Daily backup at 2 AM to S3
 - **Authentik PostgreSQL**: Daily backup at 3 AM to S3
