@@ -8,9 +8,9 @@
 # Base image is pinned to a dated tag for reproducibility. Bump it
 # quarterly or when upstream publishes a security release:
 #   https://github.com/homebridge/docker-homebridge/releases
-FROM homebridge/homebridge:2024-12-23 AS base
+FROM homebridge/homebridge:2026-04-20 AS base
 
-ARG MQTTTHING_VERSION=1.1.10
+ARG MQTTTHING_VERSION=1.1.49
 
 RUN npm install -g --omit=dev "homebridge-mqttthing@${MQTTTHING_VERSION}"
 
