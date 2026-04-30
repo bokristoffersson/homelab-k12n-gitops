@@ -32,20 +32,6 @@ data:
           "password": "@MQTT_PASSWORD@",
           "accessories": [
             {
-              "type": "lightbulb",
-              "name": "Lampa Exempel",
-              "topics": {
-                "getOn": {
-                  "topic": "tele/REPLACE_WITH_PLUG_ID/STATE",
-                  "apply": "return JSON.parse(message).POWER === 'ON';"
-                },
-                "setOn": {
-                  "topic": "cmnd/REPLACE_WITH_PLUG_ID/POWER",
-                  "apply": "return message ? 'ON' : 'OFF';"
-                }
-              }
-            },
-            {
               "type": "thermostat",
               "name": "Värmepump",
               "topics": {
