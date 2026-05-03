@@ -25,19 +25,37 @@ spec:
       nodeSelector:
         kubernetes.io/hostname: p0
       initContainers:
-        - name: render-config
-          image: ghcr.io/bokristoffersson/homebridge:main
-          imagePullPolicy: Always
-          command: ["node", "-e"]
+        - name: setup
+          image: homebridge/homebridge:2026-04-20
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-c"]
           args:
             - |
-              const fs = require('fs');
-              let c = fs.readFileSync('/tmp/config-template/config.json', 'utf8');
-              c = c.replace(/@MQTT_USER@/g, process.env.MQTT_USER || '');
-              c = c.replace(/@MQTT_PASSWORD@/g, process.env.MQTT_PASSWORD || '');
-              fs.writeFileSync('/homebridge/config.json', c);
-              console.log('Rendered /homebridge/config.json');
+              set -euo pipefail
+              # Install the mqttthing plugin into the storage path Homebridge
+              # actually searches (-P /var/lib/homebridge/node_modules
+              # --strict-plugin-resolution). /var/lib/homebridge is a symlink
+              # to /homebridge, which is the PVC mount, so this persists.
+              if [ ! -d /homebridge/node_modules/homebridge-mqttthing ] || \
+                 ! grep -q "\"homebridge-mqttthing\": \"${MQTTTHING_VERSION}\"" /homebridge/package.json 2>/dev/null; then
+                echo "Installing homebridge-mqttthing@${MQTTTHING_VERSION}"
+                cd /homebridge
+                npm install --no-audit --no-fund "homebridge-mqttthing@${MQTTTHING_VERSION}"
+              else
+                echo "homebridge-mqttthing@${MQTTTHING_VERSION} already installed"
+              fi
+              # Render config.json with MQTT credentials substituted in.
+              node -e "
+                const fs = require('fs');
+                let c = fs.readFileSync('/tmp/config-template/config.json', 'utf8');
+                c = c.replace(/@MQTT_USER@/g, process.env.MQTT_USER || '');
+                c = c.replace(/@MQTT_PASSWORD@/g, process.env.MQTT_PASSWORD || '');
+                fs.writeFileSync('/homebridge/config.json', c);
+                console.log('Rendered /homebridge/config.json');
+              "
           env:
+            - name: MQTTTHING_VERSION
+              value: "1.1.49"
             - name: MQTT_USER
               valueFrom:
                 secretKeyRef:
@@ -55,8 +73,8 @@ spec:
               mountPath: /homebridge
       containers:
         - name: homebridge
-          image: ghcr.io/bokristoffersson/homebridge:main
-          imagePullPolicy: Always
+          image: homebridge/homebridge:2026-04-20
+          imagePullPolicy: IfNotPresent
           ports:
             - name: hap
               containerPort: 51826
