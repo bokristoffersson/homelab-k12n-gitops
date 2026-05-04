@@ -36,7 +36,7 @@ data:
               "apply": "return JSON.stringify({ d50: message });"
             }
           },
-          "minTemperature": 15,
+          "minTemperature": 10,
           "maxTemperature": 30
         },
         {
@@ -64,6 +64,42 @@ data:
             "getCurrentRelativeHumidity": {
               "topic": "shellyhtg3-e4b32322a0f4/events/rpc",
               "apply": "var p = JSON.parse(message).params; return p && p['humidity:0'] ? p['humidity:0'].rh : undefined;"
+            }
+          }
+        },
+        {
+          "accessory": "mqttthing",
+          "type": "lightbulb",
+          "name": "Arvids rum",
+          "url": "mqtt://mosquitto.mosquitto.svc.cluster.local:1883",
+          "username": "@MQTT_USER@",
+          "password": "@MQTT_PASSWORD@",
+          "topics": {
+            "getOn": {
+              "topic": "tele/arvids_rum/STATE",
+              "apply": "return JSON.parse(message).POWER === 'ON';"
+            },
+            "setOn": {
+              "topic": "cmnd/arvids_rum/POWER",
+              "apply": "return message ? 'ON' : 'OFF';"
+            }
+          }
+        },
+        {
+          "accessory": "mqttthing",
+          "type": "lightbulb",
+          "name": "Matrummet",
+          "url": "mqtt://mosquitto.mosquitto.svc.cluster.local:1883",
+          "username": "@MQTT_USER@",
+          "password": "@MQTT_PASSWORD@",
+          "topics": {
+            "getOn": {
+              "topic": "tele/matrummet/STATE",
+              "apply": "return JSON.parse(message).POWER === 'ON';"
+            },
+            "setOn": {
+              "topic": "cmnd/matrummet/POWER",
+              "apply": "return message ? 'ON' : 'OFF';"
             }
           }
         }
