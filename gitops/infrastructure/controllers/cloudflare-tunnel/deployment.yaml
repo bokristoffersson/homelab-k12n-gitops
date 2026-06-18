@@ -80,8 +80,12 @@ data:
       - hostname: homelab.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80
 
-      # Authentik SSO (via Traefik)
+      # Authentik SSO (via Traefik) — removed after Authelia cut-over
       - hostname: authentik.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:80
+
+      # Authelia OIDC provider (via Traefik)
+      - hostname: auth.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80
 
       # Grafana (via Traefik)

@@ -1,0 +1,23 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: authelia-routes
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    # Authelia OIDC provider (public). https-scheme sets X-Forwarded-Proto=https
+    # so Authelia derives the issuer https://auth.k12n.com behind the Cloudflare tunnel.
+    - match: Host(`auth.k12n.com`)
+      kind: Rule
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: authelia
+          namespace: authelia
+          port: 80

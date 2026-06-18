@@ -1,0 +1,312 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authelia-config
+  namespace: authelia
+data:
+  configuration.yml: |
+    # Authelia 4.39 — OIDC provider for the k12n homelab.
+    # Config-as-code: everything declarative here. Secret values (session, storage
+    # encryption, reset-password JWT, OIDC hmac_secret and the OIDC jwks signing key)
+    # live in a separate config fragment mounted from the sealed secret and merged at
+    # load time (see deployment.yaml: a second --config /config/secret/secret.yml).
+    # Hashed OIDC client secrets are committed here by design; plaintext client secrets
+    # live only in each consumer's own sealed secret.
+
+    theme: 'light'
+
+    server:
+      address: 'tcp://0.0.0.0:9091'
+
+    log:
+      level: 'info'
+      format: 'text'
+
+    totp:
+      issuer: 'auth.k12n.com'
+
+    regulation:
+      max_retries: 4
+      find_time: '2m'
+      ban_time: '5m'
+
+    authentication_backend:
+      password_reset:
+        disable: true
+      file:
+        path: '/config/users/users_database.yml'
+        watch: false
+        search:
+          email: false
+          case_insensitive: true
+        password:
+          algorithm: 'argon2'
+          argon2:
+            variant: 'argon2id'
+            iterations: 3
+            memory: 65536
+            parallelism: 4
+            key_length: 32
+            salt_length: 16
+
+    access_control:
+      default_policy: 'deny'
+      rules:
+        - domain: 'auth.k12n.com'
+          policy: 'one_factor'
+
+    session:
+      cookies:
+        - domain: 'k12n.com'
+          authelia_url: 'https://auth.k12n.com'
+          default_redirection_url: 'https://homelab.k12n.com'
+          name: 'authelia_session'
+          same_site: 'lax'
+          inactivity: '5m'
+          expiration: '1h'
+          remember_me: '1M'
+
+    storage:
+      local:
+        path: '/data/db.sqlite3'
+
+    notifier:
+      disable_startup_check: false
+      filesystem:
+        filename: '/data/notification.txt'
+
+    identity_providers:
+      oidc:
+        # hmac_secret and jwks (incl. signing key) come from the mounted secret fragment.
+        enable_client_debug_messages: false
+        minimum_parameter_entropy: 8
+        enforce_pkce: 'public_clients_only'
+
+        lifespans:
+          access_token: '1h'
+          refresh_token: '90d'
+          id_token: '1h'
+          authorize_code: '5m'
+
+        cors:
+          endpoints:
+            - 'authorization'
+            - 'token'
+            - 'revocation'
+            - 'introspection'
+            - 'userinfo'
+          allowed_origins_from_client_redirect_uris: true
+
+        # Custom scopes are pure authorization markers (no mapped claims). When granted
+        # they appear in the token 'scope' value and in introspection responses, which is
+        # exactly what homelab-api / homelab-settings-api authorize on.
+        scopes:
+          'read:energy':
+            claims: []
+          'read:heatpump':
+            claims: []
+          'read:temperature':
+            claims: []
+          'read:settings':
+            claims: []
+          'write:settings':
+            claims: []
+          'read:plugs':
+            claims: []
+          'write:plugs':
+            claims: []
+
+        clients:
+          # --- Public browser SPA (PKCE, opaque access tokens) ---
+          - client_id: 'heatpump-web'
+            client_name: 'Heatpump Dashboard'
+            public: true
+            require_pkce: true
+            pkce_challenge_method: 'S256'
+            token_endpoint_auth_method: 'none'
+            authorization_policy: 'one_factor'
+            consent_mode: 'implicit'
+            redirect_uris:
+              - 'https://homelab.k12n.com/auth/callback'
+              - 'http://localhost:5173/auth/callback'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+              - 'refresh_token'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
+              - 'offline_access'
+              - 'read:energy'
+              - 'read:heatpump'
+              - 'read:temperature'
+              - 'read:settings'
+              - 'write:settings'
+              - 'read:plugs'
+              - 'write:plugs'
+
+          # --- Native macOS app (PKCE, JWT access tokens for energy-ws JWKS validation) ---
+          - client_id: 'homelab-macos'
+            client_name: 'Homelab macOS'
+            public: true
+            require_pkce: true
+            pkce_challenge_method: 'S256'
+            token_endpoint_auth_method: 'none'
+            authorization_policy: 'one_factor'
+            consent_mode: 'implicit'
+            access_token_signed_response_alg: 'RS256'
+            redirect_uris:
+              - 'homelab-macos://oauth/callback'
+              - 'homelab://oauth/callback'
+              - 'http://127.0.0.1:9876/callback'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+              - 'refresh_token'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
+              - 'offline_access'
+              - 'read:energy'
+              - 'read:heatpump'
+              - 'read:settings'
+              - 'write:settings'
+
+          # --- oauth2-proxy (confidential, JWT access tokens for energy-ws JWKS validation) ---
+          - client_id: 'oauth2-proxy'
+            client_name: 'OAuth2 Proxy'
+            client_secret: '$pbkdf2-sha512$310000$AvVToZUq2r8pkY/NyDVZCA$jfBs3hiTqOWbrywGrJRBeOfSm0Hi57HjcGPoauF44b.O6lN7OttQnWkODwLi6RR6Z7vdigmm2DwfxuvxM506eA'
+            authorization_policy: 'one_factor'
+            consent_mode: 'implicit'
+            access_token_signed_response_alg: 'RS256'
+            redirect_uris:
+              - 'https://homelab.k12n.com/oauth2/callback'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+              - 'refresh_token'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
+              - 'offline_access'
+              - 'read:energy'
+              - 'read:heatpump'
+              - 'read:temperature'
+              - 'read:settings'
+              - 'write:settings'
+              - 'read:plugs'
+              - 'write:plugs'
+
+          # --- Backstage (confidential, OIDC discovery) ---
+          - client_id: 'backstage'
+            client_name: 'Backstage'
+            client_secret: '$pbkdf2-sha512$310000$OhEIB.1oMQ7EPg2ck1mvDA$7uPIpgtMnfL7Zf0mbu84aoKpTZVI0e2zAyDofDUCpkjbljOn6RWhLHt2ZpkHu6bk7a2LsOdZXhzz2jkzIw3wcg'
+            authorization_policy: 'one_factor'
+            consent_mode: 'implicit'
+            redirect_uris:
+              - 'https://backstage.k12n.com/api/auth/oidc/handler/frame'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+              - 'refresh_token'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
+              - 'offline_access'
+
+          # --- Redpanda Console (confidential) ---
+          - client_id: 'redpanda-console'
+            client_name: 'Redpanda Console'
+            client_secret: '$pbkdf2-sha512$310000$hs7VtCOblTHaL3ywQrmGtA$yaB2urnDsUQ30f9jXqXHg13bkF.w/1d4QtpXFw3nJ7ZE8R/b/.77oq/A9k.6GklZ/Orgtv7To3bp5CwQnYw7Vg'
+            authorization_policy: 'one_factor'
+            consent_mode: 'implicit'
+            redirect_uris:
+              - 'https://redpanda.k12n.com/auth/callbacks/oidc'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
+
+          # --- traefikoidc (confidential) ---
+          - client_id: 'traefikoidc'
+            client_name: 'Traefik OIDC'
+            client_secret: '$pbkdf2-sha512$310000$wBokelULxAnXHRjQeKBpFg$XGaCvI8sw88wA0NFdHMGOwAeoGSK9S5Ix5eOgl9c9jLHjsljQNhbAcQ6HhzFXVEmEOtKrpfC9YUwb0fQ1bYbMg'
+            authorization_policy: 'one_factor'
+            consent_mode: 'implicit'
+            redirect_uris:
+              - 'https://api.k12n.com/oidc/callback'
+              - 'https://heatpump.k12n.com/oidc/callback'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
+
+          # --- Service accounts (client credentials). openid/profile/email are not valid
+          #     for the client_credentials grant in Authelia; resource scopes only. ---
+          - client_id: 'claude-mcp'
+            client_name: 'Claude MCP'
+            client_secret: '$pbkdf2-sha512$310000$fmpLi2cly3Q0l7qkflq98g$yo6/JkLTTpEL7GanpeVHk.Nn.6Wz.OhIfWHvM64aFkNLwF5dNLBHN2uJDoGUW.o20r56P3E03mB2XyI1NfPiZQ'
+            authorization_policy: 'one_factor'
+            redirect_uris: []
+            grant_types:
+              - 'client_credentials'
+            scopes:
+              - 'read:energy'
+              - 'read:heatpump'
+              - 'read:temperature'
+              - 'read:settings'
+              - 'read:plugs'
+
+          - client_id: 'homelab-chat-agent'
+            client_name: 'Homelab Chat Agent'
+            client_secret: '$pbkdf2-sha512$310000$gqUcyEJRjAYp6.4EPTD9Jg$GqOC0EYCmsXM7XJDdlF6rIjU8rEAaranxduhk7rL7cuP8WH973IzsSY9Y.JQAGhLTjYMfBafM5XZtbQCU6hToA'
+            authorization_policy: 'one_factor'
+            redirect_uris: []
+            grant_types:
+              - 'client_credentials'
+            scopes:
+              - 'read:energy'
+              - 'read:heatpump'
+              - 'read:settings'
+              - 'read:temperature'
+              - 'read:plugs'
+              - 'write:plugs'
+
+          # --- Introspection callers (confidential clients used by the backends to
+          #     authenticate to the introspection endpoint; they never obtain tokens). ---
+          - client_id: 'homelab-api-backend'
+            client_name: 'Homelab API Backend'
+            client_secret: '$pbkdf2-sha512$310000$JMeBZbBLgwW6kHG9s7lnbA$Ml7ARIvmveUJccdN16s4DTaPwmxOOdOAK0x7YpGSsok3hoJ9KTUoE/p5K2AEgdSPiKShvMpSdl9EETjiRoaQew'
+            authorization_policy: 'one_factor'
+            redirect_uris: []
+            grant_types:
+              - 'client_credentials'
+            scopes:
+              - 'read:energy'
+
+          - client_id: 'homelab-settings-api-backend'
+            client_name: 'Homelab Settings API Backend'
+            client_secret: '$pbkdf2-sha512$310000$5n21bAqmHJqkrQeAXW1AVw$etm8.9CyQoAyqhTu/.Gzaiz8JiC4d1yQ0sHDphTLs.SwPCGldFvGkU66BNJad5ZXA.OycJyVdV3h5XYQUMu2Nw'
+            authorization_policy: 'one_factor'
+            redirect_uris: []
+            grant_types:
+              - 'client_credentials'
+            scopes:
+              - 'read:settings'
