@@ -8,6 +8,7 @@ use crate::error::AppError;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::time::Duration;
 
 /// One delivery period (typically one hour) of prices for the configured area.
 #[derive(Debug, Clone)]
@@ -37,8 +38,14 @@ pub struct NordpoolClient {
 
 impl NordpoolClient {
     pub fn new(cfg: &NordpoolConfig) -> Self {
+        // Timeouts are essential: the fetcher runs a single sequential loop, so a
+        // stalled request without a timeout would wedge all future fetches until
+        // the pod restarts. On timeout the fetch returns an error and the loop
+        // simply retries on its next tick.
         let http = reqwest::Client::builder()
             .user_agent(cfg.user_agent.clone())
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
             .build()
             .unwrap_or_default();
         Self {
