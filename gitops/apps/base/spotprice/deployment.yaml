@@ -31,6 +31,10 @@ spec:
               value: /config/config.yaml
             - name: RUST_LOG
               value: "info,spotprice_api=debug"
+            # Scheduling uses Local::now(); pin the zone in GitOps (not only the
+            # image) so the randomized 13:30-14:00 fetch window stays correct.
+            - name: TZ
+              value: Europe/Stockholm
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:

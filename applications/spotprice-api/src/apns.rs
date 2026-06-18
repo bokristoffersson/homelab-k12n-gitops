@@ -34,8 +34,10 @@ impl ApnsSender {
     pub fn from_config(cfg: &ApnsConfig) -> anyhow::Result<Self> {
         let key_pem = std::fs::read(&cfg.key_path)?;
         let encoding_key = EncodingKey::from_ec_pem(&key_pem)?;
+        // APNs only speaks HTTP/2; force it rather than relying on ALPN.
+        let http = Client::builder().http2_prior_knowledge().build()?;
         Ok(Self {
-            http: Client::new(),
+            http,
             encoding_key,
             key_id: cfg.key_id.clone(),
             team_id: cfg.team_id.clone(),
