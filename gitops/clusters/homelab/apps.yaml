@@ -80,21 +80,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: authentik
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/authentik
-  prune: true
-  wait: true
-  timeout: 10m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: authelia
   namespace: flux-system
 spec:
@@ -122,7 +107,7 @@ spec:
   wait: true
   timeout: 10m
   dependsOn:
-    - name: authentik
+    - name: authelia
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -277,7 +262,7 @@ spec:
   prune: true
   wait: true
   dependsOn:
-    - name: authentik
+    - name: authelia
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -309,7 +294,7 @@ spec:
   prune: true
   wait: true
   dependsOn:
-    - name: authentik
+    - name: authelia
     - name: homelab-api
     - name: homelab-settings-api
 ---
@@ -328,7 +313,7 @@ spec:
   wait: true
   timeout: 5m
   dependsOn:
-    - name: authentik
+    - name: authelia
     - name: infrastructure-controllers
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
