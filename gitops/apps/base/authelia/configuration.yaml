@@ -116,6 +116,8 @@ data:
             claims: []
           'write:plugs':
             claims: []
+          'read:spotprice':
+            claims: []
 
         clients:
           # --- Public browser SPA (PKCE, opaque access tokens) ---
@@ -176,6 +178,7 @@ data:
               - 'read:heatpump'
               - 'read:settings'
               - 'write:settings'
+              - 'read:spotprice'
 
           # --- oauth2-proxy (confidential, JWT access tokens for energy-ws JWKS validation) ---
           - client_id: 'oauth2-proxy'
