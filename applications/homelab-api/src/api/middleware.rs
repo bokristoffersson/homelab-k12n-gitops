@@ -105,9 +105,9 @@ pub async fn require_jwt_auth(
 // oauth2-proxy has already authenticated the session, so we trust the payload here
 // for scope propagation only; signature validation remains Authentik's responsibility.
 //
-// Accepts three shapes, in priority order:
-//   1. `scope`: space-separated string (RFC 8693 style)
-//   2. `scope`: array of strings
+// Accepts these shapes, in priority order:
+//   1. `scope` or `scp`: space-separated string (RFC 8693 style)
+//   2. `scope` or `scp`: array of strings (Authelia JWT access tokens use `scp`, RFC 9068)
 //   3. Top-level boolean claims whose name contains `:` and value is `true`
 //      (Authentik's scope-mapping `expression` emits scopes this way.)
 fn extract_scopes_from_jwt(token: &str) -> Vec<String> {
@@ -122,17 +122,19 @@ fn extract_scopes_from_jwt(token: &str) -> Vec<String> {
     let Ok(value) = serde_json::from_slice::<serde_json::Value>(&payload) else {
         return Vec::new();
     };
-    match value.get("scope") {
-        Some(serde_json::Value::String(s)) => {
-            return s.split_whitespace().map(|p| p.to_string()).collect();
+    for key in ["scope", "scp"] {
+        match value.get(key) {
+            Some(serde_json::Value::String(s)) => {
+                return s.split_whitespace().map(|p| p.to_string()).collect();
+            }
+            Some(serde_json::Value::Array(items)) => {
+                return items
+                    .iter()
+                    .filter_map(|item| item.as_str().map(|s| s.to_string()))
+                    .collect();
+            }
+            _ => {}
         }
-        Some(serde_json::Value::Array(items)) => {
-            return items
-                .iter()
-                .filter_map(|item| item.as_str().map(|s| s.to_string()))
-                .collect();
-        }
-        _ => {}
     }
     let serde_json::Value::Object(map) = value else {
         return Vec::new();
