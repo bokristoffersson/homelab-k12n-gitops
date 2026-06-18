@@ -21,9 +21,6 @@ tower-http = { version = "0.5", features = ["trace"] }
 jsonwebtoken = "9.2"  # Pure-Rust JWKS/RS256 validation (ring backend)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2", "charset"] }
 rand = "0.8"
-# APNs (token-based auth). Use the `ring` backend (rustls) instead of the default
-# `openssl` feature so the build needs no system OpenSSL.
-a2 = { version = "0.10", default-features = false, features = ["ring"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
