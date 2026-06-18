@@ -1,13 +1,15 @@
 /**
  * OAuth2 Authorization Code Flow with PKCE
- * Integrates with Authentik for authentication
+ * Integrates with Authelia for authentication
  * Uses runtime configuration from window.ENV (loaded from env-config.js)
  */
 
-const AUTHENTIK_URL = window.ENV?.AUTHENTIK_URL || 'https://authentik.k12n.com';
+// Authelia OIDC provider base URL (single issuer, no per-provider path).
+const AUTHENTIK_URL = window.ENV?.AUTHENTIK_URL || 'https://auth.k12n.com';
 const CLIENT_ID = window.ENV?.OAUTH_CLIENT_ID || 'heatpump-web';
 const REDIRECT_URI = window.ENV?.OAUTH_REDIRECT_URI || `${window.location.origin}/auth/callback`;
-const SCOPES = 'openid profile email read:energy read:heatpump read:settings write:settings';
+// offline_access is required for Authelia to issue a refresh token.
+const SCOPES = 'openid profile email offline_access read:energy read:heatpump read:settings write:settings';
 
 const TOKEN_KEY = 'oauth_access_token';
 const REFRESH_TOKEN_KEY = 'oauth_refresh_token';
@@ -67,7 +69,7 @@ export const oauthService = {
     sessionStorage.setItem('oauth_code_verifier', codeVerifier);
     sessionStorage.setItem('oauth_state', state);
 
-    const authUrl = new URL(`${AUTHENTIK_URL}/application/o/authorize/`);
+    const authUrl = new URL(`${AUTHENTIK_URL}/api/oidc/authorization`);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', CLIENT_ID);
     authUrl.searchParams.set('redirect_uri', REDIRECT_URI);
@@ -97,7 +99,7 @@ export const oauthService = {
     }
 
     // Exchange code for token
-    const tokenUrl = `${AUTHENTIK_URL}/application/o/token/`;
+    const tokenUrl = `${AUTHENTIK_URL}/api/oidc/token`;
     const body = new URLSearchParams({
       grant_type: 'authorization_code',
       code,
@@ -146,7 +148,7 @@ export const oauthService = {
    * Fetch user information from Authentik
    */
   async fetchUserInfo(accessToken: string): Promise<UserInfo> {
-    const userInfoUrl = `${AUTHENTIK_URL}/application/o/userinfo/`;
+    const userInfoUrl = `${AUTHENTIK_URL}/api/oidc/userinfo`;
     const response = await fetch(userInfoUrl, {
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -170,7 +172,7 @@ export const oauthService = {
     }
 
     try {
-      const tokenUrl = `${AUTHENTIK_URL}/application/o/token/`;
+      const tokenUrl = `${AUTHENTIK_URL}/api/oidc/token`;
       const body = new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
@@ -209,7 +211,8 @@ export const oauthService = {
 
   /**
    * Logout user
-   * Clears local storage and redirects to Authentik logout
+   * Authelia has no OIDC RP-initiated end-session endpoint, so we clear the local
+   * tokens and end the Authelia portal session via /logout (which redirects back).
    */
   async logout() {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -220,10 +223,10 @@ export const oauthService = {
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
     localStorage.removeItem(USER_INFO_KEY);
 
-    // Redirect to Authentik logout
+    // End the Authelia SSO session, then come back to the app login page.
     if (token) {
-      const logoutUrl = new URL(`${AUTHENTIK_URL}/application/o/heatpump-web/end-session/`);
-      logoutUrl.searchParams.set('post_logout_redirect_uri', window.location.origin);
+      const logoutUrl = new URL(`${AUTHENTIK_URL}/logout`);
+      logoutUrl.searchParams.set('rd', `${window.location.origin}/login`);
       window.location.href = logoutUrl.toString();
     } else {
       window.location.href = '/login';
