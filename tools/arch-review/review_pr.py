@@ -188,7 +188,7 @@ def post_pr_comment(review_text, has_violations):
 {review_text}
 
 ---
-<sub>Powered by Claude Sonnet 4.5 | [View principles](../blob/main/CLAUDE.md)</sub>
+<sub>Powered by Claude Sonnet 4.6 | [View principles](../blob/main/CLAUDE.md)</sub>
 """
     pr.create_issue_comment(comment_body)
 
