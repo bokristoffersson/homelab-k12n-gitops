@@ -1,0 +1,35 @@
+# Default config baked into the image. In the cluster this is overridden by the
+# ConfigMap mounted at /config/config.yaml (APP_CONFIG). Values use $(VAR)/${VAR}
+# placeholders expanded from the environment at startup.
+database:
+  url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@timescaledb.timescaledb.svc.cluster.local:5432/telemetry"
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+
+auth:
+  issuers:
+    - name: authelia
+      issuer: "https://auth.k12n.com"
+      jwks_url: "https://auth.k12n.com/jwks.json"
+  jwt_secret: "placeholder"
+
+nordpool:
+  base_url: "https://dataportal-api.nordpoolgroup.com/api/DayAheadPrices"
+  delivery_area: "SE3"
+  currency: "SEK"
+  user_agent: "Mozilla/5.0 (compatible; homelab-spotprice/1.0)"
+
+fetch:
+  window_start: "13:30"
+  window_end: "14:00"
+  retry_until: "16:00"
+  retry_interval_secs: 300
+  check_interval_secs: 60
+
+apns:
+  key_path: "/apns/AuthKey.p8"
+  key_id: "$(APNS_KEY_ID)"
+  team_id: "$(APNS_TEAM_ID)"
+  bundle_id: "$(APNS_BUNDLE_ID)"

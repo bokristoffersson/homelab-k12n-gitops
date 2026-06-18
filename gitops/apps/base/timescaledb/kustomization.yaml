@@ -26,4 +26,5 @@ configMapGenerator:
       - migrations/004_add_integral_to_heatpump.sql
       - migrations/005_add_energy_daily_monthly_yearly.sql
       - migrations/006_widen_energy_power_columns.sql
+      - migrations/007_add_spot_prices.sql
       - migrations/run_migrations.sh

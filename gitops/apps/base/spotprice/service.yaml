@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spotprice-api
+  namespace: spotprice
+  labels:
+    app: spotprice-api
+    backstage.io/kubernetes-id: spotprice-api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: spotprice-api

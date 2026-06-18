@@ -129,10 +129,15 @@ gh pr create --title "Title" --body "Description"
 - Never force push to `main`
 
 ### Sealed Secrets
-**CRITICAL**: I (the user) will create all sealed secrets manually. Claude should:
-1. **Never** attempt to create sealed secrets directly
-2. **Always** provide kubectl + kubeseal command snippets instead
-3. Use this format for sealed secret creation snippets:
+Claude has SSH access to `p1.local` (which has `kubectl` + `kubeseal` configured against
+the cluster) and **may create sealed secrets directly** by running the snippet below over
+SSH and committing the resulting `*-sealed.yaml` file. Guidelines:
+1. **Run `kubeseal` on `p1.local`** (it has the controller cert), then commit the sealed
+   output. Never commit a plain (unsealed) `Secret` or raw secret values.
+2. For secrets that depend on values only the user has (e.g. an Apple APNs `.p8` key),
+   ask the user to place the file on `p1.local` and provide the non-secret identifiers;
+   then seal it.
+3. Use this format for sealed secret creation (run on `p1.local`):
 
 ```bash
 kubectl create secret generic <secret-name> \

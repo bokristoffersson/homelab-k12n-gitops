@@ -107,6 +107,23 @@ spec:
           namespace: energy-ws
           port: 8080
 
+    # Spotprice API - Native apps with Bearer token (JWT validated by API)
+    # Route: /api/v1/spotprice/** (today/tomorrow/latest + device registration)
+    - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/spotprice`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
+      kind: Rule
+      priority: 135
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: cors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: spotprice-api
+          namespace: spotprice
+          port: 8080
+
     # Homelab Settings API - Native apps with Bearer token (JWT validated by API)
     # Routes: /api/v1/heatpump/settings, /api/v1/plugs
     - match: Host(`homelab.k12n.com`) && (PathPrefix(`/api/v1/heatpump/settings`) || PathPrefix(`/api/v1/plugs`)) && HeaderRegexp(`Authorization`, `^Bearer .+`)
