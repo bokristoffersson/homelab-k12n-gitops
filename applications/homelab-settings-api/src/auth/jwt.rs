@@ -84,6 +84,10 @@ struct IntrospectionResponse {
     username: Option<String>,
     #[serde(default)]
     preferred_username: Option<String>,
+    // client_credentials tokens have no user subject; Authelia returns the client_id
+    // instead, which we use as the principal.
+    #[serde(default)]
+    client_id: Option<String>,
     #[serde(default, deserialize_with = "deserialize_scope")]
     scope: Option<String>,
 }
@@ -319,6 +323,7 @@ impl JwtValidator {
             .sub
             .or(introspection.username)
             .or(introspection.preferred_username)
+            .or(introspection.client_id)
             .ok_or_else(|| {
                 warn!("Introspection response missing subject");
                 ValidationError::InvalidSignature
