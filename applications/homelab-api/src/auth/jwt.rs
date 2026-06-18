@@ -17,7 +17,8 @@ pub struct Claims {
     pub iss: Option<String>,   // issuer
     pub email: Option<String>, // email (from Authentik)
     // RFC 8693 `scope`: space-separated string. Array form tolerated.
-    #[serde(default, deserialize_with = "deserialize_scope")]
+    // Authelia JWT access tokens (RFC 9068) put scopes in `scp` (array) instead.
+    #[serde(default, alias = "scp", deserialize_with = "deserialize_scope")]
     pub scope: Vec<String>,
     // Authentik also emits each granted scope as its own top-level boolean
     // claim (e.g. `"read:energy": true`) and never populates the standard
