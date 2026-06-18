@@ -382,3 +382,20 @@ spec:
     - name: homelab-api
     - name: heatpump-web
     - name: homelab-chat-api
+    - name: spotprice
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: spotprice
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/spotprice
+  prune: true
+  wait: true
+  dependsOn:
+    - name: timescaledb

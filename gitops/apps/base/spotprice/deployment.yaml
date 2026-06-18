@@ -1,0 +1,102 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spotprice-api
+  namespace: spotprice
+  labels:
+    app: spotprice-api
+    backstage.io/kubernetes-id: spotprice-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spotprice-api
+  template:
+    metadata:
+      labels:
+        app: spotprice-api
+        backstage.io/kubernetes-id: spotprice-api
+    spec:
+      containers:
+        - name: app
+          image: ghcr.io/bokristoffersson/spotprice-api:main
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: APP_CONFIG
+              value: /config/config.yaml
+            - name: RUST_LOG
+              value: "info,spotprice_api=debug"
+            # Scheduling uses Local::now(); pin the zone in GitOps (not only the
+            # image) so the randomized 13:30-14:00 fetch window stays correct.
+            - name: TZ
+              value: Europe/Stockholm
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: timescaledb-credentials
+                  key: POSTGRES_PASSWORD
+            # APNs token-based auth identifiers (the .p8 key is mounted at /apns)
+            - name: APNS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: spotprice-apns
+                  key: KEY_ID
+            - name: APNS_TEAM_ID
+              valueFrom:
+                secretKeyRef:
+                  name: spotprice-apns
+                  key: TEAM_ID
+            - name: APNS_BUNDLE_ID
+              valueFrom:
+                secretKeyRef:
+                  name: spotprice-apns
+                  key: BUNDLE_ID
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: apns-key
+              mountPath: /apns
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: spotprice-api-config
+            items:
+              - key: config.yaml
+                path: config.yaml
+        - name: apns-key
+          secret:
+            secretName: spotprice-apns
+            items:
+              - key: AuthKey.p8
+                path: AuthKey.p8
