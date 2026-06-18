@@ -47,7 +47,7 @@ spec:
             
             # OIDC Authentication (Authentik)
             - name: AUTH_OIDC_METADATA_URL
-              value: https://authentik.k12n.com/application/o/backstage/.well-known/openid-configuration
+              value: https://auth.k12n.com/.well-known/openid-configuration
             - name: AUTH_OIDC_CLIENT_ID
               valueFrom:
                 secretKeyRef:

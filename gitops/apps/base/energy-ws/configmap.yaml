@@ -17,17 +17,12 @@ data:
       max_connections: 1000
 
     auth:
-      # Multi-issuer JWKS-based validation (RS256) for Authentik tokens
+      # Single Authelia issuer, JWKS-based JWT validation (RS256). The clients whose
+      # tokens reach energy-ws (oauth2-proxy, homelab-macos) issue JWT access tokens.
       issuers:
-        # Homelab macOS - Native app (public client, JWT validation via JWKS)
-        - name: homelab-macos
-          issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
-          jwks_url: "https://authentik.k12n.com/application/o/homelab-macos/jwks/"
-
-        # oauth2-proxy - Web app (JWT validation via JWKS)
-        - name: oauth2-proxy
-          issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
-          jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
+        - name: authelia
+          issuer: "https://auth.k12n.com"
+          jwks_url: "https://auth.k12n.com/jwks.json"
 
       # Placeholder for legacy HS256 - not used when issuers[] is configured
       jwt_secret: "placeholder"

@@ -19,7 +19,7 @@ spec:
           image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
           args:
             - --provider=oidc
-            - --oidc-issuer-url=https://authentik.k12n.com/application/o/oauth2-proxy/
+            - --oidc-issuer-url=https://auth.k12n.com
             - --client-id=claude-mcp
             - --client-secret=$(OAUTH2_PROXY_CLIENT_SECRET)
             - --cookie-secret=$(OAUTH2_PROXY_COOKIE_SECRET)

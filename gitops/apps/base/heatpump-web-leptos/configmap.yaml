@@ -9,7 +9,7 @@ data:
   VITE_API_URL: "https://heatpump-leptos.k12n.com"
   VITE_WS_URL: "wss://heatpump-leptos.k12n.com"
 
-  # Authentik OAuth2 Configuration
-  VITE_AUTHENTIK_URL: "https://authentik.k12n.com"
+  # Authelia OIDC Configuration (not currently deployed)
+  VITE_AUTHENTIK_URL: "https://auth.k12n.com"
   VITE_OAUTH_CLIENT_ID: "heatpump-web-leptos"
   VITE_OAUTH_REDIRECT_URI: "https://heatpump-leptos.k12n.com/auth/callback"

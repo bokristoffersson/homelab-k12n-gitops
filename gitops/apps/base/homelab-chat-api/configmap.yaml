@@ -5,10 +5,11 @@ metadata:
   name: homelab-chat-api-config
   namespace: homelab-chat-api
 data:
-  AUTHENTIK_ISSUER: "https://authentik.k12n.com/application/o/homelab-chat-agent/"
-  AUTHENTIK_TOKEN_URL: "https://authentik.k12n.com/application/o/token/"
+  AUTHENTIK_ISSUER: "https://auth.k12n.com"
+  AUTHENTIK_TOKEN_URL: "https://auth.k12n.com/api/oidc/token"
   AGENT_CLIENT_ID: "homelab-chat-agent"
-  AGENT_SCOPES: "openid profile read:energy read:heatpump read:temperature read:settings read:plugs write:plugs"
+  # Authelia rejects openid/profile/email for the client_credentials grant: resource scopes only.
+  AGENT_SCOPES: "read:energy read:heatpump read:temperature read:settings read:plugs write:plugs"
   HOMELAB_API_MCP_URL: "http://homelab-api.homelab-api:8080/mcp"
   HOMELAB_SETTINGS_API_MCP_URL: "http://homelab-settings-api.homelab-settings:8080/mcp"
   LLM_PROVIDER: "anthropic"

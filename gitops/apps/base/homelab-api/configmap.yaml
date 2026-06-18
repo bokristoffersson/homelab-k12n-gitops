@@ -14,36 +14,15 @@ data:
       port: 8080
 
     auth:
-      # Multi-issuer configuration for Authentik OAuth2 providers
-      # Public clients use opaque tokens (introspection), confidential clients use JWTs
+      # Single Authelia issuer. JWT access tokens (homelab-macos, service accounts)
+      # validate via JWKS; opaque tokens (heatpump-web SPA) validate via introspection.
       issuers:
-        # Heatpump Web - SPA frontend (public client)
-        # Supports both JWT validation (via JWKS) and opaque token introspection
-        - name: heatpump-web
-          issuer: "https://authentik.k12n.com/application/o/heatpump-web/"
-          jwks_url: "https://authentik.k12n.com/application/o/heatpump-web/jwks/"
-          introspection_url: "https://authentik.k12n.com/application/o/introspect/"
+        - name: authelia
+          issuer: "https://auth.k12n.com"
+          jwks_url: "https://auth.k12n.com/jwks.json"
+          introspection_url: "https://auth.k12n.com/api/oidc/introspection"
           introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
           introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
-
-        # Homelab macOS - Native app (public client)
-        # Supports both JWT validation (via JWKS) and opaque token introspection
-        - name: homelab-macos
-          issuer: "https://authentik.k12n.com/application/o/homelab-macos/"
-          jwks_url: "https://authentik.k12n.com/application/o/homelab-macos/jwks/"
-          introspection_url: "https://authentik.k12n.com/application/o/introspect/"
-          introspection_client_id: "$(INTROSPECTION_CLIENT_ID)"
-          introspection_client_secret: "$(INTROSPECTION_CLIENT_SECRET)"
-
-        # Claude MCP - Server-to-server (confidential client, JWT tokens)
-        - name: claude-mcp
-          issuer: "https://authentik.k12n.com/application/o/claude-mcp/"
-          jwks_url: "https://authentik.k12n.com/application/o/claude-mcp/jwks/"
-
-        # Homelab Chat Agent - Server-to-server (confidential client, JWT tokens)
-        - name: homelab-chat-agent
-          issuer: "https://authentik.k12n.com/application/o/homelab-chat-agent/"
-          jwks_url: "https://authentik.k12n.com/application/o/homelab-chat-agent/jwks/"
 
       # Placeholder for config parsing compatibility (legacy)
       jwt_secret: "placeholder"

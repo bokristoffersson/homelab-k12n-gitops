@@ -168,7 +168,7 @@ Be thorough but concise. Focus on actual architectural issues, not style prefere
 """
 
     response = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
+        model="claude-sonnet-4-6",
         max_tokens=8192,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -234,10 +234,17 @@ def main():
 
     # Check for violations
     violations_section = review.split("### ❌ Violations")[1].split("###")[0] if "### ❌ Violations" in review else ""
-    # Normalize violations section for exact matching (handle "(BLOCKING)" suffix)
-    violations_clean = violations_section.strip().lower()
-    violations_clean = violations_clean.replace("(blocking)", "").strip()
-    has_violations = violations_clean not in ["", "none found.", "none found"]
+    # Normalize the violations section before the empty-check. The model may append a
+    # markdown horizontal rule ("---") and blank lines after "None found.", so strip the
+    # "(BLOCKING)" suffix, drop separator/blank lines, and collapse the rest.
+    violations_clean = violations_section.strip().lower().replace("(blocking)", "")
+    meaningful_lines = [
+        line.strip()
+        for line in violations_clean.splitlines()
+        if line.strip() and set(line.strip()) != {"-"}
+    ]
+    violations_clean = " ".join(meaningful_lines).strip()
+    has_violations = violations_clean not in ["", "none found.", "none found", "none.", "none"]
 
     # Post to PR
     print("💬 Posting review comment to PR...")
