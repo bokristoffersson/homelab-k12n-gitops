@@ -19,6 +19,10 @@ spec:
       labels:
         app: authelia
     spec:
+      # The Service is named "authelia", so Kubernetes would inject AUTHELIA_PORT etc.
+      # service-link env vars, which Authelia misreads as config keys (collides with
+      # server.address). Disable service links to keep the env clean.
+      enableServiceLinks: false
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
