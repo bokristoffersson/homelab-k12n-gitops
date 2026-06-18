@@ -32,7 +32,7 @@ async fn main() -> Result<(), anyhow::Error> {
     sqlx::query("SELECT 1").execute(&pool).await?;
     info!("Connected to database");
 
-    let jwt_validator = init_jwt_validator(&cfg).await;
+    let jwt_validator = init_jwt_validator(&cfg).await?;
 
     // Build the APNs sender (push is skipped if not configured).
     let apns = match cfg.apns.as_ref() {
@@ -91,24 +91,26 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-/// Initialize the multi-issuer JWT validator if auth issuers are configured.
-async fn init_jwt_validator(cfg: &Config) -> Option<auth::JwtValidator> {
-    let auth_cfg = cfg.auth.as_ref()?;
+/// Initialize the multi-issuer JWT validator. Returns `None` only when no auth
+/// is configured (dev/test). When issuers ARE configured, a JWKS fetch failure
+/// is a hard startup error: the service must not boot into a state where it
+/// cannot authenticate requests (which would otherwise 500 every protected
+/// route until the pod is restarted, with no JWKS retry).
+async fn init_jwt_validator(cfg: &Config) -> anyhow::Result<Option<auth::JwtValidator>> {
+    let Some(auth_cfg) = cfg.auth.as_ref() else {
+        info!("No auth configured, JWT validation disabled");
+        return Ok(None);
+    };
     if auth_cfg.issuers.is_empty() {
-        info!("No JWT issuers configured, skipping JWT validation");
-        return None;
+        info!("No JWT issuers configured, JWT validation disabled");
+        return Ok(None);
     }
-    match auth::JwtValidator::new_multi(auth_cfg.issuers.clone()).await {
-        Ok(validator) => {
-            info!(
-                "JWT validator initialized with {} issuer(s)",
-                validator.issuer_count()
-            );
-            Some(validator)
-        }
-        Err(e) => {
-            tracing::warn!("Failed to initialize JWT validator: {}", e);
-            None
-        }
-    }
+    let validator = auth::JwtValidator::new_multi(auth_cfg.issuers.clone())
+        .await
+        .map_err(|e| anyhow::anyhow!("Failed to initialize JWT validator: {}", e))?;
+    info!(
+        "JWT validator initialized with {} issuer(s)",
+        validator.issuer_count()
+    );
+    Ok(Some(validator))
 }

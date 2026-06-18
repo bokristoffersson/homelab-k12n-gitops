@@ -9,9 +9,13 @@ use crate::config::ApnsConfig;
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use reqwest::Client;
 use serde::Serialize;
+use std::sync::Mutex;
 
 const APNS_PRODUCTION: &str = "https://api.push.apple.com";
 const APNS_SANDBOX: &str = "https://api.sandbox.push.apple.com";
+/// Apple allows provider tokens to live up to 60 min and asks that they be
+/// reused (new-token generation is rate-limited). Refresh a little early.
+const PROVIDER_TOKEN_TTL_SECS: i64 = 55 * 60;
 
 /// Sends APNs notifications. One instance is shared for both environments;
 /// the target host is chosen per device token's registered environment.
@@ -21,6 +25,8 @@ pub struct ApnsSender {
     key_id: String,
     team_id: String,
     bundle_id: String,
+    /// Cached provider token and the unix time it was issued.
+    cached_token: Mutex<Option<(String, i64)>>,
 }
 
 /// Provider authentication token claims (Apple uses `iss` = team id, `iat` = now).
@@ -42,18 +48,32 @@ impl ApnsSender {
             key_id: cfg.key_id.clone(),
             team_id: cfg.team_id.clone(),
             bundle_id: cfg.bundle_id.clone(),
+            cached_token: Mutex::new(None),
         })
     }
 
-    /// Build a short-lived ES256 provider token signed with the .p8 key.
+    /// Return a valid ES256 provider token, reusing the cached one until it
+    /// approaches Apple's 60-minute limit (signing only when it has expired).
     fn provider_token(&self) -> anyhow::Result<String> {
+        let now = chrono::Utc::now().timestamp();
+        {
+            let cache = self.cached_token.lock().unwrap();
+            if let Some((token, issued_at)) = cache.as_ref() {
+                if now - issued_at < PROVIDER_TOKEN_TTL_SECS {
+                    return Ok(token.clone());
+                }
+            }
+        }
+
         let mut header = Header::new(Algorithm::ES256);
         header.kid = Some(self.key_id.clone());
         let claims = ProviderClaims {
             iss: &self.team_id,
-            iat: chrono::Utc::now().timestamp(),
+            iat: now,
         };
-        Ok(encode(&header, &claims, &self.encoding_key)?)
+        let token = encode(&header, &claims, &self.encoding_key)?;
+        *self.cached_token.lock().unwrap() = Some((token.clone(), now));
+        Ok(token)
     }
 
     /// Send a visible alert notification to one device token.
