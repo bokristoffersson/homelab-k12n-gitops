@@ -58,7 +58,13 @@ async fn main() -> Result<(), anyhow::Error> {
         fetcher.run().await;
     });
 
-    let state = (pool.clone(), cfg.clone(), jwt_validator);
+    // The HTTP layer only needs the delivery area/currency — not the DB URL or
+    // APNs key path that the full Config carries.
+    let api_ctx = auth::ApiContext {
+        delivery_area: cfg.nordpool.delivery_area.clone(),
+        currency: cfg.nordpool.currency.clone(),
+    };
+    let state = (pool.clone(), api_ctx, jwt_validator);
     let router = api::create_router(state);
     let addr = format!("{}:{}", cfg.api.host, cfg.api.port);
 

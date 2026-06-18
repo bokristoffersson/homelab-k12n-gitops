@@ -9,10 +9,10 @@ use chrono::{Local, NaiveDate};
 
 /// Today's SE3 prices (local delivery date).
 pub async fn get_today(
-    State((pool, config, _validator)): State<crate::auth::AppState>,
+    State((pool, ctx, _validator)): State<crate::auth::AppState>,
 ) -> Result<Json<PricesResponse>, StatusCode> {
     let date = Local::now().date_naive();
-    let response = build_prices(&pool, &config, date)
+    let response = build_prices(&pool, &ctx, date)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(response))
@@ -20,12 +20,12 @@ pub async fn get_today(
 
 /// Tomorrow's SE3 prices. Returns 204 until they have been fetched.
 pub async fn get_tomorrow(
-    State((pool, config, _validator)): State<crate::auth::AppState>,
+    State((pool, ctx, _validator)): State<crate::auth::AppState>,
 ) -> Result<Response, StatusCode> {
     let Some(date) = Local::now().date_naive().succ_opt() else {
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     };
-    let response = build_prices(&pool, &config, date)
+    let response = build_prices(&pool, &ctx, date)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     if response.prices.is_empty() {
@@ -36,16 +36,16 @@ pub async fn get_tomorrow(
 
 /// Combined view: today's prices plus tomorrow's when available.
 pub async fn get_latest(
-    State((pool, config, _validator)): State<crate::auth::AppState>,
+    State((pool, ctx, _validator)): State<crate::auth::AppState>,
 ) -> Result<Json<LatestResponse>, StatusCode> {
     let today_date = Local::now().date_naive();
-    let today = build_prices(&pool, &config, today_date)
+    let today = build_prices(&pool, &ctx, today_date)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let tomorrow = match today_date.succ_opt() {
         Some(date) => {
-            let resp = build_prices(&pool, &config, date)
+            let resp = build_prices(&pool, &ctx, date)
                 .await
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             if resp.prices.is_empty() {
@@ -62,12 +62,12 @@ pub async fn get_latest(
 
 async fn build_prices(
     pool: &crate::db::DbPool,
-    config: &crate::config::Config,
+    ctx: &crate::auth::ApiContext,
     date: NaiveDate,
 ) -> Result<PricesResponse, crate::error::AppError> {
-    let area = &config.nordpool.delivery_area;
+    let area = &ctx.delivery_area;
     let rows = SpotPriceRepository::get_for_local_date(pool, area, date).await?;
-    Ok(to_response(area, &config.nordpool.currency, date, rows))
+    Ok(to_response(area, &ctx.currency, date, rows))
 }
 
 fn to_response(

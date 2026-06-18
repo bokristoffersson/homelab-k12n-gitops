@@ -38,12 +38,16 @@ impl DeviceTokenRepository {
         Ok(())
     }
 
-    /// Remove a device token (e.g. on logout or when APNs reports it invalid).
-    pub async fn delete(pool: &DbPool, token: &str) -> Result<u64, AppError> {
-        let result = sqlx::query("DELETE FROM apns_device_tokens WHERE token = $1")
-            .bind(token)
-            .execute(pool)
-            .await?;
+    /// Remove a device token owned by `user_sub` (e.g. on logout). Scoping the
+    /// delete to the owner prevents one authenticated user from deleting another
+    /// user's token by its value.
+    pub async fn delete(pool: &DbPool, token: &str, user_sub: &str) -> Result<u64, AppError> {
+        let result =
+            sqlx::query("DELETE FROM apns_device_tokens WHERE token = $1 AND user_sub = $2")
+                .bind(token)
+                .bind(user_sub)
+                .execute(pool)
+                .await?;
         Ok(result.rows_affected())
     }
 
