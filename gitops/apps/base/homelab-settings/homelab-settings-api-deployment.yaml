@@ -21,6 +21,8 @@ spec:
       containers:
         - name: homelab-settings-api
           image: ghcr.io/bokristoffersson/homelab-settings-api:main
+          # Mutable :main tag — pull on every (re)start so new images are picked up.
+          imagePullPolicy: Always
           env:
             - name: APP_CONFIG
               value: /config/config.yaml
