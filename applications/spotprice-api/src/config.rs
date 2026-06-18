@@ -37,8 +37,7 @@ fn default_api_port() -> u16 {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuthConfig {
-    // Multi-issuer JWKS configuration (for RS256 validation) plus optional
-    // introspection for opaque tokens. Mirrors homelab-api's auth shape.
+    // Multi-issuer JWKS configuration for RS256 validation.
     #[serde(default)]
     pub issuers: Vec<IssuerConfig>,
     // Placeholder kept for config-file compatibility with the other services.
@@ -52,12 +51,6 @@ pub struct IssuerConfig {
     pub issuer: String,
     #[serde(default)]
     pub jwks_url: Option<String>,
-    #[serde(default)]
-    pub introspection_url: Option<String>,
-    #[serde(default)]
-    pub introspection_client_id: Option<String>,
-    #[serde(default)]
-    pub introspection_client_secret: Option<String>,
 }
 
 /// Nord Pool day-ahead price source.

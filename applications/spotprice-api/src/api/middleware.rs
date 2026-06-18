@@ -22,45 +22,16 @@ impl AuthenticatedUser {
     }
 }
 
-// Middleware that validates Bearer tokens using the multi-issuer JwtValidator.
-// Supports both:
-// 1. oauth2-proxy headers (X-Auth-Request-User) - for web apps with session cookies
-// 2. Bearer tokens in Authorization header - for native apps
+// Middleware that authenticates native-app requests via a Bearer JWT validated
+// against the issuer's JWKS. The Traefik route for this service only forwards
+// requests carrying an `Authorization: Bearer ...` header, so there is no
+// oauth2-proxy/ForwardAuth header path here (which would otherwise be a forgeable
+// trust boundary for any in-cluster caller reaching the pod directly).
 pub async fn require_jwt_auth(
     State((_, _, validator)): State<crate::auth::AppState>,
     mut request: Request,
     next: Next,
 ) -> Result<Response, StatusCode> {
-    // First, check for oauth2-proxy headers (web app session flow)
-    let oauth2_user = request
-        .headers()
-        .get("x-auth-request-user")
-        .and_then(|h| h.to_str().ok())
-        .map(|s| s.to_string());
-
-    let oauth2_email = request
-        .headers()
-        .get("x-auth-request-email")
-        .and_then(|h| h.to_str().ok())
-        .map(|s| s.to_string());
-
-    if let Some(username) = oauth2_user {
-        debug!("Authenticated via oauth2-proxy: {}", username);
-        let scopes = request
-            .headers()
-            .get("x-auth-request-access-token")
-            .and_then(|h| h.to_str().ok())
-            .map(extract_scopes_from_jwt)
-            .unwrap_or_default();
-        request.extensions_mut().insert(AuthenticatedUser {
-            username,
-            email: oauth2_email,
-            scopes,
-        });
-        return Ok(next.run(request).await);
-    }
-
-    // Second, try Bearer token authentication (native app flow)
     let auth_header = request
         .headers()
         .get("Authorization")
@@ -96,51 +67,6 @@ pub async fn require_jwt_auth(
     Ok(next.run(request).await)
 }
 
-// Best-effort scope extraction from an already-validated upstream JWT.
-// Accepts these shapes, in priority order:
-//   1. `scope` or `scp`: space-separated string (RFC 8693 style)
-//   2. `scope` or `scp`: array of strings (Authelia JWT access tokens use `scp`, RFC 9068)
-//   3. Top-level boolean claims whose name contains `:` and value is `true`
-fn extract_scopes_from_jwt(token: &str) -> Vec<String> {
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 {
-        return Vec::new();
-    }
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-    let Ok(payload) = URL_SAFE_NO_PAD.decode(parts[1]) else {
-        return Vec::new();
-    };
-    let Ok(value) = serde_json::from_slice::<serde_json::Value>(&payload) else {
-        return Vec::new();
-    };
-    for key in ["scope", "scp"] {
-        match value.get(key) {
-            Some(serde_json::Value::String(s)) => {
-                return s.split_whitespace().map(|p| p.to_string()).collect();
-            }
-            Some(serde_json::Value::Array(items)) => {
-                return items
-                    .iter()
-                    .filter_map(|item| item.as_str().map(|s| s.to_string()))
-                    .collect();
-            }
-            _ => {}
-        }
-    }
-    let serde_json::Value::Object(map) = value else {
-        return Vec::new();
-    };
-    map.iter()
-        .filter_map(|(k, v)| {
-            if k.contains(':') && v.as_bool().unwrap_or(false) {
-                Some(k.clone())
-            } else {
-                None
-            }
-        })
-        .collect()
-}
-
 // Required scope, passed as middleware state so route builders can specify it per group.
 #[derive(Clone)]
 pub struct RequiredScope(pub &'static str);
@@ -174,26 +100,6 @@ mod tests {
     use super::*;
     use axum::{routing::get, Router};
     use axum_test::TestServer;
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-
-    fn make_jwt_with_payload(payload: serde_json::Value) -> String {
-        let header = URL_SAFE_NO_PAD.encode(br#"{"alg":"RS256","typ":"JWT"}"#);
-        let body = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload).unwrap());
-        format!("{header}.{body}.sig")
-    }
-
-    #[test]
-    fn extract_scopes_reads_scp_array() {
-        let token = make_jwt_with_payload(serde_json::json!({"scp": ["read:spotprice"]}));
-        let scopes = extract_scopes_from_jwt(&token);
-        assert!(scopes.contains(&"read:spotprice".to_string()));
-    }
-
-    #[test]
-    fn extract_scopes_returns_empty_on_invalid_token() {
-        assert!(extract_scopes_from_jwt("not.a.jwt").is_empty());
-        assert!(extract_scopes_from_jwt("onlyone").is_empty());
-    }
 
     async fn seed_user(
         mut request: Request,

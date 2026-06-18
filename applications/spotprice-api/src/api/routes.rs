@@ -39,11 +39,13 @@ pub fn create_router(state: AppState) -> Router {
             require_jwt_auth,
         ));
 
+    // CORS is handled by the Traefik `cors` middleware on the ingress route
+    // (restricted to the project's allowed origins), so no application-layer
+    // CORS layer is added here.
     Router::new()
         .merge(public_routes)
         .merge(api_routes)
         .with_state(state)
-        .layer(tower_http::cors::CorsLayer::permissive())
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request| {

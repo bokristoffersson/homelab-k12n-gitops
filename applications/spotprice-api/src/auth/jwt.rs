@@ -1,9 +1,13 @@
-use alcoholic_jwt::{validate, Validation as JwksValidation, ValidationError, JWKS};
-use chrono::{Duration, Utc};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+//! Multi-issuer JWT validation via JWKS (RS256), pure-Rust (jsonwebtoken/ring).
+//!
+//! The mobile app sends Authelia JWT access tokens (RFC 9068) as Bearer tokens.
+//! We validate the signature against the issuer's JWKS and check `iss`/`exp`.
+//! No opaque-token introspection and no system OpenSSL dependency.
+
+use jsonwebtoken::jwk::JwkSet;
+use jsonwebtoken::{decode, decode_header, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
@@ -11,56 +15,25 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct Claims {
-    pub sub: String,           // username/subject
-    pub exp: usize,            // expiration time
-    pub iat: Option<usize>,    // issued at (optional)
-    pub iss: Option<String>,   // issuer
-    pub email: Option<String>, // email (from Authentik)
+    pub sub: String,        // subject (username / client id)
+    pub exp: usize,         // expiration time
+    pub iat: Option<usize>, // issued at (optional)
+    pub iss: Option<String>,
+    pub email: Option<String>,
     // RFC 8693 `scope`: space-separated string. Array form tolerated.
-    // Authelia JWT access tokens (RFC 9068) put scopes in `scp` (array) instead.
+    // Authelia JWT access tokens (RFC 9068) put scopes in `scp` (array).
     #[serde(default, alias = "scp", deserialize_with = "deserialize_scope")]
     pub scope: Vec<String>,
-    // Authentik also emits each granted scope as its own top-level boolean
-    // claim (e.g. `"read:energy": true`) and never populates the standard
-    // `scope` claim. Capture the rest of the payload so `has_scope` can
-    // consult both shapes.
-    #[serde(flatten)]
-    #[serde(default)]
-    extra: HashMap<String, Value>,
 }
 
 impl Claims {
     #[allow(dead_code)]
     pub fn has_scope(&self, required: &str) -> bool {
-        if self.scope.iter().any(|s| s == required) {
-            return true;
-        }
-        // Authentik's scope-as-boolean shape: only treat keys that look like
-        // OAuth2 scope names (contain `:`) so we never match e.g.
-        // `email_verified: true` as if it were a scope.
-        if !required.contains(':') {
-            return false;
-        }
-        matches!(self.extra.get(required), Some(Value::Bool(true)))
+        self.scope.iter().any(|s| s == required)
     }
 
-    // Merge `scope` and the Authentik-style top-level boolean scope claims
-    // into a single list. Used when downstream code wants to iterate over
-    // scopes rather than ask `has_scope` per name.
     pub fn all_scopes(&self) -> Vec<String> {
-        let mut scopes = self.scope.clone();
-        for (key, value) in &self.extra {
-            if !key.contains(':') {
-                continue;
-            }
-            if !matches!(value, Value::Bool(true)) {
-                continue;
-            }
-            if !scopes.iter().any(|s| s == key) {
-                scopes.push(key.clone());
-            }
-        }
-        scopes
+        self.scope.clone()
     }
 }
 
@@ -83,393 +56,103 @@ fn parse_scope_value(value: Option<&Value>) -> Vec<String> {
     }
 }
 
-// Token introspection response (RFC 7662)
-#[derive(Debug, Clone, Deserialize)]
-struct IntrospectionResponse {
-    active: bool,
-    #[serde(default)]
-    sub: Option<String>,
-    #[serde(default)]
-    exp: Option<usize>,
-    #[serde(default)]
-    iat: Option<usize>,
-    #[serde(default)]
-    iss: Option<String>,
-    #[serde(default)]
-    email: Option<String>,
-    #[serde(default)]
-    username: Option<String>,
-    #[serde(default)]
-    preferred_username: Option<String>,
-    // client_credentials tokens have no user subject; Authelia returns the client_id
-    // instead, which we use as the principal.
-    #[serde(default)]
-    client_id: Option<String>,
-    #[serde(default)]
-    scope: Option<Value>,
+/// Reasons a token can be rejected. The middleware maps all of these to 401.
+#[derive(Debug)]
+pub enum JwtError {
+    /// No issuer accepted the token (bad signature, wrong issuer, expired, ...).
+    Invalid,
 }
 
-// Single issuer configuration
+/// One configured issuer with its fetched JWKS.
 #[derive(Clone)]
 struct IssuerEntry {
     name: String,
     issuer: String,
-    jwks: Option<Arc<RwLock<JWKS>>>,
-    introspection_url: Option<String>,
-    introspection_client_id: Option<String>,
-    introspection_client_secret: Option<String>,
+    jwks: Arc<RwLock<JwkSet>>,
 }
 
-// Multi-issuer token validator.
-// Supports both JWT tokens (via JWKS) and opaque tokens (via introspection)
+/// Multi-issuer JWKS token validator.
 #[derive(Clone)]
 pub struct JwtValidator {
     issuers: Vec<IssuerEntry>,
-    issuer_index: HashMap<String, usize>,
-    http_client: reqwest::Client,
 }
 
 impl JwtValidator {
-    // Create a new multi-issuer validator
+    /// Build a validator from the configured issuers. Each issuer must provide a
+    /// `jwks_url`; its key set is fetched once at startup.
     pub async fn new_multi(
         configs: Vec<crate::config::IssuerConfig>,
     ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let mut issuers = Vec::new();
-        let mut issuer_index = HashMap::new();
-        let http_client = reqwest::Client::new();
 
-        for (idx, config) in configs.into_iter().enumerate() {
-            let jwks = if let Some(ref url) = config.jwks_url {
-                match fetch_jwks(url).await {
-                    Ok(jwks) => {
-                        info!("Loaded JWKS for issuer '{}' from {}", config.name, url);
-                        Some(Arc::new(RwLock::new(jwks)))
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Failed to load JWKS for issuer '{}': {} (will use introspection only)",
-                            config.name, e
-                        );
-                        None
-                    }
-                }
-            } else {
-                None
-            };
-
-            if config.introspection_url.is_some() {
-                if config.introspection_client_id.is_none()
-                    || config.introspection_client_secret.is_none()
-                {
-                    return Err(format!(
-                        "Issuer '{}': introspection_url requires introspection_client_id and introspection_client_secret",
-                        config.name
-                    ).into());
-                }
-                info!(
-                    "Issuer '{}' configured for token introspection",
-                    config.name
-                );
-            }
-
+        for config in configs {
+            let url = config
+                .jwks_url
+                .clone()
+                .ok_or_else(|| format!("issuer '{}' is missing required jwks_url", config.name))?;
+            let jwks = fetch_jwks(&url).await?;
+            info!("Loaded JWKS for issuer '{}' from {}", config.name, url);
             issuers.push(IssuerEntry {
-                name: config.name.clone(),
-                issuer: config.issuer.clone(),
-                jwks,
-                introspection_url: config.introspection_url,
-                introspection_client_id: config.introspection_client_id,
-                introspection_client_secret: config.introspection_client_secret,
+                name: config.name,
+                issuer: config.issuer,
+                jwks: Arc::new(RwLock::new(jwks)),
             });
-            issuer_index.insert(config.issuer, idx);
         }
 
-        Ok(Self {
-            issuers,
-            issuer_index,
-            http_client,
-        })
+        Ok(Self { issuers })
     }
 
-    // Legacy constructor for single issuer (backwards compatibility)
-    #[allow(dead_code)]
-    pub async fn new(
-        jwks_url: &str,
-        issuer: String,
-    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let jwks = fetch_jwks(jwks_url).await?;
-        let issuer_clone = issuer.clone();
-        let mut issuer_index = HashMap::new();
-        issuer_index.insert(issuer.clone(), 0);
-
-        Ok(Self {
-            issuers: vec![IssuerEntry {
-                name: "default".to_string(),
-                issuer: issuer_clone,
-                jwks: Some(Arc::new(RwLock::new(jwks))),
-                introspection_url: None,
-                introspection_client_id: None,
-                introspection_client_secret: None,
-            }],
-            issuer_index,
-            http_client: reqwest::Client::new(),
-        })
-    }
-
-    pub async fn validate_token(&self, token: &str) -> Result<Claims, ValidationError> {
-        // Check if this looks like a JWT (has 3 parts separated by dots)
-        let is_jwt = token.split('.').count() == 3;
-
-        if is_jwt {
-            if let Ok(claims) = self.validate_jwt(token).await {
-                return Ok(claims);
-            }
-        }
-
-        // Try token introspection for opaque tokens or if JWT validation failed
-        if let Ok(claims) = self.introspect_token(token).await {
-            return Ok(claims);
-        }
-
-        warn!("Token validation failed with all methods");
-        Err(ValidationError::InvalidSignature)
-    }
-
-    async fn validate_jwt(&self, token: &str) -> Result<Claims, ValidationError> {
-        if let Some(iss) = extract_issuer_from_token(token) {
-            if let Some(&idx) = self.issuer_index.get(&iss) {
-                let entry = &self.issuers[idx];
-                if entry.jwks.is_some() {
-                    debug!("Validating JWT from issuer '{}' ({})", entry.name, iss);
-                    return self.validate_jwt_with_issuer(token, entry).await;
-                }
-            } else {
-                debug!("Unknown issuer in token: {}", iss);
-            }
-        }
-
-        debug!(
-            "Trying all {} configured issuers for JWT validation",
-            self.issuers.len()
-        );
-        for entry in &self.issuers {
-            if entry.jwks.is_some() {
-                match self.validate_jwt_with_issuer(token, entry).await {
-                    Ok(claims) => {
-                        debug!("JWT validated successfully with issuer '{}'", entry.name);
-                        return Ok(claims);
-                    }
-                    Err(e) => {
-                        debug!(
-                            "JWT validation failed with issuer '{}': {:?}",
-                            entry.name, e
-                        );
-                    }
-                }
-            }
-        }
-
-        Err(ValidationError::InvalidSignature)
-    }
-
-    async fn validate_jwt_with_issuer(
-        &self,
-        token: &str,
-        entry: &IssuerEntry,
-    ) -> Result<Claims, ValidationError> {
-        let jwks = entry
-            .jwks
-            .as_ref()
-            .ok_or(ValidationError::InvalidSignature)?;
-        let jwks = jwks.read().await;
-        let validations = vec![
-            JwksValidation::Issuer(entry.issuer.clone()),
-            JwksValidation::SubjectPresent,
-        ];
-
-        let kid = alcoholic_jwt::token_kid(token)
-            .map_err(|_| ValidationError::InvalidSignature)?
-            .ok_or(ValidationError::InvalidSignature)?;
-
-        let jwk = jwks.find(&kid).ok_or(ValidationError::InvalidSignature)?;
-
-        let valid_jwt = validate(token, jwk, validations)?;
-
-        serde_json::from_value(valid_jwt.claims).map_err(|_| ValidationError::InvalidSignature)
-    }
-
-    async fn introspect_token(&self, token: &str) -> Result<Claims, ValidationError> {
-        for entry in &self.issuers {
-            if let Some(ref url) = entry.introspection_url {
-                debug!("Introspecting token with issuer '{}'", entry.name);
-                match self.introspect_with_entry(token, url, entry).await {
-                    Ok(claims) => {
-                        debug!(
-                            "Token introspection successful with issuer '{}'",
-                            entry.name
-                        );
-                        return Ok(claims);
-                    }
-                    Err(e) => {
-                        debug!(
-                            "Token introspection failed with issuer '{}': {:?}",
-                            entry.name, e
-                        );
-                    }
-                }
-            }
-        }
-
-        Err(ValidationError::InvalidSignature)
-    }
-
-    async fn introspect_with_entry(
-        &self,
-        token: &str,
-        url: &str,
-        entry: &IssuerEntry,
-    ) -> Result<Claims, ValidationError> {
-        let mut request = self.http_client.post(url).form(&[("token", token)]);
-
-        if let (Some(client_id), Some(client_secret)) = (
-            &entry.introspection_client_id,
-            &entry.introspection_client_secret,
-        ) {
-            request = request.basic_auth(client_id, Some(client_secret));
-        } else {
-            warn!(
-                "No client credentials configured for introspection with issuer '{}'. \
-                 RFC 7662 requires authentication - introspection may fail.",
-                entry.name
-            );
-        }
-
-        let response = request.send().await.map_err(|e| {
-            warn!("Introspection request failed: {}", e);
-            ValidationError::InvalidSignature
-        })?;
-
-        if !response.status().is_success() {
-            debug!(
-                "Introspection endpoint returned {} for issuer '{}'",
-                response.status(),
-                entry.name
-            );
-            return Err(ValidationError::InvalidSignature);
-        }
-
-        let introspection: IntrospectionResponse = response.json().await.map_err(|e| {
-            warn!("Failed to parse introspection response: {}", e);
-            ValidationError::InvalidSignature
-        })?;
-
-        if !introspection.active {
-            debug!("Token is not active");
-            return Err(ValidationError::InvalidSignature);
-        }
-
-        let sub = introspection
-            .sub
-            .or(introspection.username)
-            .or(introspection.preferred_username)
-            .or(introspection.client_id)
-            .ok_or_else(|| {
-                warn!("Introspection response missing subject");
-                ValidationError::InvalidSignature
-            })?;
-
-        Ok(Claims {
-            sub,
-            exp: introspection.exp.unwrap_or(0),
-            iat: introspection.iat,
-            iss: introspection.iss,
-            email: introspection.email,
-            scope: parse_scope_value(introspection.scope.as_ref()),
-            extra: HashMap::new(),
-        })
-    }
-
-    #[allow(dead_code)]
     pub fn issuer_count(&self) -> usize {
         self.issuers.len()
     }
-}
 
-// Extract issuer from JWT without validating signature
-fn extract_issuer_from_token(token: &str) -> Option<String> {
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 {
-        return None;
+    /// Validate a Bearer token against every configured issuer. Returns the
+    /// decoded claims on the first issuer that accepts it.
+    pub async fn validate_token(&self, token: &str) -> Result<Claims, JwtError> {
+        for entry in &self.issuers {
+            match self.validate_with_issuer(token, entry).await {
+                Ok(claims) => {
+                    debug!("JWT validated by issuer '{}'", entry.name);
+                    return Ok(claims);
+                }
+                Err(e) => debug!("issuer '{}' rejected token: {:?}", entry.name, e),
+            }
+        }
+        warn!("Token rejected by all configured issuers");
+        Err(JwtError::Invalid)
     }
 
-    use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-    let payload = URL_SAFE_NO_PAD.decode(parts[1]).ok()?;
-    let claims: serde_json::Value = serde_json::from_slice(&payload).ok()?;
-    claims.get("iss").and_then(|v| v.as_str()).map(String::from)
+    async fn validate_with_issuer(
+        &self,
+        token: &str,
+        entry: &IssuerEntry,
+    ) -> Result<Claims, JwtError> {
+        let header = decode_header(token).map_err(|_| JwtError::Invalid)?;
+        let kid = header.kid.ok_or(JwtError::Invalid)?;
+
+        let jwks = entry.jwks.read().await;
+        let jwk = jwks.find(&kid).ok_or(JwtError::Invalid)?;
+        let key = DecodingKey::from_jwk(jwk).map_err(|_| JwtError::Invalid)?;
+
+        let mut validation = Validation::new(Algorithm::RS256);
+        validation.set_issuer(&[entry.issuer.as_str()]);
+        validation.set_required_spec_claims(&["exp", "sub"]);
+
+        decode::<Claims>(token, &key, &validation)
+            .map(|data| data.claims)
+            .map_err(|_| JwtError::Invalid)
+    }
 }
 
-async fn fetch_jwks(url: &str) -> Result<JWKS, Box<dyn std::error::Error + Send + Sync>> {
+async fn fetch_jwks(url: &str) -> Result<JwkSet, Box<dyn std::error::Error + Send + Sync>> {
     let res = reqwest::get(url).await?;
-    let jwks: JWKS = res.json().await?;
+    let jwks: JwkSet = res.json().await?;
     Ok(jwks)
-}
-
-// Legacy HS256 token creation (for local auth / tests)
-#[allow(dead_code)]
-pub fn create_token(username: &str, secret: &str, expiry_hours: u64) -> Result<String, String> {
-    let now = Utc::now();
-    let exp = now + Duration::hours(expiry_hours as i64);
-
-    let claims = Claims {
-        sub: username.to_string(),
-        exp: exp.timestamp() as usize,
-        iat: Some(now.timestamp() as usize),
-        iss: None,
-        email: None,
-        scope: Vec::new(),
-        extra: HashMap::new(),
-    };
-
-    encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(secret.as_ref()),
-    )
-    .map_err(|e| format!("Failed to create token: {}", e))
-}
-
-// Legacy HS256 token validation (for local auth / tests)
-#[allow(dead_code)]
-pub fn validate_token(token: &str, secret: &str) -> Result<Claims, String> {
-    let validation = Validation::default();
-    let token_data = decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(secret.as_ref()),
-        &validation,
-    )
-    .map_err(|e| format!("Invalid token: {}", e))?;
-
-    Ok(token_data.claims)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_extract_issuer_from_token() {
-        // Header: {"alg":"RS256","typ":"JWT"}
-        // Payload: {"iss":"https://example.com/","sub":"user123","exp":9999999999}
-        let token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2V4YW1wbGUuY29tLyIsInN1YiI6InVzZXIxMjMiLCJleHAiOjk5OTk5OTk5OTl9.signature";
-
-        let issuer = extract_issuer_from_token(token);
-        assert_eq!(issuer, Some("https://example.com/".to_string()));
-    }
-
-    #[test]
-    fn test_extract_issuer_invalid_token() {
-        assert_eq!(extract_issuer_from_token("not-a-jwt"), None);
-        assert_eq!(extract_issuer_from_token("only.two"), None);
-    }
 
     #[test]
     fn parse_scope_value_handles_string() {
@@ -516,18 +199,5 @@ mod tests {
         let claims: Claims = serde_json::from_value(raw).unwrap();
         assert!(claims.has_scope("read:spotprice"));
         assert!(!claims.has_scope("read:energy"));
-    }
-
-    #[test]
-    fn claims_has_scope_reads_top_level_boolean_claims() {
-        let raw = serde_json::json!({
-            "sub": "agent",
-            "exp": 9_999_999_999_usize,
-            "read:spotprice": true,
-            "email_verified": true
-        });
-        let claims: Claims = serde_json::from_value(raw).unwrap();
-        assert!(claims.has_scope("read:spotprice"));
-        assert!(!claims.has_scope("email_verified"));
     }
 }

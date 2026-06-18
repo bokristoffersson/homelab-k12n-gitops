@@ -7,7 +7,6 @@ resolver = "2"
 
 [dependencies]
 anyhow = "1.0"
-base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
@@ -18,10 +17,8 @@ tokio = { version = "1.39", features = ["rt-multi-thread", "macros", "signal", "
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 axum = { version = "0.8", features = ["macros", "query"] }
-tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
-jsonwebtoken = "9.2"
-alcoholic_jwt = "4091.0"  # For JWKS validation
+tower-http = { version = "0.5", features = ["trace"] }
+jsonwebtoken = "9.2"  # Pure-Rust JWKS/RS256 validation (ring backend)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "http2", "charset"] }
 rand = "0.8"
 # APNs (token-based auth). Use the `ring` backend (rustls) instead of the default

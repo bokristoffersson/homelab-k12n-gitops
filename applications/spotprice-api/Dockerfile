@@ -2,18 +2,16 @@ FROM rust:slim-bookworm AS builder
 
 WORKDIR /usr/src/app
 
-# Install build dependencies (openssl for reqwest/a2 TLS + JWT signing)
-RUN apt-get update && apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Pure-Rust TLS (rustls/ring) throughout — no system OpenSSL needed.
 
 # Copy manifests first to cache the dependency build layer
 COPY Cargo.toml Cargo.lock ./
 
-# Build dependencies with a dummy source file
+# Build dependencies with dummy source files. Create both lib.rs and main.rs
+# so the cache layer works for both lib+bin and bin-only crates.
 RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
+    echo "pub fn lib_dummy() {}" > src/lib.rs && \
+    echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
     cargo build --release && \
     rm -rf src
 
@@ -27,7 +25,6 @@ FROM debian:bookworm-slim
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
-    libssl3 \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 

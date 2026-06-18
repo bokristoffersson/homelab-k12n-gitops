@@ -9,11 +9,12 @@
 CREATE TABLE IF NOT EXISTS spot_prices (
   time TIMESTAMPTZ NOT NULL,
   delivery_area TEXT NOT NULL,
-  currency TEXT,
-  price_per_mwh DOUBLE PRECISION,
-  price_per_kwh DOUBLE PRECISION,
+  currency TEXT NOT NULL,
+  price_per_mwh DOUBLE PRECISION NOT NULL,
+  price_per_kwh DOUBLE PRECISION NOT NULL,
+  -- Nord Pool's publish timestamp; not always present in the response.
   source_updated_at TIMESTAMPTZ,
-  fetched_at TIMESTAMPTZ
+  fetched_at TIMESTAMPTZ NOT NULL
 );
 
 -- Convert to hypertable (partitioned on time).
