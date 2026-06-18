@@ -29,7 +29,10 @@ spec:
           # Non-secret config + a secret fragment (session/storage/jwt/hmac/jwks key)
           # merged at load time. List-item secrets (the jwks key) can't be injected via
           # *_FILE env vars, so they live in the merged fragment instead.
+          # The image entrypoint exec's its args directly, so arg[0] must be the
+          # binary name (matches `authelia crypto …` invocations).
           args:
+            - authelia
             - --config=/config/configuration.yml
             - --config=/config/secret/secret.yml
           ports:
