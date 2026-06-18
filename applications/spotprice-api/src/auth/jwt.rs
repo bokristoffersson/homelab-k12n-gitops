@@ -137,10 +137,19 @@ impl JwtValidator {
         let mut validation = Validation::new(Algorithm::RS256);
         validation.set_issuer(&[entry.issuer.as_str()]);
         validation.set_required_spec_claims(&["exp", "sub"]);
+        // This is a resource server: it authorizes on scope, not audience.
+        // Authelia access tokens carry an `aud` claim, and jsonwebtoken validates
+        // audience by default — without an expected audience set that rejects the
+        // token outright. Validate signature + issuer + exp only (matching the
+        // other homelab APIs).
+        validation.validate_aud = false;
 
         decode::<Claims>(token, &key, &validation)
             .map(|data| data.claims)
-            .map_err(|_| JwtError::Invalid)
+            .map_err(|e| {
+                debug!("token rejected by issuer '{}': {}", entry.name, e);
+                JwtError::Invalid
+            })
     }
 }
 
