@@ -4,6 +4,5 @@ kind: Kustomization
 namespace: traefik
 resources:
   - homelab-routes.yaml
-  - authentik-routes.yaml
   - authelia-routes.yaml
   - pihole-routes.yaml
