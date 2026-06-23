@@ -22,6 +22,13 @@ spec:
   values:
     replicas: 1
 
+    # Persistence is a single Longhorn RWO PVC. With the default RollingUpdate
+    # strategy a new pod can't attach the volume until the old one releases it,
+    # which deadlocks every upgrade ("Multi-Attach error"). Recreate tears down
+    # the old pod before starting the new one.
+    deploymentStrategy:
+      type: Recreate
+
     podLabels:
       backstage.io/kubernetes-id: grafana
 
