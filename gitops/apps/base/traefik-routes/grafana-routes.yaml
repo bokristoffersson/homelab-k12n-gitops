@@ -1,0 +1,20 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana-routes
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    # Grafana (has built-in login)
+    - match: Host(`grafana.k12n.com`)
+      kind: Rule
+      middlewares:
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: grafana
+          namespace: grafana
+          port: 80
