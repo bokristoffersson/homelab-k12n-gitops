@@ -1,5 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: grafana
 
 resources:
   - namespace.yaml
@@ -10,3 +11,35 @@ resources:
   - datasource-generator-rbac.yaml
   - datasource-configmap-generator-job.yaml
   - helmrelease.yaml
+
+# Curated starter dashboards, auto-imported by the Grafana dashboard sidecar.
+# JSON is committed under dashboards/ with datasource refs bound to the
+# Prometheus (uid: prometheus) and Loki (uid: loki) datasources.
+configMapGenerator:
+  - name: grafana-dashboard-node-exporter
+    files:
+      - dashboards/node-exporter-full.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: Homelab
+  - name: grafana-dashboard-kubernetes-global
+    files:
+      - dashboards/kubernetes-global.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: Homelab
+  - name: grafana-dashboard-loki-logs
+    files:
+      - dashboards/loki-logs.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: Homelab
+
+generatorOptions:
+  disableNameSuffixHash: true

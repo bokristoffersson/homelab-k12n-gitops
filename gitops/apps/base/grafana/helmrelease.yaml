@@ -57,6 +57,17 @@ spec:
             secretKeyRef:
               name: grafana-timescaledb-secret
               key: POSTGRES_PASSWORD
+      # Auto-load any ConfigMap labelled grafana_dashboard=1 as a dashboard.
+      # searchNamespace ALL so dashboards can live in any namespace (e.g. the
+      # monitoring namespace alongside the metrics stack), not just grafana.
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        labelValue: "1"
+        searchNamespace: ALL
+        folderAnnotation: grafana_folder
+        provider:
+          foldersFromFilesStructure: false
 
     admin:
       existingSecret: grafana-admin

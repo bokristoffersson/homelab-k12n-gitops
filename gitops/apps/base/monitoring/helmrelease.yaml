@@ -1,3 +1,12 @@
+# ONE-TIME BOOTSTRAP NOTE:
+# This release was previously left stuck in Helm status "uninstalling" after
+# its HelmRelease was pruned from GitOps. Flux cannot adopt a release in that
+# state. If Prometheus/Alertmanager pods never appear after reconcile, clear
+# the stuck release record once, then reconcile:
+#   kubectl delete secret -n monitoring sh.helm.release.v1.kube-prometheus-stack.v1
+#   flux reconcile kustomization prometheus --with-source
+# The delete is idempotent (fails harmlessly if the secret is absent), so it
+# is only needed for that specific stuck state, not on a clean cluster.
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -31,9 +40,30 @@ spec:
               resources:
                 requests:
                   storage: 50Gi
-        
+
         retention: 15d
         retentionSize: 45GB
+
+        # Single-cluster homelab: stamp a cluster label so the community
+        # dashboards (which filter on cluster="$cluster") resolve to data.
+        externalLabels:
+          cluster: homelab
+
+        # Discover ServiceMonitors/PodMonitors/Rules across ALL namespaces,
+        # not just those carrying this release's Helm labels. Without this the
+        # operator-managed Prometheus scrapes almost nothing in a GitOps setup.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        scrapeConfigSelectorNilUsesHelmValues: false
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 768Mi
+          limits:
+            memory: 1536Mi
 
     alertmanager:
       alertmanagerSpec:
@@ -47,5 +77,6 @@ spec:
                 requests:
                   storage: 10Gi
 
+    # Grafana is deployed separately (grafana namespace / own HelmRelease).
     grafana:
       enabled: false
