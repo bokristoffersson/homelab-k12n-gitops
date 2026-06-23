@@ -28,38 +28,40 @@ spec:
   prune: true
   wait: true
 
-# Removed loki kustomization - base/loki directory doesn't exist
-# Loki is deployed via HelmRelease in base/monitoring
-# ---
-# apiVersion: kustomize.toolkit.fluxcd.io/v1
-# kind: Kustomization
-# metadata:
-#   name: loki
-#   namespace: flux-system
-# spec:
-#   interval: 10m0s
-#   sourceRef:
-#     kind: GitRepository
-#     name: flux-system
-#   path: ./gitops/apps/homelab/loki
-#   prune: true
-#   wait: true
-
-# Removed alloy kustomization - base/alloy directory doesn't exist
-# ---
-# apiVersion: kustomize.toolkit.fluxcd.io/v1
-# kind: Kustomization
-# metadata:
-#   name: alloy
-#   namespace: flux-system
-# spec:
-#   interval: 10m0s
-#   sourceRef:
-#     kind: GitRepository
-#     name: flux-system
-#   path: ./gitops/apps/homelab/alloy
-#   prune: true
-#   wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: loki
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/loki
+  prune: true
+  wait: true
+  # Needs the monitoring namespace (created by the prometheus kustomization).
+  dependsOn:
+    - name: prometheus
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: alloy
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/alloy
+  prune: true
+  wait: true
+  # Ships logs to Loki, so wait for Loki to be up first.
+  dependsOn:
+    - name: loki
 
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

@@ -1,0 +1,24 @@
+# The Alloy chart's default RBAC grants get/list/watch on pods but NOT on
+# pods/log. loki.source.kubernetes streams container logs through the API
+# server, which requires the pods/log subresource. Grant it separately.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alloy-pod-logs
+rules:
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alloy-pod-logs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: alloy-pod-logs
+subjects:
+  - kind: ServiceAccount
+    name: alloy
+    namespace: monitoring

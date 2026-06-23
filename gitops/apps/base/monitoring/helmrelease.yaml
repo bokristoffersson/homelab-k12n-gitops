@@ -31,9 +31,25 @@ spec:
               resources:
                 requests:
                   storage: 50Gi
-        
+
         retention: 15d
         retentionSize: 45GB
+
+        # Discover ServiceMonitors/PodMonitors/Rules across ALL namespaces,
+        # not just those carrying this release's Helm labels. Without this the
+        # operator-managed Prometheus scrapes almost nothing in a GitOps setup.
+        serviceMonitorSelectorNilUsesHelmValues: false
+        podMonitorSelectorNilUsesHelmValues: false
+        ruleSelectorNilUsesHelmValues: false
+        probeSelectorNilUsesHelmValues: false
+        scrapeConfigSelectorNilUsesHelmValues: false
+
+        resources:
+          requests:
+            cpu: 200m
+            memory: 768Mi
+          limits:
+            memory: 1536Mi
 
     alertmanager:
       alertmanagerSpec:
@@ -47,5 +63,6 @@ spec:
                 requests:
                   storage: 10Gi
 
+    # Grafana is deployed separately (grafana namespace / own HelmRelease).
     grafana:
       enabled: false
