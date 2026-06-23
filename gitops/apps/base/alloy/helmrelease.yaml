@@ -15,6 +15,13 @@ spec:
         namespace: flux-system
       interval: 15m
   values:
+    # Pin the ServiceAccount name so the pods/log ClusterRoleBinding in
+    # rbac-podlogs.yaml has an explicit contract instead of relying on the
+    # chart's default (release-name) naming.
+    serviceAccount:
+      create: true
+      name: alloy
+
     # Single Deployment replica that reads pod logs via the Kubernetes API and
     # pushes them to Loki. Simpler and more robust than per-node hostPath
     # tailing for a small cluster (no log duplication, no /var/log mounts).
