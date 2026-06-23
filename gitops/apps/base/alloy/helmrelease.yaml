@@ -37,6 +37,7 @@ spec:
           cpu: 50m
           memory: 128Mi
         limits:
+          cpu: 200m
           memory: 256Mi
       # Pod-log reading goes through the API server, so no host mounts needed.
       mounts:
