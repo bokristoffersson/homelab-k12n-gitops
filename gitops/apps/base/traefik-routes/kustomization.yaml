@@ -6,3 +6,4 @@ resources:
   - homelab-routes.yaml
   - authelia-routes.yaml
   - pihole-routes.yaml
+  - grafana-routes.yaml
