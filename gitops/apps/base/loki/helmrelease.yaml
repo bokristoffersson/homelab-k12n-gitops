@@ -43,6 +43,9 @@ spec:
         reject_old_samples: true
         reject_old_samples_max_age: 168h
       compactor:
+        # Keep the compactor's working dir on the persistent volume so
+        # retention/compaction markers survive restarts and actually apply.
+        working_directory: /var/loki/compactor
         retention_enabled: true
         delete_request_store: filesystem
 
