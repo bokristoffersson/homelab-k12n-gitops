@@ -15,34 +15,33 @@ spec:
         namespace: flux-system
       interval: 15m
   values:
-    # Pin the ServiceAccount name so the pods/log ClusterRoleBinding in
-    # rbac-podlogs.yaml has an explicit contract instead of relying on the
-    # chart's default (release-name) naming.
+    # Pin the ServiceAccount name so RBAC bindings have an explicit contract
+    # instead of relying on the chart's default (release-name) naming.
     serviceAccount:
       create: true
       name: alloy
 
-    # Single Deployment replica that reads pod logs via the Kubernetes API and
-    # pushes them to Loki. Simpler and more robust than per-node hostPath
-    # tailing for a small cluster (no log duplication, no /var/log mounts).
+    # DaemonSet tailing each node's pod log files under /var/log/pods. This is
+    # the standard, mature Loki collection pattern: no API-server log streaming
+    # load, natural per-node sharding (each node only sees its own files, so no
+    # duplication), and no pods/log RBAC needed.
     controller:
-      type: deployment
-      replicas: 1
+      type: daemonset
 
     alloy:
       clustering:
         enabled: false
+      # Mount the host /var/log so the DaemonSet can read /var/log/pods/*.
+      mounts:
+        varlog: true
+        dockercontainers: false
       resources:
         requests:
           cpu: 50m
           memory: 128Mi
         limits:
           cpu: 200m
-          memory: 256Mi
-      # Pod-log reading goes through the API server, so no host mounts needed.
-      mounts:
-        varlog: false
-        dockercontainers: false
+          memory: 512Mi
       configMap:
         content: |
           logging {
@@ -77,10 +76,29 @@ spec:
               source_labels = ["__meta_kubernetes_pod_label_app"]
               target_label  = "app"
             }
+            // Build the on-disk log path; the glob only matches files that
+            // exist on this node, so each DaemonSet pod tails just its node.
+            rule {
+              source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+              separator     = "/"
+              action        = "replace"
+              replacement   = "/var/log/pods/*$1/*.log"
+              target_label  = "__path__"
+            }
           }
 
-          loki.source.kubernetes "pods" {
-            targets    = discovery.relabel.pod_logs.output
+          local.file_match "pods" {
+            path_targets = discovery.relabel.pod_logs.output
+          }
+
+          loki.source.file "pods" {
+            targets    = local.file_match.pods.targets
+            forward_to = [loki.process.default.receiver]
+          }
+
+          loki.process "default" {
+            // k3s uses containerd, whose log files are in CRI format.
+            stage.cri {}
             forward_to = [loki.write.default.receiver]
           }
 

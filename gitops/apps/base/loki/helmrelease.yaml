@@ -48,6 +48,9 @@ spec:
         working_directory: /var/loki/compactor
         retention_enabled: true
         delete_request_store: filesystem
+        # Run compaction/retention on a fixed interval so the 5Gi PVC is
+        # bounded predictably rather than relying on chart-version defaults.
+        compaction_interval: 10m
 
     singleBinary:
       replicas: 1
