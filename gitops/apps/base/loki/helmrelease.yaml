@@ -21,6 +21,13 @@ spec:
 
     loki:
       auth_enabled: false
+      # Loki logs per-query stats (caller=metrics.go) at info level — one ~3KB
+      # line per query, including Grafana's auto-refreshing log-volume queries.
+      # Alloy tails Loki's own pod, so at info those re-ingest into Loki (a
+      # feedback loop on the 5Gi PVC). warn silences the spam at the source
+      # while keeping Loki's own warnings/errors.
+      server:
+        log_level: warn
       commonConfig:
         replication_factor: 1
       schemaConfig:
