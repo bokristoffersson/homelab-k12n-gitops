@@ -30,7 +30,7 @@ spec:
             - name: APP_CONFIG
               value: /config/config.yaml
             - name: RUST_LOG
-              value: "info,homelab_api=debug"
+              value: "info"
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
