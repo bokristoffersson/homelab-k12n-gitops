@@ -24,6 +24,17 @@ spec:
           args:
             - streams
             - /config/*.yaml
+          env:
+            - name: DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_USERNAME
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_PASSWORD
           ports:
             - containerPort: 4195
               name: http
