@@ -26,7 +26,7 @@ pipeline:
 output:
   sql_raw:
     driver: postgres
-    dsn: postgres://postgres:postgres@postgres.homelab-settings.svc.cluster.local:5432/homelab_settings?sslmode=disable
+    dsn: host=postgres.homelab-settings.svc.cluster.local port=5432 user=${DATABASE_USERNAME} password=${DATABASE_PASSWORD} dbname=homelab_settings sslmode=disable
     query: |
       INSERT INTO settings (device_id, indoor_target_temp, mode, curve, curve_min, curve_max, curve_plus_5, curve_zero, curve_minus_5, heatstop, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
