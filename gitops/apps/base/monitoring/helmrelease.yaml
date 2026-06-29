@@ -31,6 +31,13 @@ spec:
 
     prometheus:
       prometheusSpec:
+        # Pin Prometheus to p1. Almost all stateful workloads (redpanda,
+        # timescaledb, etc.) run on p0, which is CPU-saturated; that starves
+        # the redpanda broker's raft and destabilises consumer-group
+        # coordination. p1 is near-idle. The longhorn PV has a replica on p1,
+        # so it can attach there.
+        nodeSelector:
+          kubernetes.io/hostname: p1
         storageSpec:
           volumeClaimTemplate:
             spec:
