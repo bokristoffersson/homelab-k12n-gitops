@@ -32,9 +32,16 @@ spec:
       # SIGKILLs it (exit 137) every ~20 min, breaking the data pipeline.
       #
       # The redpanda 25.1.2 chart does not expose livenessProbe/readinessProbe
-      # under statefulset (schema rejects them). Override the probes via
+      # under statefulset (schema rejects them). Override the liveness probe via
       # podTemplate.spec, which is strategically merged into the final PodSpec
-      # (container matched by name "redpanda").
+      # (container matched by name "redpanda"); the chart's exec handler is
+      # preserved, only the timings are loosened.
+      #
+      # Only the liveness probe is overridden: it is the one whose failure
+      # SIGKILLs the broker, and it is the only probe the chart defines for the
+      # redpanda container. The chart defines no readinessProbe, so specifying
+      # one here would render a probe without a handler ("must specify a handler
+      # type") and the kubelet would reject the Pod.
       podTemplate:
         spec:
           containers:
@@ -44,12 +51,6 @@ spec:
                 periodSeconds: 30
                 timeoutSeconds: 10
                 failureThreshold: 5
-              readinessProbe:
-                initialDelaySeconds: 1
-                periodSeconds: 30
-                timeoutSeconds: 10
-                failureThreshold: 5
-                successThreshold: 1
 
     storage:
       persistentVolume:
