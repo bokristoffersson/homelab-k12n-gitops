@@ -50,18 +50,25 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+          # Loosen probes: the sink runs on a CPU-saturated node (p0) and the
+          # connect process can't answer /ping within the default
+          # timeoutSeconds=1, so kubelet SIGKILLs it into a restart loop.
           livenessProbe:
             httpGet:
               path: /ping
               port: 4195
             initialDelaySeconds: 10
-            periodSeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /ready
               port: 4195
             initialDelaySeconds: 5
-            periodSeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
       volumes:
         - name: config
           configMap:
