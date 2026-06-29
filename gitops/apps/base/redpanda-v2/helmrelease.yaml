@@ -27,6 +27,20 @@ spec:
 
     statefulset:
       replicas: 1
+      # Loosen probes: under CPU pressure on p0 the broker can't answer
+      # /v1/status/ready within the chart default timeoutSeconds=1, so kubelet
+      # SIGKILLs it (exit 137) every ~20 min, breaking the data pipeline.
+      livenessProbe:
+        initialDelaySeconds: 10
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 5
+      readinessProbe:
+        initialDelaySeconds: 1
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 5
+        successThreshold: 1
 
     storage:
       persistentVolume:
