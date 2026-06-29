@@ -176,6 +176,7 @@ data:
               - 'offline_access'
               - 'read:energy'
               - 'read:heatpump'
+              - 'read:temperature'
               - 'read:settings'
               - 'write:settings'
               - 'read:spotprice'

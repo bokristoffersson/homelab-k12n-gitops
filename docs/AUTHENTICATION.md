@@ -1,5 +1,26 @@
 # Authentication & Authorization Architecture
 
+> **⚠️ STATUS (2026-06-18): This document is historical and describes the legacy Authentik setup.**
+>
+> The cluster's OIDC provider is now **Authelia** (issuer `https://auth.k12n.com`), which fully
+> replaced Authentik. The migration removed all Authentik resources (namespace, PostgreSQL, blueprints,
+> traefikoidc routes).
+>
+> **Current Authelia architecture (source of truth: `gitops/apps/base/authelia/`):**
+> - **Config-as-code only** — no admin UI. All OIDC clients, scopes, claims, token lifetimes, and access
+>   control are declared in `gitops/apps/base/authelia/configuration.yaml` and deployed via FluxCD.
+> - **Users**: file-based backend (argon2-hashed, sealed secret) with local session/storage — there is no
+>   identity PostgreSQL.
+> - **Tokens**: opaque access tokens by default; JWT (RFC 9068) only for clients that need JWKS validation
+>   (`oauth2-proxy`, the native macOS app). Backends validate JWKS-first with introspection fallback.
+> - **Authorization is scope-based** (`read:energy`, `read:heatpump`, `read:temperature`, `read:settings`,
+>   `write:settings`, `read:plugs`, `write:plugs`, `read:spotprice`) — no group-based authz.
+> - **heatpump-web SPA** authenticates via an `oauth2-proxy` session cookie, which forwards the Authelia
+>   access token to the backend APIs for scope propagation.
+>
+> The Authentik-specific sections below (traefikoidc, blueprints, PostgreSQL/redis, namespaces) no longer
+> reflect the running system and are retained only for historical reference.
+
 ## Table of Contents
 - [Overview](#overview)
 - [Architecture Diagram](#architecture-diagram)
