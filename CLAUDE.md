@@ -16,11 +16,11 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 ### Key Technologies
 - **GitOps**: FluxCD for continuous deployment
 - **Kubernetes**: k3s cluster (arm64)
-- **Authentication**: Authentik (IdP) + oauth2-proxy (auth gateway)
+- **Authentication**: Authelia (OIDC IdP, config-as-code at `https://auth.k12n.com`) + oauth2-proxy (auth gateway)
 - **Ingress**: Traefik with ForwardAuth middleware
 - **Databases**:
   - TimescaleDB (telemetry data)
-  - Authentik PostgreSQL (identity data)
+  - Authelia stores identity in a file-based user backend (sealed secret) with local storage — no identity PostgreSQL
 - **Message Broker**: Redpanda (Kafka-compatible)
   - Topics managed via `rpk` commands in Kubernetes Job (not operator/CRDs)
   - Single-node cluster in `redpanda-v2` namespace
@@ -44,10 +44,10 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 ## Architecture Highlights
 
 ### Authentication Flow
-1. Frontend (heatpump-web) uses OIDC authorization code flow with Authentik
-2. SPA stores JWT tokens and includes them in API requests
-3. Backend validates JWT signatures using Authentik's JWKS endpoint
-4. oauth2-proxy available for ForwardAuth pattern (not currently used)
+1. Frontend (heatpump-web) uses OIDC authorization code flow with Authelia (`https://auth.k12n.com`)
+2. The SPA authenticates via an oauth2-proxy session cookie, which forwards the Authelia access token to the backend APIs
+3. Backends validate access tokens JWKS-first against Authelia, with introspection fallback for opaque tokens; authorization is scope-based (e.g. `read:energy`, `read:temperature`, `write:settings`)
+4. Authelia is config-as-code only (no admin UI) — all clients, scopes, and access control live in `gitops/apps/base/authelia/`
 
 See `docs/AUTHENTICATION.md` for complete details.
 
@@ -63,11 +63,12 @@ IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → Timesca
 ### Write Paths to Devices
 
 - **Primary**: `heatpump-web` → `homelab-settings-api` (REST + outbox) → MQTT → device. DB is updated atomically with the outbox entry; the outbox processor publishes to MQTT and tracks delivery. Used for all UI-driven mutations.
-- **Exception — `homebridge`**: HomeKit/Siri commands publish directly to Mosquitto (`cmnd/{plug_id}/POWER`, `thermiq_heatpump/write`) without going through `homelab-settings-api`. DB state stays consistent because the device echoes its new state on the telemetry topic, which `mqtt-kafka-bridge` already forwards to Redpanda → TimescaleDB. Accepted tradeoff for homelab scale: avoids a custom Homebridge plugin and Authentik service-account JWT in exchange for losing per-command audit in the outbox table.
+- **Exception — `homebridge`**: HomeKit/Siri commands publish directly to Mosquitto (`cmnd/{plug_id}/POWER`, `thermiq_heatpump/write`) without going through `homelab-settings-api`. DB state stays consistent because the device echoes its new state on the telemetry topic, which `mqtt-kafka-bridge` already forwards to Redpanda → TimescaleDB. Accepted tradeoff for homelab scale: avoids a custom Homebridge plugin and Authelia service-account JWT in exchange for losing per-command audit in the outbox table.
 
 ### Backup Strategy
 - **TimescaleDB**: Daily backup at 2 AM to S3
-- **Authentik PostgreSQL**: Daily backup at 3 AM to S3
+- **homelab-settings PostgreSQL** and **Backstage PostgreSQL**: have their own backup CronJobs to S3
+- Authelia has no external identity database to back up — its users live in a sealed-secret file backend (in Git) and session/storage state is local
 - Backups use pg_dump + gzip compression
 - Stored in separate S3 prefixes
 
@@ -159,7 +160,7 @@ kubeseal \
 **Migration Locations**:
 - **TimescaleDB**: `gitops/apps/base/timescaledb/migrations/`
 - **Homelab Settings (PostgreSQL)**: `gitops/apps/base/homelab-settings/migrations/`
-- **Authentik (PostgreSQL)**: Managed by Authentik application
+- **Authelia**: no database migrations — identity/config is config-as-code in `gitops/apps/base/authelia/`
 
 **Migration Workflow**:
 1. **Create migration file** in the appropriate directory:
@@ -519,6 +520,7 @@ docs/
 
 ## Recent Changes
 
+- Migrated OIDC provider from Authentik to Authelia (`https://auth.k12n.com`, config-as-code, file user backend); Authentik fully removed (2026-06-18)
 - Renamed heatpump-settings to homelab-settings (namespace, database, services, images) (2026-02-03)
 - Deployed homelab-settings-api service with separate Kafka consumer group (2026-01-11)
 - Replaced Redpanda operator with rpk-based topic management (Job in redpanda-v2 namespace) (2026-01-11)
