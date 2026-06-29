@@ -233,21 +233,6 @@ spec:
   wait: true
   dependsOn:
     - name: mqtt-kafka-bridge
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: homelab-settings-api
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: ./gitops/apps/homelab/homelab-settings-api
-  prune: true
-  wait: true
-  dependsOn:
     - name: redpanda-v2
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -298,7 +283,7 @@ spec:
   dependsOn:
     - name: authelia
     - name: homelab-api
-    - name: homelab-settings-api
+    - name: homelab-settings
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization

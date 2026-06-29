@@ -6,6 +6,7 @@ resources:
   - persistentvolumeclaim.yaml
   - deployment.yaml
   - service.yaml
+  - homelab-settings-api-service.yaml
   - migration-job.yaml
   - redpanda-connect-deployment.yaml
   - homelab-settings-api-deployment.yaml
