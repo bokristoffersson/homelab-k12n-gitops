@@ -16,7 +16,10 @@ pub struct Claims {
     pub iat: Option<usize>,
     pub iss: Option<String>,
     pub email: Option<String>,
-    #[serde(default, deserialize_with = "deserialize_scope")]
+    // RFC 8693 `scope`: space-separated string (array form tolerated).
+    // Authelia JWT access tokens (RFC 9068) put scopes in `scp` (array) instead,
+    // so accept that spelling too — mirrors homelab-api.
+    #[serde(default, alias = "scp", deserialize_with = "deserialize_scope")]
     pub scope: Option<String>,
     // Authentik never populates the standard `scope` claim; it emits each
     // granted scope as its own top-level boolean claim. Capture the rest of
@@ -450,6 +453,25 @@ mod tests {
         assert!(claims.has_scope("read:plugs"));
         assert!(claims.has_scope("write:plugs"));
         assert!(!claims.has_scope("read:heatpump"));
+    }
+
+    #[test]
+    fn test_claims_scp_alias_from_authelia() {
+        // Authelia RFC 9068 JWT access tokens carry scopes in `scp` (array),
+        // with no `scope` claim. has_scope must still resolve them.
+        let json = r#"{
+            "sub": "homelab-macos-user",
+            "exp": 9999999999,
+            "iss": "https://auth.k12n.com",
+            "scp": ["read:settings", "write:settings", "read:plugs", "write:plugs"]
+        }"#;
+
+        let claims: Claims = serde_json::from_str(json).unwrap();
+        assert!(claims.has_scope("read:settings"));
+        assert!(claims.has_scope("write:settings"));
+        assert!(claims.has_scope("read:plugs"));
+        assert!(claims.has_scope("write:plugs"));
+        assert!(!claims.has_scope("read:energy"));
     }
 
     #[test]
