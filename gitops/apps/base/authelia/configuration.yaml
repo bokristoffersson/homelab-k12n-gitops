@@ -179,6 +179,8 @@ data:
               - 'read:temperature'
               - 'read:settings'
               - 'write:settings'
+              - 'read:plugs'
+              - 'write:plugs'
               - 'read:spotprice'
 
           # --- oauth2-proxy (confidential, JWT access tokens for energy-ws JWKS validation) ---
