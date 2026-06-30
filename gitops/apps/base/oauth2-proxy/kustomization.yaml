@@ -5,8 +5,5 @@ namespace: oauth2-proxy
 resources:
   - namespace.yaml
   - deployment.yaml
-  - deployment-claude-mcp.yaml
   - service.yaml
-  - service-claude-mcp.yaml
   - secrets-sealed.yaml
-  - oauth2-proxy-claude-mcp-secrets-sealed.yaml

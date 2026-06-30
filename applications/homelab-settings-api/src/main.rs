@@ -3,7 +3,6 @@ mod auth;
 mod config;
 mod error;
 mod kafka;
-mod mcp;
 mod repositories;
 mod scheduler;
 

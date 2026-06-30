@@ -157,22 +157,6 @@ spec:
           namespace: homelab-api
           port: 8080
 
-    # MCP endpoints (Bearer JWT auth)
-    - match: Host(`homelab.k12n.com`) && PathPrefix(`/mcp`) && HeaderRegexp(`Authorization`, `^Bearer .+`)
-      kind: Rule
-      priority: 110
-      middlewares:
-        - name: https-scheme
-          namespace: traefik
-        - name: cors
-          namespace: traefik
-        - name: security-headers
-          namespace: traefik
-      services:
-        - name: homelab-api
-          namespace: homelab-api
-          port: 8080
-
     # Homelab Chat API - Web app streaming endpoint (protected by OAuth2 Proxy)
     - match: Host(`homelab.k12n.com`) && PathPrefix(`/api/v1/chat`)
       kind: Rule

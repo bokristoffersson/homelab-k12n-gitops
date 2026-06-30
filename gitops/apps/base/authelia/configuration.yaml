@@ -266,20 +266,6 @@ data:
 
           # --- Service accounts (client credentials). openid/profile/email are not valid
           #     for the client_credentials grant in Authelia; resource scopes only. ---
-          - client_id: 'claude-mcp'
-            client_name: 'Claude MCP'
-            client_secret: '$pbkdf2-sha512$310000$fmpLi2cly3Q0l7qkflq98g$yo6/JkLTTpEL7GanpeVHk.Nn.6Wz.OhIfWHvM64aFkNLwF5dNLBHN2uJDoGUW.o20r56P3E03mB2XyI1NfPiZQ'
-            authorization_policy: 'one_factor'
-            redirect_uris: []
-            grant_types:
-              - 'client_credentials'
-            scopes:
-              - 'read:energy'
-              - 'read:heatpump'
-              - 'read:temperature'
-              - 'read:settings'
-              - 'read:plugs'
-
           - client_id: 'homelab-chat-agent'
             client_name: 'Homelab Chat Agent'
             client_secret: '$pbkdf2-sha512$310000$gqUcyEJRjAYp6.4EPTD9Jg$GqOC0EYCmsXM7XJDdlF6rIjU8rEAaranxduhk7rL7cuP8WH973IzsSY9Y.JQAGhLTjYMfBafM5XZtbQCU6hToA'

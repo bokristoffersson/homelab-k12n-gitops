@@ -40,8 +40,8 @@ pub struct AuthConfig {
     #[serde(default)]
     pub users: Vec<User>,
 
-    // Multi-issuer JWKS configuration (for RS256 validation from Authentik)
-    // Supports multiple OAuth2 providers (heatpump-web, homelab-macos, claude-mcp)
+    // Multi-issuer JWKS configuration (for RS256 validation from Authelia)
+    // Supports multiple OAuth2 providers (heatpump-web, homelab-macos)
     #[serde(default)]
     pub issuers: Vec<IssuerConfig>,
 
