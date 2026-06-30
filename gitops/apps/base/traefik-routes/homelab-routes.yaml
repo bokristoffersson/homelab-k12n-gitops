@@ -75,24 +75,6 @@ spec:
           namespace: redpanda-v2
           port: 8080
 
-    # Kubernetes MCP Server (Bearer JWT auth)
-    - match: Host(`homelab.k12n.com`) && PathPrefix(`/models/kubernetes`)
-      kind: Rule
-      priority: 160
-      middlewares:
-        - name: https-scheme
-          namespace: traefik
-        - name: cors
-          namespace: traefik
-        - name: security-headers
-          namespace: traefik
-        - name: mcp-kubernetes-stripprefix
-          namespace: traefik
-      services:
-        - name: kubernetes-mcp-server
-          namespace: kubernetes-mcp-server
-          port: 8080
-
     # Energy WebSocket (JWT auth via query parameter)
     - match: Host(`homelab.k12n.com`) && PathPrefix(`/ws`)
       kind: Rule
