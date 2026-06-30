@@ -7,7 +7,6 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use super::handlers::{health, plugs, settings, AppState};
 use crate::auth::{require_jwt_auth, require_scope};
-use crate::mcp::handlers as mcp;
 
 pub fn create_router(state: AppState) -> Router {
     let read_settings_routes = Router::new()
@@ -82,19 +81,11 @@ pub fn create_router(state: AppState) -> Router {
             require_jwt_auth,
         ));
 
-    let mcp_routes = Router::new()
-        .route("/mcp", get(mcp::sse_handler).post(mcp::rpc_handler))
-        .route_layer(middleware::from_fn_with_state(
-            state.clone(),
-            require_jwt_auth,
-        ));
-
     let public_routes = Router::new().route("/health", get(health::health_check));
 
     Router::new()
         .merge(public_routes)
         .merge(protected_routes)
-        .merge(mcp_routes)
         .with_state(state)
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())

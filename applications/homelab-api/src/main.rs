@@ -3,7 +3,6 @@ mod auth;
 mod config;
 mod db;
 mod error;
-mod mcp;
 mod repositories;
 
 use config::Config;

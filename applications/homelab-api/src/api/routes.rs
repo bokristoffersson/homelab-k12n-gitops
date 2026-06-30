@@ -1,7 +1,6 @@
 use crate::api::handlers::{auth, energy, health, heatpump, temperature};
 use crate::api::middleware::{require_jwt_auth, require_scope, RequiredScope};
 use crate::auth::AppState;
-use crate::mcp::handlers as mcp;
 use axum::{extract::Request, middleware, routing::get, Router};
 use tower_http::trace::TraceLayer;
 use tracing::Level;
@@ -71,19 +70,10 @@ pub fn create_router(state: AppState) -> Router {
             require_jwt_auth,
         ));
 
-    // MCP routes (JWT auth via Bearer token)
-    let mcp_routes = Router::new()
-        .route("/mcp", get(mcp::sse_handler).post(mcp::rpc_handler))
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            require_jwt_auth,
-        ));
-
     // Merge public and protected routes
     Router::new()
         .merge(public_routes)
         .merge(api_routes)
-        .merge(mcp_routes)
         .with_state(state)
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(
