@@ -23,6 +23,9 @@ spec:
 
   values:
     defaultSettings:
+      # Quieter logs: Info is noisy for a homelab. Warn still surfaces
+      # degraded volumes, failed/rebuilding replicas, and attach/detach errors.
+      logLevel: "Warn"
       # Disable automatic default disk creation
       defaultDataPath: ""
       upgradeChecker: false
