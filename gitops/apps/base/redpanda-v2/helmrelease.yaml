@@ -14,6 +14,11 @@ spec:
         name: redpanda
         namespace: flux-system
   values:
+    # Quieter broker logs: the chart default is info, which is chatty.
+    # Warn still surfaces real broker issues (raft, disk, partition errors).
+    logging:
+      logLevel: warn
+
     # Override cluster name to avoid conflicts with old deployment
     fullnameOverride: "redpanda-v2"
 
