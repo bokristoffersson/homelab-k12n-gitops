@@ -5,9 +5,8 @@ use serde::Deserialize;
 use wasm_bindgen::JsValue;
 
 use super::storage::{
-    clear_tokens, get_code_verifier, get_oauth_state, get_refresh_token, store_access_token,
-    store_code_verifier, store_oauth_state, store_refresh_token, store_token_expiry,
-    store_user_info, UserInfo,
+    get_refresh_token, store_access_token, store_code_verifier, store_oauth_state,
+    store_refresh_token, store_token_expiry,
 };
 
 /// OAuth configuration from window.ENV
@@ -37,7 +36,6 @@ impl OAuthConfig {
 #[derive(Debug, Deserialize)]
 struct TokenResponse {
     access_token: String,
-    token_type: String,
     expires_in: u64,
     refresh_token: Option<String>,
     #[allow(dead_code)]
@@ -82,78 +80,6 @@ impl OAuthService {
         }
     }
 
-    /// Handle OAuth2 callback - exchange code for tokens
-    pub async fn handle_callback(&self, code: &str, state: &str) -> Result<UserInfo, String> {
-        // Validate state to prevent CSRF
-        let stored_state = get_oauth_state().ok_or("Missing stored state")?;
-        if state != stored_state {
-            return Err("Invalid state parameter - possible CSRF attack".to_string());
-        }
-
-        // Get PKCE code verifier
-        let code_verifier = get_code_verifier().ok_or("Missing code verifier")?;
-
-        // Exchange code for tokens
-        let token_url = format!("{}/application/o/token/", self.config.authentik_url);
-
-        let body = format!(
-            "grant_type=authorization_code&code={}&redirect_uri={}&client_id={}&code_verifier={}",
-            js_sys::encode_uri_component(code),
-            js_sys::encode_uri_component(&self.config.redirect_uri),
-            js_sys::encode_uri_component(&self.config.client_id),
-            js_sys::encode_uri_component(&code_verifier),
-        );
-
-        let response = Request::post(&token_url)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .body(body)
-            .map_err(|e| e.to_string())?
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if !response.ok() {
-            let error = response.text().await.unwrap_or_default();
-            return Err(format!("Token exchange failed: {}", error));
-        }
-
-        let token_data: TokenResponse = response.json().await.map_err(|e| e.to_string())?;
-
-        // Store tokens
-        store_access_token(&token_data.access_token);
-        if let Some(ref refresh_token) = token_data.refresh_token {
-            store_refresh_token(refresh_token);
-        }
-
-        // Calculate and store expiry time
-        let now = js_sys::Date::now() as u64;
-        let expiry = now + (token_data.expires_in * 1000);
-        store_token_expiry(expiry);
-
-        // Fetch user info
-        let user_info = self.fetch_user_info(&token_data.access_token).await?;
-        store_user_info(&user_info);
-
-        Ok(user_info)
-    }
-
-    /// Fetch user info from Authentik userinfo endpoint
-    async fn fetch_user_info(&self, access_token: &str) -> Result<UserInfo, String> {
-        let userinfo_url = format!("{}/application/o/userinfo/", self.config.authentik_url);
-
-        let response = Request::get(&userinfo_url)
-            .header("Authorization", &format!("Bearer {}", access_token))
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-
-        if !response.ok() {
-            return Err("Failed to fetch user info".to_string());
-        }
-
-        response.json().await.map_err(|e| e.to_string())
-    }
-
     /// Refresh access token using refresh token
     pub async fn refresh_token(&self) -> Result<(), String> {
         let refresh_token = get_refresh_token().ok_or("No refresh token")?;
@@ -191,23 +117,6 @@ impl OAuthService {
         store_token_expiry(expiry);
 
         Ok(())
-    }
-
-    /// Logout - clear tokens and redirect to Authentik logout
-    pub fn logout(&self) {
-        clear_tokens();
-
-        // Redirect to Authentik end-session endpoint
-        let logout_url = format!(
-            "{}/application/o/{}/end-session/?post_logout_redirect_uri={}",
-            self.config.authentik_url,
-            self.config.client_id,
-            js_sys::encode_uri_component(&get_origin()),
-        );
-
-        if let Some(window) = web_sys::window() {
-            let _ = window.location().set_href(&logout_url);
-        }
     }
 }
 
