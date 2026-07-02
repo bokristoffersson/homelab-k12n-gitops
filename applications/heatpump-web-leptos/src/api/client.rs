@@ -5,7 +5,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use wasm_bindgen::JsValue;
 
-use crate::auth::{get_access_token, is_authenticated, needs_refresh, OAuthService};
+use crate::auth::{get_access_token, needs_refresh, OAuthService};
 
 /// API error types
 #[derive(Error, Debug, Clone)]
@@ -128,11 +128,6 @@ impl Default for ApiClient {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Check if user is authenticated
-pub fn check_authenticated() -> bool {
-    is_authenticated()
 }
 
 /// Get API URL from window.ENV or use default
