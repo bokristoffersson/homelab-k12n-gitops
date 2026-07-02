@@ -1,5 +1,5 @@
 # Stage 1: Build the Rust WASM application
-FROM rust:1.83 AS builder
+FROM rust:1.96 AS builder
 
 # Install wasm target and trunk
 RUN rustup target add wasm32-unknown-unknown && \
