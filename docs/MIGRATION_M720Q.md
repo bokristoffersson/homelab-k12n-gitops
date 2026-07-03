@@ -388,10 +388,42 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
        till en egen oscopad regel, behöll named get/update/patch
        (`gitops/apps/base/grafana/datasource-generator-rbac.yaml`). Applicerat
        live + PR.
-- [ ] **[Claude]** Återställ databaser från S3-dumpar (engångs-restore via
+- [x] **[Claude]** Återställ databaser från S3-dumpar (engångs-restore via
   `kubectl exec psql < dump` är OK — det är migrations, inte restores, som är
   GitOps): timescaledb, homelab-settings, backstage. Verifiera radantal mot
   förväntan.
+  → Klart 2026-07-03. Bo la upp färska dumpar samma kväll (de dagliga
+    cronjob-dumparna före dess var 20-byte-trasiga, jfr fas 0-noten). Restore
+    kördes via engångs-poddar (`postgres:16` + awscli, S3-creds återanvända från
+    respektive backup-secret; manifesten i scratchpad). Mönster: skala ner
+    writers → `DROP DATABASE ... WITH (FORCE)` + `CREATE` → restore in i tom DB →
+    skala upp. **0 fel** i alla tre.
+    - **timescaledb** (`telemetry-20260703-195704.sql.gz`, 116 MB gz / 825 MB):
+      plain `pg_dump` UTAN pre_restore-wrapping (dumpar `_timescaledb_internal`-
+      chunkar som råa tabeller), så restore kördes i `timescaledb_pre_restore()`-
+      läge in i en nydroppad DB (migreringsjobbets schema hade andra chunk-ID:n)
+      + `timescaledb_post_restore()` efteråt. Writers `timescaledb/redpanda-connect`
+      (sinken) + `spotprice/spotprice-api` nedskalade under tiden. Resultat:
+      energy_consumption **7 606 846** rader (2026-04-02 → 2026-07-03 19:57, ända
+      fram till backuptidpunkten), heatpump_status 221 903, temperature_sensors
+      1 420, spot_prices 1 632, apns_device_tokens 1, schema_migrations 7. 4
+      hypertables + 2 continuous aggregates (energy_daily_summary, energy_hourly)
+      med retention/refresh-policies aktiva.
+    - **homelab-settings** (`homelab_settings-20260703-200350.sql.gz`, 38 KB):
+      plain `pg_dump`. Writers api + outbox-processor + redpanda-connect
+      nedskalade. Resultat: outbox 1448 (703 published, 745 confirmed, inga
+      pending/failed), power_plugs 2, power_plug_schedules 5, settings 1,
+      schema_migrations 2.
+    - **backstage** (`backstage-20260703-195109.sql.gz`, 3.8 MB): `pg_dumpall`
+      (PR #132) — 13 databaser (backstage + 12 plugin-DB:er). Droppade befintliga
+      backstage*-DB:er, matade dumpall mot `postgres`-DB:n som superuser
+      `backstage`. Enda ERROR-raden var väntad `role "backstage" already exists`
+      (rollen finns via sealed secret). Alla 13 DB:er återställda (7-12 MB st),
+      catalog `final_entities` 15. App Ready 1/1 efteråt.
+    Alla appar uppskalade och Running efteråt; settings-api/outbox anslöt rent
+    till DB. **Obs (orelaterat):** settings-consumern loggar ännu
+    `UnknownTopicOrPartition` för `homelab-heatpump-telemetry` — Redpanda-topicen
+    är inte skapad på nya klustret ännu (rpk-topic-jobbet), separat från restoren.
 - [ ] **[Claude]** Återställ räddat state från fas 0 (Homebridge, Authelia, Pi-hole).
 - [ ] **[Claude]** Re-seala actions-runnerns kubeconfig — gamla innehållet pekar
   på p1.local:6443. Generera ny mot m720q, seala med `kubeseal --fetch-cert`
