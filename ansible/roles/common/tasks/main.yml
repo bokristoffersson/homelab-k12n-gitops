@@ -65,10 +65,19 @@
   community.general.ufw:
     state: enabled
 
-# --- SSH hardening (drop-in wins over cloud-init defaults) ---
-- name: Harden SSH via drop-in
+# --- SSH hardening ---
+# Must sort BEFORE 50-cloud-init.conf: sshd uses the FIRST value it reads for
+# each key, and cloud-init ships PasswordAuthentication yes. A 99- file loses
+# to it; a 00- file wins.
+- name: Remove stale 99- hardening drop-in (superseded by 00-)
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d/99-hardening.conf
+    state: absent
+  notify: Restart ssh
+
+- name: Harden SSH via drop-in (wins over cloud-init)
   ansible.builtin.copy:
-    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    dest: /etc/ssh/sshd_config.d/00-hardening.conf
     content: |
       PasswordAuthentication no
       PermitRootLogin no
