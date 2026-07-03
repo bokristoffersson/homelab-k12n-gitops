@@ -261,9 +261,33 @@ PSA-config: `enforce: baseline` globalt, `audit/warn: restricted`, undantag
 (Longhorn kräver privileged). **Ingen NoSchedule-taint** på control-plane —
 M720q ska köra alla workloads tills Pi:erna är med.
 
-- [ ] **[Claude]** Kör playbooken mot m720q.
-- [ ] **[Claude]** Verifiera: `ssh m720q 'sudo k3s kubectl get nodes'`,
+- [x] **[Claude]** Kör playbooken mot m720q.
+  → Klart 2026-07-03: `ok=32 changed=22 failed=0`. **OBS:** första körningen dog
+    direkt på `stdout_callback = yaml` i `ansible.cfg` — den callbacken togs bort
+    i community.general 12+ (vi kör 13.1.0). Bytt till `default` + `result_format
+    = yaml`. Bo satte upp NOPASSWD-sudoers manuellt (första försöket hade inte
+    landat i `/etc/sudoers.d/`); rollen hanterar den nu deklarativt framåt.
+    **Andra fyndet (härdningsbugg):** `PasswordAuthentication no` bet inte —
+    `sshd -T` visade fortfarande `yes`. sshd använder FÖRSTA värdet per nyckel,
+    och Ubuntus `50-cloud-init.conf` (`PasswordAuthentication yes`) läses före
+    vår `99-hardening.conf`. Fix: döpt om till `00-hardening.conf` (läses före
+    50-, vinner) + tar bort gamla 99-filen. **Applicerat 2026-07-03** efter att
+    Bo lagt in sin SSH-nyckel: `sshd -T` = `passwordauthentication no`,
+    lösenordsförsök ger nu `Permission denied (publickey)`, nyckel-login (Bo +
+    boxen) intakt.
+- [x] **[Claude]** Verifiera: `ssh m720q 'sudo k3s kubectl get nodes'`,
   ta manuell etcd-snapshot (`k3s etcd-snapshot save`) och bekräfta S3-uppladdning.
+  → Node **Ready**, `v1.36.2+k3s1`, roll `control-plane,etcd`. Verifierat i kraft:
+    `secrets-encryption` (Enabled, hashes match), `protect-kernel-defaults`,
+    audit.log skrivs (4.1M), **PSA enforce baseline** (privilegierad pod i
+    `default` blev Forbidden). NVMe-LVM monterat: `/var/lib/rancher` 196G +
+    `/var/lib/longhorn` 719G. Manuell etcd-snapshot sparad **lokalt**
+    (`manual-phase3-...`, 1.3M) — **S3-uppladdning väntar på creds** (etcd-s3
+    aktiveras automatiskt av config-templaten när `etcd_s3_access_key` fylls i
+    vaulten; region eu-north-1, bucket `k12n-homelab-db-backups`). De schemalagda
+    snapshotsen (cron 03:00, retention 14) körs av servern. `k3s etcd-snapshot`-
+    CLI:t loggar ofarliga "Unknown flag ... skipping" (subkommandot har färre
+    flaggor än `k3s server` — servern applicerar dem, bevisat ovan).
 - [ ] **[Bo]** Hämta kubeconfig till hosten och gör den till context, t.ex.:
   ```bash
   ssh bo@<m720q-ip> 'sudo cat /etc/rancher/k3s/k3s.yaml' \
