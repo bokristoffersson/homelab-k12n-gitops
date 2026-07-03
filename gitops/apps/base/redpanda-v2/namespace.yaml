@@ -2,3 +2,9 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: redpanda-v2
+  labels:
+    # Redpanda's "tuning" init container needs privileged + SYS_RESOURCE, which
+    # violates the cluster-global PSA `enforce: baseline` (set on the M720q k3s
+    # server). Pin this namespace to the privileged PSA level so the broker pod
+    # can be created. (No-op on clusters that don't enforce PSA.)
+    pod-security.kubernetes.io/enforce: privileged
