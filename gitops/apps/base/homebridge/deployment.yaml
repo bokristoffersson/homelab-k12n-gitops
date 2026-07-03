@@ -22,8 +22,6 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      nodeSelector:
-        kubernetes.io/hostname: p0
       initContainers:
         - name: setup
           image: homebridge/homebridge:2026-04-20
