@@ -359,6 +359,25 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
        i `ansible/roles/k3s-server/templates/config.yaml.j2` (ServiceLB behålls).
        Live-städning (k3s-omstart som avinstallerar addon:et) görs efter att
        trädet stabiliserat sig.
+  → **Ytterligare två fynd 2026-07-03 (fas 3 PSA + fas 0 nodeSelector-arv):**
+    5. **PSA `enforce: baseline` blockerar redpanda-v2 och homebridge:** fas 3
+       satte global PSA baseline med exemptions bara för `kube-system` +
+       `longhorn-system`. Men redpanda:s `tuning`-init-container (privileged +
+       SYS_RESOURCE) och homebridge (`hostNetwork: true` + hostPorts 51826/8581)
+       bryter mot baseline → poddarna kunde inte skapas (StatefulSet/ReplicaSet
+       `FailedCreate ... violates PodSecurity "baseline:latest"`). Fix: label
+       `pod-security.kubernetes.io/enforce: privileged` på båda namespacen
+       (`gitops/apps/base/{redpanda-v2,homebridge}/namespace.yaml`). Säkert i
+       shared base — labeln bara relaxar PSA, och gamla klustret enforcar ingen
+       PSA. Applicerat live för att låsa upp direkt; PR för durabilitet.
+    6. **Prometheus `nodeSelector: {hostname: p1}` (LÄMNAD kvar med flit):**
+       PR #133 pinnade Prometheus till p1 för att skydda gamla klustrets p0.
+       På nya (bara m720q) → Prometheus Pending, vilket håller `prometheus →
+       loki → alloy` icke-Ready. **Får INTE tas bort från shared base nu** —
+       gamla klustret syncar samma main och skulle då lägga Prometheus på p0
+       (96% CPU → redpanda-raft-strul). Tas bort som en del av fas 5-cutovern
+       (se fas 0-noten). Monitoring-stacken förblir alltså medvetet Pending på
+       nya klustret tills dess. Allt annat (auth, appar, dataväg) är opåverkat.
 - [ ] **[Claude]** Återställ databaser från S3-dumpar (engångs-restore via
   `kubectl exec psql < dump` är OK — det är migrations, inte restores, som är
   GitOps): timescaledb, homelab-settings, backstage. Verifiera radantal mot
