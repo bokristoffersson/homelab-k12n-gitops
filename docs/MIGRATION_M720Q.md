@@ -116,9 +116,12 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
   ut Homebridge-volymen (HomeKit-parningen!), Authelia-storage (TOTP),
   Pi-hole-config, ev. Grafana. Acceptera förlust av Loki-loggar och
   Redpanda-logg (topics återskapas av rpk-jobbet).
-- [ ] **[Bo]** Kartlägg IP-beroenden: vilken broker-IP pekar Shelly-sensorn på?
+- [x] **[Bo]** Kartlägg IP-beroenden: vilken broker-IP pekar Shelly-sensorn på?
   Pekar några klienter på Pi-hole som DNS? Bestäm ny IP-plan (DHCP-reservation
-  för M720q; peka om devices vid cutover i fas 5).
+  för M720q; peka om devices vid cutover i fas 5). → Shelly-sensorn kör DHCP,
+  ingen hårdkodad DNS/broker-IP hittad. DHCP-reservationer 192.168.50.210/.211
+  inlagda i routern; DNS manuellt satt på de klienter som inte respekterar
+  DHCP-DNS (vanligt för vissa smart-TV/IoT/enheter med private DNS).
 - [x] **[Bo]** Bygg om claude-boxen så nya verktygen finns:
   ```bash
   cd ~/Development/apple-container
