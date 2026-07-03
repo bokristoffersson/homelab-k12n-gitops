@@ -334,6 +334,31 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
        Controllern (v0.32.2) registrerade alla 9 återställda nycklar → sealed
        secrets dekrypteras. (Framtida fresh-bootstraps: överväg att flytta
        sealed-secrets till `infrastructure-crds` så CRD:n finns före CR:erna.)
+    3. **DNS-deadlock (pihole hostPort :53 kapar nodens egen DNS):** k3s
+       ServiceLB (klipper) binder hostPort 53 på noden för pihole:s
+       LoadBalancer-service (`pihole-dns`). Med `net.ipv4.conf.all.route_localnet=1`
+       (kube-proxy-default) DNAT:as ALLA `udp/tcp dport 53` — inklusive nodens
+       frågor till systemd-resolved-stubben `127.0.0.53:53` — till pihole-poden.
+       På ett kallt kluster körs pihole inte (ImagePullBackOff) → nodens DNS ger
+       "connection refused" → containerd kan inte pulla NÅGRA images (cert-manager,
+       traefik, grafana, cloudflared, prometheus, pihole själv) → deadlock.
+       Symptom: `getent hosts ghcr.io` = FAIL men `resolvectl query` (D-Bus,
+       bypassar :53) funkar. **Löst engångsvis:** `flux suspend kustomization
+       pihole` + `kubectl delete svc pihole-dns -n pihole` → svclb släpper :53 →
+       stub-DNS (→1.1.1.1) funkar → alla images pullas (pihole-imagen cachas på
+       noden) → pihole-poden startar → `flux resume kustomization pihole` sist.
+       **Varför bara ett engångsproblem:** efter första pullen är alla images
+       cachade i containerd, så vid reboot (t.ex. BIOS auto-power-on) startar
+       pihole från cache utan registry-DNS, varefter nodens DNS går via en körande
+       pihole. Kall bootstrap med tom image-cache är enda tillfället deadlocken slår.
+    4. **k3s:s bundlade Traefik krockar med Flux-traefiken:** repot kör egen
+       Traefik via Flux-HelmRelease (namespace `traefik`, chart 38.0.1), men
+       k3s-config-templaten disable:ade inte k3s egen Traefik → k3s installerar
+       sin bundlade (kube-system, helm.cattle.io) som slåss om Traefik-CRD:erna
+       och crashloopar `helm-install-traefik`-jobbet. Fix: `disable: [traefik]`
+       i `ansible/roles/k3s-server/templates/config.yaml.j2` (ServiceLB behålls).
+       Live-städning (k3s-omstart som avinstallerar addon:et) görs efter att
+       trädet stabiliserat sig.
 - [ ] **[Claude]** Återställ databaser från S3-dumpar (engångs-restore via
   `kubectl exec psql < dump` är OK — det är migrations, inte restores, som är
   GitOps): timescaledb, homelab-settings, backstage. Verifiera radantal mot
