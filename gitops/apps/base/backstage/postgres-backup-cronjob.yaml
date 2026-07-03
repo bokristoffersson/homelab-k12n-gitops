@@ -25,7 +25,7 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  set -e
+                  set -eo pipefail
 
                   # Install AWS CLI
                   echo "Installing AWS CLI..."
@@ -37,15 +37,28 @@ spec:
                   S3_KEY="${S3_PREFIX}/backstage-${TIMESTAMP}.sql.gz"
 
                   echo "Starting backup..."
-                  echo "Database: ${PGDATABASE}"
                   echo "S3 Destination: s3://${S3_BUCKET}/${S3_KEY}"
 
-                  # Create and compress backup
-                  pg_dump -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE -F p -b | gzip > "$BACKUP_FILE"
+                  # Backstage uses one database per plugin (backstage_plugin_catalog,
+                  # backstage_plugin_auth, etc.), not the single "backstage" database -
+                  # pg_dumpall dumps every database plus roles in one pass, so new
+                  # plugin databases get picked up automatically.
+                  pg_dumpall -h $PGHOST -p $PGPORT -U $PGUSER | gzip > "$BACKUP_FILE"
 
                   # Show backup info
                   echo "Backup created: $BACKUP_FILE"
                   ls -lh "$BACKUP_FILE"
+
+                  # Sanity check: a real dump of 13+ databases is never this
+                  # small. Catches silent failures (e.g. bad credentials)
+                  # that pipefail alone wouldn't - gzip still exits 0 on an
+                  # empty stream.
+                  MIN_BYTES=2048
+                  ACTUAL_BYTES=$(stat -c%s "$BACKUP_FILE")
+                  if [ "$ACTUAL_BYTES" -lt "$MIN_BYTES" ]; then
+                    echo "ERROR: backup file is suspiciously small (${ACTUAL_BYTES} bytes, expected >= ${MIN_BYTES})"
+                    exit 1
+                  fi
 
                   # Upload to S3
                   echo "Uploading to S3..."
@@ -76,11 +89,6 @@ spec:
                     secretKeyRef:
                       name: backstage-postgres-secret
                       key: POSTGRES_PASSWORD
-                - name: PGDATABASE
-                  valueFrom:
-                    secretKeyRef:
-                      name: backstage-postgres-secret
-                      key: POSTGRES_DB
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
