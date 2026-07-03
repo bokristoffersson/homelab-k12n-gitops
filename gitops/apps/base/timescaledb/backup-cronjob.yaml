@@ -25,7 +25,7 @@ spec:
                 - /bin/bash
                 - -c
                 - |
-                  set -e
+                  set -eo pipefail
 
                   # Install AWS CLI
                   echo "Installing AWS CLI..."
@@ -47,6 +47,16 @@ spec:
                   echo "Backup created: $BACKUP_FILE"
                   ls -lh "$BACKUP_FILE"
 
+                  # Sanity check: a real dump is never this small. Catches
+                  # silent failures (e.g. bad credentials) that pipefail
+                  # alone wouldn't - gzip still exits 0 on an empty stream.
+                  MIN_BYTES=1024
+                  ACTUAL_BYTES=$(stat -c%s "$BACKUP_FILE")
+                  if [ "$ACTUAL_BYTES" -lt "$MIN_BYTES" ]; then
+                    echo "ERROR: backup file is suspiciously small (${ACTUAL_BYTES} bytes, expected >= ${MIN_BYTES})"
+                    exit 1
+                  fi
+
                   # Upload to S3
                   echo "Uploading to S3..."
                   aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/${S3_KEY}" --region $AWS_REGION
@@ -67,9 +77,15 @@ spec:
                 - name: PGPORT
                   value: "5432"
                 - name: PGUSER
-                  value: postgres
+                  valueFrom:
+                    secretKeyRef:
+                      name: timescaledb-credentials
+                      key: POSTGRES_USER
                 - name: PGPASSWORD
-                  value: postgres
+                  valueFrom:
+                    secretKeyRef:
+                      name: timescaledb-credentials
+                      key: POSTGRES_PASSWORD
                 - name: PGDATABASE
                   value: telemetry
                 - name: AWS_ACCESS_KEY_ID
