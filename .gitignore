@@ -42,3 +42,8 @@ scripts/.venv-mcp/
 
 # Claude Code agent worktrees / local state
 .claude/
+
+# Ansible (M720q migration) — ephemeral collections + real secrets
+ansible/collections/
+ansible/group_vars/all/vault.yml
+ansible/*.retry

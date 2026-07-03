@@ -1,0 +1,17 @@
+# Migration inventory for the M720q homelab cluster.
+# NOTE: mDNS/.local does not resolve inside the claude-box — always use IPs here.
+all:
+  vars:
+    ansible_user: bo
+    # Reused key for all nodes (persistent ssh volume in the box)
+    ansible_ssh_private_key_file: ~/.ssh/id_p1
+  children:
+    server:
+      hosts:
+        m720q:
+          ansible_host: 192.168.50.212
+    agent:
+      # p0/p1 are added here in phase 5 once reinstalled as agents, e.g.:
+      #   p0: { ansible_host: 192.168.50.210 }
+      #   p1: { ansible_host: 192.168.50.211 }
+      hosts: {}

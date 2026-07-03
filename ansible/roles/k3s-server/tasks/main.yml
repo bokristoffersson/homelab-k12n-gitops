@@ -1,0 +1,71 @@
+---
+- name: Create k3s config directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Create k3s server dirs (config targets + audit log)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  loop:
+    - /var/lib/rancher/k3s/server
+    - /var/lib/rancher/k3s/server/logs
+
+- name: Deploy PodSecurity admission config
+  ansible.builtin.template:
+    src: psa.yaml.j2
+    dest: /var/lib/rancher/k3s/server/psa.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart k3s
+
+- name: Deploy audit policy
+  ansible.builtin.template:
+    src: audit-policy.yaml.j2
+    dest: /var/lib/rancher/k3s/server/audit-policy.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart k3s
+
+- name: Deploy k3s server config
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart k3s
+
+- name: Download k3s install script
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /usr/local/bin/k3s-install.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install k3s server (pinned version, reads /etc/rancher/k3s/config.yaml)
+  ansible.builtin.command:
+    cmd: /usr/local/bin/k3s-install.sh
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    INSTALL_K3S_EXEC: "server"
+
+- name: Wait for the node to be Ready
+  ansible.builtin.command:
+    cmd: k3s kubectl get nodes {{ inventory_hostname }} --no-headers
+  register: node_ready
+  changed_when: false
+  retries: 30
+  delay: 10
+  until: node_ready.rc == 0 and 'Ready' in node_ready.stdout and 'NotReady' not in node_ready.stdout

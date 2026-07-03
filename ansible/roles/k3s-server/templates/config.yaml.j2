@@ -1,0 +1,30 @@
+# Managed by Ansible (roles/k3s-server) — do not edit by hand.
+cluster-init: true
+secrets-encryption: true
+protect-kernel-defaults: true
+{% if k3s_token is defined and k3s_token and k3s_token != "CHANGE-ME-long-random-string" %}
+token: "{{ k3s_token }}"
+{% endif %}
+# No NoSchedule taint on the control-plane: m720q runs all workloads until the Pis rejoin.
+tls-san:
+  - {{ k3s_api_ip }}
+kube-apiserver-arg:
+  - admission-control-config-file=/var/lib/rancher/k3s/server/psa.yaml
+  - audit-log-path=/var/lib/rancher/k3s/server/logs/audit.log
+  - audit-policy-file=/var/lib/rancher/k3s/server/audit-policy.yaml
+  - audit-log-maxage=30
+  - audit-log-maxbackup=10
+  - audit-log-maxsize=100
+kube-controller-manager-arg:
+  - terminated-pod-gc-threshold=10
+etcd-snapshot-schedule-cron: "0 3 * * *"
+etcd-snapshot-retention: 14
+{% if etcd_s3_access_key is defined and etcd_s3_access_key and etcd_s3_access_key != "CHANGE-ME" %}
+etcd-s3: true
+etcd-s3-endpoint: "{{ etcd_s3_endpoint }}"
+etcd-s3-region: "{{ etcd_s3_region }}"
+etcd-s3-bucket: "{{ etcd_s3_bucket }}"
+etcd-s3-folder: "{{ etcd_s3_folder }}"
+etcd-s3-access-key: "{{ etcd_s3_access_key }}"
+etcd-s3-secret-key: "{{ etcd_s3_secret_key }}"
+{% endif %}

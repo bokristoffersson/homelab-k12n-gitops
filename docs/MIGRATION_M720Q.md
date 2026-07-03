@@ -13,12 +13,14 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
 
 | Fråga | Beslut |
 |---|---|
-| OS | Ubuntu Server 24.04 LTS (alla noder) |
+| OS | Ubuntu Server 26.04 LTS (alla noder) — reviderat 2026-07-03 från 24.04; Bo installerade 26.04 (giltig nyare LTS) |
 | Migreringsstrategi | Nytt kluster + Flux-bootstrap mot samma repo; data återställs från S3-dumpar |
 | Datastore | Inbäddad etcd (`cluster-init: true`), snapshots till S3 |
 | Arkitektur | Multi-arch-images (amd64 + arm64) så workloads kan köra på M720q |
 | Provisionering | Ansible i `ansible/` i detta repo, baserat på k3s-io/k3s-ansible |
 | Härdning | k3s CIS hardening guide (protect-kernel-defaults, secrets-encryption, audit-logg, PSA) |
+| Ansible become | Passwordless sudo för `bo` på noderna (NOPASSWD sudoers-fil, Bo lägger in); playbooks körs utan `--ask-become-pass` |
+| k3s-version | `v1.36.2+k3s1` (stable-kanalen 2026-07-03) — pinnad i ansible |
 
 ## Hårdvara
 
@@ -142,30 +144,46 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
 
 ## Fas 1 — M720q: fysisk setup + OS  *(Claude instruerar, Bo utför)*
 
-- [ ] **[Bo]** Skapa USB-sticka med **Ubuntu Server 24.04 LTS (amd64)** —
+- [x] **[Bo]** Skapa USB-sticka med **Ubuntu Server 24.04 LTS (amd64)** —
   ladda ner ISO, skriv med balenaEtcher eller
   `sudo dd if=ubuntu-24.04-live-server-amd64.iso of=/dev/diskN bs=4m`.
-- [ ] **[Bo]** BIOS på M720q (F1 vid boot):
+  → Bo installerade **Ubuntu Server 26.04 LTS** (nyare LTS, släppt apr 2026),
+  inte 24.04. Avviker från beslutstabellen men 26.04 är en giltig LTS; k3s och
+  ansible-rollerna påverkas inte nämnvärt. Justera versionsreferenser i
+  ansible/fas 2 därefter.
+- [x] **[Bo]** BIOS på M720q (F1 vid boot):
   - **Power → After Power Loss: Power On** (homelab-krav: startar själv efter strömavbrott)
   - Boot order: USB först (tillfälligt)
   - Intel VT-x/VT-d: enabled
   - Secure Boot: kan vara på (Ubuntu stödjer det)
-- [ ] **[Bo]** Installera Ubuntu på **SATA-SSD:n** (välj rätt disk — INTE NVMe:n!):
+  → Bekräftat av Bo 2026-07-03 (kan ej verifieras via SSH).
+- [x] **[Bo]** Installera Ubuntu på **SATA-SSD:n** (välj rätt disk — INTE NVMe:n!):
   - Hostname: `m720q`, användare: `bo`
   - "Install OpenSSH server": JA; importera gärna SSH-nyckel från GitHub
   - Ingen extra snap-paketering behövs
-- [ ] **[Bo]** DHCP-reservation för M720q i routern; notera IP:t här: `______`
-- [ ] **[Bo]** Lägg in claude-boxens pubnyckel så Ansible når maskinen:
+  → Klart: OS på `sda` (SATA-SSD, 238.5G, LVM `ubuntu-vg`, root 100G). NVMe
+  (`nvme0n1`, 931.5G) helt tom. **OBS:** installern la bara 100G i root-LV:t —
+  ~135G i vg:n är oallokerat, men det spelar ingen roll eftersom etcd/containerd
+  + Longhorn hamnar på NVMe:n (fas 2).
+- [x] **[Bo]** M720q-IP: **`192.168.50.212`** (nästa efter Pi:erna .210/.211).
+  Satt statiskt i Ubuntu-installern (Manual IPv4: 192.168.50.0/24, gateway
+  192.168.50.1, DNS 1.1.1.1/8.8.8.8 — INTE Pi-hole, undvik kyckling-och-ägg vid
+  boot). Lägg ändå in en DHCP-reservation för .212 i routern så poolen aldrig
+  delar ut den. Detta IP ska in i k3s `tls-san` (fas 3) och ansible-inventory.
+- [x] **[Bo]** Lägg in claude-boxens pubnyckel så Ansible når maskinen:
   ```bash
   cd ~/Development/apple-container
   ./claude-box.sh ssh-setup pubkey | ssh bo@<m720q-ip> 'cat >> ~/.ssh/authorized_keys'
   ```
-- [ ] **[Claude]** Lägg till `m720q` i `~/.ssh/config` i boxen (IP från ovan) och
+  → Bekräftat: `ssh m720q` funkar nyckelbaserat från boxen.
+- [x] **[Claude]** Lägg till `m720q` i `~/.ssh/config` i boxen (IP från ovan) och
   verifiera `ssh m720q 'hostname && lsblk'` — kontrollera att NVMe:n syns.
+  → Klart 2026-07-03: SSH-config uppdaterad, `ssh m720q` ger hostname `m720q`,
+  arch `x86_64`, NVMe 931.5G tom och synlig.
 
 ## Fas 2 — Ansible-struktur
 
-- [ ] **[Claude]** Skapa `ansible/` i detta repo (egen feature-branch/PR):
+- [x] **[Claude]** Skapa `ansible/` i detta repo (egen feature-branch/PR):
   ```
   ansible/
   ├── ansible.cfg            # collections_path = ./collections
@@ -177,21 +195,42 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
       ├── k3s-server/
       └── k3s-agent/
   ```
-- [ ] **[Claude]** `common`-rollen:
+  → Klart 2026-07-03. Även `nvme-storage`-roll, `group_vars/all/` (main + vault-
+  example), `.ansible-lint`, README. Secrets (k3s-token, etcd-S3-creds) i
+  gitignorerad `group_vars/all/vault.yml` — `vault.yml.example` committad. Collections
+  (ansible.posix 2.2.1, community.general 13.1.0) i `./collections` (gitignorerat).
+- [x] **[Claude]** `common`-rollen:
   - ufw: allow 22/tcp (LAN), 6443/tcp (LAN), 10250/tcp + 8472/udp (endast klusternoder),
     servicelb-portar för Mosquitto m.m. från LAN; default deny incoming
   - SSH-härdning: `PasswordAuthentication no`, `PermitRootLogin no`
   - unattended-upgrades
   - `/etc/sysctl.d/90-kubelet.conf` (krävs av `protect-kernel-defaults`):
     `vm.panic_on_oom=0`, `kernel.panic=10`, `kernel.panic_on_oops=1`
-- [ ] **[Claude]** Disklayout-tasks (eller engångskörning) för NVMe via LVM:
+  → Klart. ufw-servicelb-portar bekräftade mot repots LoadBalancer-services:
+    1883/tcp (mosquitto), 53 tcp+udp (pihole). Traefik 80/443 lämnade stängda
+    (Cloudflare Tunnel är primär ingress) — kommenterade i `servicelb_lan_ports`.
+    SSH-härdning som drop-in (`99-hardening.conf`) för att vinna över cloud-init.
+    Full k3s-sysctl-set (även `vm.overcommit_memory=1` + `kernel.keys.root_max*`
+    som k3s protect-kernel-defaults faktiskt kräver, utöver de 3 i listan ovan).
+    Hanterar även NOPASSWD-sudoers för `bo` (`/etc/sudoers.d/90-bo-nopasswd`,
+    `visudo -cf`-validerad) — idempotent, ger p0/p1 samma i fas 5. Bo satte
+    dessutom upp det manuellt på m720q 2026-07-03 för att bootstrappa.
+- [x] **[Claude]** Disklayout-tasks (eller engångskörning) för NVMe via LVM:
   - `~200G` → `/var/lib/rancher` (etcd + containerd på NVMe)
   - resten (~730G) → `/var/lib/longhorn`
   - fstab-entries, ext4
-- [ ] **[Claude]** `k3s-server`-rollen: k3s-binär (pinnad version — slå upp aktuell
+  → Klart i `nvme-storage`-rollen (LVM vg `data-vg` på `/dev/nvme0n1`, rancher-LV
+    200g + longhorn-LV 100%FREE, ext4, `ansible.posix.mount` = mount+fstab). Körs
+    FÖRE k3s-server i site.yml. **VARNING i rollen:** wipe:ar nvme0n1 (bekräftat tom).
+- [x] **[Claude]** `k3s-server`-rollen: k3s-binär (pinnad version — slå upp aktuell
   stabil), `/etc/rancher/k3s/config.yaml` + audit-policy + PSA-config
   (se fas 3), systemd-enhet, token-hantering.
-- [ ] **[Claude]** Kör `ansible-lint` rent innan PR.
+  → Klart. Pinnad `v1.36.2+k3s1` (stable-kanalen 2026-07-03). config/psa/audit
+    som templates. etcd-S3 aktiveras bara när creds finns (annars lokala snapshots),
+    så första bootstrap funkar utan secrets. Token valfri via vault (k3s genererar
+    annars). Install via get.k3s.io + `INSTALL_K3S_VERSION`; väntar på Node Ready.
+- [x] **[Claude]** Kör `ansible-lint` rent innan PR.
+  → Passerar på **production**-profilen (0 failures, 10 filer).
 
 ## Fas 3 — Härdad k3s-server på M720q
 

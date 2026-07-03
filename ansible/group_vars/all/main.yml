@@ -1,0 +1,27 @@
+---
+# Non-secret shared variables. Secrets live in vault.yml (gitignored); see vault.yml.example.
+
+# --- k3s ---
+k3s_version: "v1.36.2+k3s1"   # stable channel as of 2026-07-03
+k3s_api_ip: "192.168.50.212"  # m720q
+k3s_api_port: 6443
+
+# --- LAN ---
+lan_cidr: "192.168.50.0/24"
+
+# Cluster node IPs allowed to reach kubelet (10250/tcp) and flannel VXLAN (8472/udp).
+# p0/p1 are appended here in phase 5.
+cluster_node_ips:
+  - "192.168.50.212"   # m720q
+  # - "192.168.50.210" # p0 (phase 5)
+  # - "192.168.50.211" # p1 (phase 5)
+
+# servicelb (klipper) ports that LAN clients hit directly on the node.
+# Cloudflare Tunnel is the primary ingress path, so traefik 80/443 stay closed
+# by default — uncomment only if LAN-direct ingress is wanted.
+servicelb_lan_ports:
+  - { port: 1883, proto: tcp }   # mosquitto MQTT (Shelly sensor after cutover)
+  - { port: 53, proto: tcp }     # pihole DNS
+  - { port: 53, proto: udp }     # pihole DNS
+  # - { port: 80, proto: tcp }   # traefik http
+  # - { port: 443, proto: tcp }  # traefik https

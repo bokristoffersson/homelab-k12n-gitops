@@ -1,0 +1,4 @@
+---
+# Vendored galaxy collections (ephemeral, gitignored) are not ours to lint.
+exclude_paths:
+  - collections/
