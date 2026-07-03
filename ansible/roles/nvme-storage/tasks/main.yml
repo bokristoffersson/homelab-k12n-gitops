@@ -1,0 +1,51 @@
+---
+# Lays out the NVMe as LVM and mounts it BEFORE k3s installs, so etcd/containerd
+# (/var/lib/rancher) and Longhorn (/var/lib/longhorn) land on the fast disk.
+- name: Ensure LVM tooling present
+  ansible.builtin.apt:
+    name: lvm2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create volume group on the NVMe
+  community.general.lvg:
+    vg: "{{ nvme_vg }}"
+    pvs: "{{ nvme_device }}"
+
+- name: Create rancher LV (etcd + containerd)
+  community.general.lvol:
+    vg: "{{ nvme_vg }}"
+    lv: rancher
+    size: "{{ nvme_rancher_lv_size }}"
+
+- name: Create longhorn LV (rest of the disk)
+  community.general.lvol:
+    vg: "{{ nvme_vg }}"
+    lv: longhorn
+    size: "100%FREE"
+    shrink: false
+
+- name: Make ext4 filesystems
+  community.general.filesystem:
+    fstype: ext4
+    dev: "/dev/{{ nvme_vg }}/{{ item }}"
+  loop:
+    - rancher
+    - longhorn
+
+- name: Mount k3s data dir (/var/lib/rancher)
+  ansible.posix.mount:
+    path: /var/lib/rancher
+    src: "/dev/{{ nvme_vg }}/rancher"
+    fstype: ext4
+    opts: defaults
+    state: mounted
+
+- name: Mount Longhorn data dir (/var/lib/longhorn)
+  ansible.posix.mount:
+    path: /var/lib/longhorn
+    src: "/dev/{{ nvme_vg }}/longhorn"
+    fstype: ext4
+    opts: defaults
+    state: mounted

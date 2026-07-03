@@ -1,0 +1,20 @@
+---
+# Copy to vault.yml, fill in real values, then encrypt:
+#   cp vault.yml.example vault.yml && $EDITOR vault.yml
+#   ansible-vault encrypt group_vars/all/vault.yml
+# vault.yml is gitignored — NEVER commit real secrets.
+# Run playbooks with --ask-vault-pass (or a vault password file).
+
+# Shared cluster join token. k3s auto-generates one if left unset, but set it
+# explicitly so phase-5 agents can join deterministically. Any long random string.
+k3s_token: "CHANGE-ME-long-random-string"
+
+# etcd snapshot S3 target — same bucket as the pg-dump backups.
+# If etcd_s3_access_key is left as CHANGE-ME the server still bootstraps with
+# LOCAL snapshots only (etcd-s3 stays disabled); fill these in to enable S3 upload.
+etcd_s3_endpoint: "s3.amazonaws.com"
+etcd_s3_region: "eu-north-1"                 # TODO: confirm bucket region
+etcd_s3_bucket: "k12n-homelab-db-backups"
+etcd_s3_folder: "etcd-snapshots"
+etcd_s3_access_key: "CHANGE-ME"
+etcd_s3_secret_key: "CHANGE-ME"

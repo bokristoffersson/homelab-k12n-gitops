@@ -1,0 +1,19 @@
+---
+- name: Base OS hardening (all nodes)
+  hosts: all
+  become: true
+  roles:
+    - common
+
+- name: K3s control-plane (server)
+  hosts: server
+  become: true
+  roles:
+    - nvme-storage
+    - k3s-server
+
+- name: K3s agents
+  hosts: agent
+  become: true
+  roles:
+    - k3s-agent

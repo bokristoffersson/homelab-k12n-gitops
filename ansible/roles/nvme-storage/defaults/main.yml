@@ -1,0 +1,6 @@
+---
+# WARNING: nvme_device is wiped into an LVM PV. Confirmed empty on m720q
+# (nvme0n1, 931.5G, no partitions/filesystem) before writing this role.
+nvme_device: "/dev/nvme0n1"
+nvme_vg: "data-vg"
+nvme_rancher_lv_size: "200g"   # etcd + containerd; rest of the disk goes to longhorn

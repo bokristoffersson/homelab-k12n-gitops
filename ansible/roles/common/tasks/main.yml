@@ -1,0 +1,97 @@
+---
+# --- Firewall (ufw): default-deny incoming, explicit LAN/cluster allows ---
+- name: Install ufw
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Default deny incoming
+  community.general.ufw:
+    direction: incoming
+    policy: deny
+
+- name: Default allow outgoing
+  community.general.ufw:
+    direction: outgoing
+    policy: allow
+
+- name: Allow SSH from LAN
+  community.general.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+    src: "{{ lan_cidr }}"
+
+- name: Allow kube-apiserver from LAN
+  community.general.ufw:
+    rule: allow
+    port: "{{ k3s_api_port }}"
+    proto: tcp
+    src: "{{ lan_cidr }}"
+
+- name: Allow kubelet (10250/tcp) and flannel VXLAN (8472/udp) from cluster nodes
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.1.port }}"
+    proto: "{{ item.1.proto }}"
+    src: "{{ item.0 }}"
+  loop: "{{ cluster_node_ips | product([{'port': 10250, 'proto': 'tcp'}, {'port': 8472, 'proto': 'udp'}]) | list }}"
+  loop_control:
+    label: "{{ item.0 }}:{{ item.1.port }}/{{ item.1.proto }}"
+
+- name: Allow servicelb ports from LAN
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    src: "{{ lan_cidr }}"
+  loop: "{{ servicelb_lan_ports }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto }}"
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled
+
+# --- SSH hardening (drop-in wins over cloud-init defaults) ---
+- name: Harden SSH via drop-in
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin no
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart ssh
+
+# --- Unattended security upgrades ---
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+
+- name: Enable periodic unattended-upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: "0644"
+
+# --- Kernel sysctls required by protect-kernel-defaults ---
+- name: Apply kubelet sysctls
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-kubelet.conf
+    sysctl_set: true
+    reload: true
+  loop: "{{ common_kernel_sysctls | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"

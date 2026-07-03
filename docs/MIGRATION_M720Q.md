@@ -13,12 +13,14 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
 
 | Fråga | Beslut |
 |---|---|
-| OS | Ubuntu Server 24.04 LTS (alla noder) |
+| OS | Ubuntu Server 26.04 LTS (alla noder) — reviderat 2026-07-03 från 24.04; Bo installerade 26.04 (giltig nyare LTS) |
 | Migreringsstrategi | Nytt kluster + Flux-bootstrap mot samma repo; data återställs från S3-dumpar |
 | Datastore | Inbäddad etcd (`cluster-init: true`), snapshots till S3 |
 | Arkitektur | Multi-arch-images (amd64 + arm64) så workloads kan köra på M720q |
 | Provisionering | Ansible i `ansible/` i detta repo, baserat på k3s-io/k3s-ansible |
 | Härdning | k3s CIS hardening guide (protect-kernel-defaults, secrets-encryption, audit-logg, PSA) |
+| Ansible become | Passwordless sudo för `bo` på noderna (NOPASSWD sudoers-fil, Bo lägger in); playbooks körs utan `--ask-become-pass` |
+| k3s-version | `v1.36.2+k3s1` (stable-kanalen 2026-07-03) — pinnad i ansible |
 
 ## Hårdvara
 
@@ -181,7 +183,7 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
 
 ## Fas 2 — Ansible-struktur
 
-- [ ] **[Claude]** Skapa `ansible/` i detta repo (egen feature-branch/PR):
+- [x] **[Claude]** Skapa `ansible/` i detta repo (egen feature-branch/PR):
   ```
   ansible/
   ├── ansible.cfg            # collections_path = ./collections
@@ -193,21 +195,39 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
       ├── k3s-server/
       └── k3s-agent/
   ```
-- [ ] **[Claude]** `common`-rollen:
+  → Klart 2026-07-03. Även `nvme-storage`-roll, `group_vars/all/` (main + vault-
+  example), `.ansible-lint`, README. Secrets (k3s-token, etcd-S3-creds) i
+  gitignorerad `group_vars/all/vault.yml` — `vault.yml.example` committad. Collections
+  (ansible.posix 2.2.1, community.general 13.1.0) i `./collections` (gitignorerat).
+- [x] **[Claude]** `common`-rollen:
   - ufw: allow 22/tcp (LAN), 6443/tcp (LAN), 10250/tcp + 8472/udp (endast klusternoder),
     servicelb-portar för Mosquitto m.m. från LAN; default deny incoming
   - SSH-härdning: `PasswordAuthentication no`, `PermitRootLogin no`
   - unattended-upgrades
   - `/etc/sysctl.d/90-kubelet.conf` (krävs av `protect-kernel-defaults`):
     `vm.panic_on_oom=0`, `kernel.panic=10`, `kernel.panic_on_oops=1`
-- [ ] **[Claude]** Disklayout-tasks (eller engångskörning) för NVMe via LVM:
+  → Klart. ufw-servicelb-portar bekräftade mot repots LoadBalancer-services:
+    1883/tcp (mosquitto), 53 tcp+udp (pihole). Traefik 80/443 lämnade stängda
+    (Cloudflare Tunnel är primär ingress) — kommenterade i `servicelb_lan_ports`.
+    SSH-härdning som drop-in (`99-hardening.conf`) för att vinna över cloud-init.
+    Full k3s-sysctl-set (även `vm.overcommit_memory=1` + `kernel.keys.root_max*`
+    som k3s protect-kernel-defaults faktiskt kräver, utöver de 3 i listan ovan).
+- [x] **[Claude]** Disklayout-tasks (eller engångskörning) för NVMe via LVM:
   - `~200G` → `/var/lib/rancher` (etcd + containerd på NVMe)
   - resten (~730G) → `/var/lib/longhorn`
   - fstab-entries, ext4
-- [ ] **[Claude]** `k3s-server`-rollen: k3s-binär (pinnad version — slå upp aktuell
+  → Klart i `nvme-storage`-rollen (LVM vg `data-vg` på `/dev/nvme0n1`, rancher-LV
+    200g + longhorn-LV 100%FREE, ext4, `ansible.posix.mount` = mount+fstab). Körs
+    FÖRE k3s-server i site.yml. **VARNING i rollen:** wipe:ar nvme0n1 (bekräftat tom).
+- [x] **[Claude]** `k3s-server`-rollen: k3s-binär (pinnad version — slå upp aktuell
   stabil), `/etc/rancher/k3s/config.yaml` + audit-policy + PSA-config
   (se fas 3), systemd-enhet, token-hantering.
-- [ ] **[Claude]** Kör `ansible-lint` rent innan PR.
+  → Klart. Pinnad `v1.36.2+k3s1` (stable-kanalen 2026-07-03). config/psa/audit
+    som templates. etcd-S3 aktiveras bara när creds finns (annars lokala snapshots),
+    så första bootstrap funkar utan secrets. Token valfri via vault (k3s genererar
+    annars). Install via get.k3s.io + `INSTALL_K3S_VERSION`; väntar på Node Ready.
+- [x] **[Claude]** Kör `ansible-lint` rent innan PR.
+  → Passerar på **production**-profilen (0 failures, 10 filer).
 
 ## Fas 3 — Härdad k3s-server på M720q
 
