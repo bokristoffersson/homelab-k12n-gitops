@@ -473,8 +473,31 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     precis som förr — inga workflows kör kubectl idag (bara bygg/push), men om det
     införs vore en scopad ServiceAccount-token (bara deployments patch/restart)
     säkrare än admin i CI-monterad secret. Lämnad som ev. fas 6-härdning.
-- [ ] **[Claude]** Smoke-test via port-forward: homelab-api, heatpump-web,
+- [x] **[Claude]** Smoke-test via port-forward: homelab-api, heatpump-web,
   Grafana, Authelia-login.
+  → Klart 2026-07-03. Kört som interna Service-anrop (curl-pod i klustret) i
+    stället för port-forward — testar Service→pod och kringgår auth, vilket är
+    poängen med ett app-smoke-test. Alla gröna:
+    - **homelab-api**: `/health` 200 "OK"; `/api/v1/energy/latest` utan token
+      → **401** (auth-middleware + routing funkar); startlogg "Connected to
+      database" + "listening on 0.0.0.0:8080". DB-datan verifierad separat vid
+      restoren (7,6M rader).
+    - **heatpump-web**: `/` 200, serverar SPA:n (`<title>Heatpump Monitor</title>`,
+      `id="root"`).
+    - **grafana**: `/api/health` → `{"database":"ok","version":"11.1.0"}` (appen
+      + återställd grafana.db friska).
+    - **authelia**: `/api/health` 200 `{"status":"OK"}`; OIDC-discovery
+      `/.well-known/openid-configuration` → 200 med rätt `X-Forwarded-Proto: https`
+      (issuer `https://auth.k12n.com`, korrekta authorization/token/jwks/userinfo-
+      endpoints). Utan headern ger Authelia medvetet 400 ("invalid X-Forwarded-Proto
+      'http'") — den serverar OIDC bara över https, och Traefik/Cloudflare sätter
+      headern i den riktiga vägen. Config-as-code OIDC-providern är alltså laddad.
+    Fullständig interaktiv Authelia-login (browser + TOTP) hör till fas 5:s externa
+    verifiering via Cloudflare-tunneln; backend + OIDC + återställd TOTP-storage är
+    bevisat uppe här.
+
+**Fas 4 klar.** Kvarstår före fas 5: skapa Redpanda-topicen `homelab-heatpump-telemetry`
+(rpk-topic-jobbet) — settings-consumern loggar `UnknownTopicOrPartition` tills dess.
 
 ## Fas 5 — Cutover + Pi:erna som agenter
 
