@@ -31,13 +31,17 @@ spec:
 
     prometheus:
       prometheusSpec:
-        # nodeSelector removed for the M720q migration (single control-plane
-        # node during Fas 0-4). It previously pinned Prometheus to p1 because
-        # p0 was CPU-saturated by stateful workloads (redpanda, timescaledb),
-        # which destabilised the redpanda broker's raft/consumer-group
-        # coordination. Revisit once p0/p1 rejoin as agents in Fas 5 - if the
-        # same CPU contention resurfaces, this pinning (or a similar one) may
-        # need to come back.
+        # Reinstated after briefly removing this for the M720q migration prep
+        # (Fas 0): the old cluster is still live and still 2 nodes until Fas 5,
+        # and dropping the pin let the scheduler put Prometheus straight back
+        # on p0 - confirmed at 96% CPU within minutes of the change landing.
+        # p0 is CPU-saturated by stateful workloads (redpanda, timescaledb),
+        # and Prometheus competing for that CPU destabilises the redpanda
+        # broker's raft/consumer-group coordination. Remove again only as
+        # part of the actual Fas 5 cutover, once the M720q is the only node
+        # Prometheus can land on anyway.
+        nodeSelector:
+          kubernetes.io/hostname: p1
         storageSpec:
           volumeClaimTemplate:
             spec:
