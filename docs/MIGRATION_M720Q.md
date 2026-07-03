@@ -151,12 +151,12 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
   inte 24.04. Avviker från beslutstabellen men 26.04 är en giltig LTS; k3s och
   ansible-rollerna påverkas inte nämnvärt. Justera versionsreferenser i
   ansible/fas 2 därefter.
-- [ ] **[Bo]** BIOS på M720q (F1 vid boot) — **bekräfta att detta är satt** (går
-  ej att verifiera via SSH):
+- [x] **[Bo]** BIOS på M720q (F1 vid boot):
   - **Power → After Power Loss: Power On** (homelab-krav: startar själv efter strömavbrott)
   - Boot order: USB först (tillfälligt)
   - Intel VT-x/VT-d: enabled
   - Secure Boot: kan vara på (Ubuntu stödjer det)
+  → Bekräftat av Bo 2026-07-03 (kan ej verifieras via SSH).
 - [x] **[Bo]** Installera Ubuntu på **SATA-SSD:n** (välj rätt disk — INTE NVMe:n!):
   - Hostname: `m720q`, användare: `bo`
   - "Install OpenSSH server": JA; importera gärna SSH-nyckel från GitHub
@@ -212,6 +212,9 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
     SSH-härdning som drop-in (`99-hardening.conf`) för att vinna över cloud-init.
     Full k3s-sysctl-set (även `vm.overcommit_memory=1` + `kernel.keys.root_max*`
     som k3s protect-kernel-defaults faktiskt kräver, utöver de 3 i listan ovan).
+    Hanterar även NOPASSWD-sudoers för `bo` (`/etc/sudoers.d/90-bo-nopasswd`,
+    `visudo -cf`-validerad) — idempotent, ger p0/p1 samma i fas 5. Bo satte
+    dessutom upp det manuellt på m720q 2026-07-03 för att bootstrappa.
 - [x] **[Claude]** Disklayout-tasks (eller engångskörning) för NVMe via LVM:
   - `~200G` → `/var/lib/rancher` (etcd + containerd på NVMe)
   - resten (~730G) → `/var/lib/longhorn`

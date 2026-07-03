@@ -1,4 +1,14 @@
 ---
+# --- Passwordless sudo for the ansible user (idempotent; propagates to agents) ---
+- name: Grant passwordless sudo to the ansible user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/90-{{ common_sudoers_user }}-nopasswd"
+    content: "{{ common_sudoers_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
 # --- Firewall (ufw): default-deny incoming, explicit LAN/cluster allows ---
 - name: Install ufw
   ansible.builtin.apt:

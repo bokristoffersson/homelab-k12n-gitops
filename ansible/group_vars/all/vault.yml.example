@@ -13,7 +13,7 @@ k3s_token: "CHANGE-ME-long-random-string"
 # If etcd_s3_access_key is left as CHANGE-ME the server still bootstraps with
 # LOCAL snapshots only (etcd-s3 stays disabled); fill these in to enable S3 upload.
 etcd_s3_endpoint: "s3.amazonaws.com"
-etcd_s3_region: "eu-north-1"                 # TODO: confirm bucket region
+etcd_s3_region: "eu-north-1"                 # per Bo; confirm before enabling S3
 etcd_s3_bucket: "k12n-homelab-db-backups"
 etcd_s3_folder: "etcd-snapshots"
 etcd_s3_access_key: "CHANGE-ME"
