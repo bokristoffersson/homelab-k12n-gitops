@@ -29,6 +29,10 @@ spec:
       # Disable automatic default disk creation
       defaultDataPath: ""
       upgradeChecker: false
+      # Single control-plane node during the M720q migration (Fas 0-4) can't
+      # hold 3 replicas - volumes would get stuck degraded. Raise back to a
+      # multi-node default once p0/p1 rejoin as agents in Fas 5.
+      defaultClassReplicaCount: 1
 
     longhornManager:
       priorityClass: system-cluster-critical
