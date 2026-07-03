@@ -424,7 +424,36 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     till DB. **Obs (orelaterat):** settings-consumern loggar ännu
     `UnknownTopicOrPartition` för `homelab-heatpump-telemetry` — Redpanda-topicen
     är inte skapad på nya klustret ännu (rpk-topic-jobbet), separat från restoren.
-- [ ] **[Claude]** Återställ räddat state från fas 0 (Homebridge, Authelia, Pi-hole).
+- [x] **[Claude]** Återställ räddat state från fas 0 (Homebridge, Authelia, Pi-hole).
+  → Klart 2026-07-03. Tarbollarna från `pre-migration-state/20260703/` extraherade
+    in i respektive RWO-PVC via helper-poddar (`postgres:16`, root). Sekvens per app:
+    kopiera S3-creds temporärt till namespacet (jq-klon av `timescaledb-backup-aws`
+    → `s3-restore-creds`, raderad efteråt) → skala app→0 → vänta på Longhorn-detach
+    → mounta PVC:n i helper → wipe (behåll `lost+found`) + `tar --strip-components`
+    → chown vid behov → skala upp. Grafana/Authelia/Pi-hole ärver global PSA
+    `baseline` (root-pod OK); homebridge-ns är `privileged`. **Helper-poddarna fick
+    egen DNS (`dnsConfig` 1.1.1.1)** eftersom pihole-nedskalningen tillfälligt bryter
+    nodens/coredns :53 (svclb-deadlocken, fix #3) — annars hade apt/aws inte kunnat
+    resolva under fönstret. Resultat (alla appar Ready efteråt, kluster-DNS friskt):
+    - **authelia** (`data/` → /data, chown 1000): db.sqlite3 311K→**790K** (TOTP-
+      registreringar tillbaka); "Storage schema is already up to date", inga fel.
+    - **pihole** (`etc/pihole/` → /etc/pihole, strip 2): gravity **83 809**
+      blockdomäner, 1 adlist, **26** lokala DNS-poster (custom.list), pihole.toml
+      (67K) återställd. `pihole-FTL.db` (query-stats) korrekt exkluderad, återskapas.
+      Ready, FTL kör som uid 1000, blocking enabled.
+    - **grafana** (`grafana/` → /var/lib/grafana, chown 472): grafana.db →**2.1M**;
+      DB-migreringar rena (performed=0 skipped=572 = redan rätt schema, versions-
+      kompatibel). "database is locked"-retries vid provisioning är ofarliga.
+    - **homebridge** (`homebridge/` → /homebridge, 236M inkl. node_modules):
+      persist/ (HomeKit-identitet `CC223DE3CE30`) + config.json + .uix-secrets +
+      accessories/ återställda. `/var/lib/homebridge` är symlink → /homebridge, så
+      PVC-pathen stämmer. **Homebridge v1.11.4 kör på 51826**, mqttthing-tillbehören
+      laddar. **Obs:** plugin `homebridge-mqttthing` varnar att den kräver Node
+      ≤22 men imagen kör v24 — bara en engine-varning, pluginet laddar och funkar;
+      värt att hålla ögonen på vid framtida homebridge/Node-bump.
+    Detta var en engångssnapshot (fas 0) — HomeKit-parningar/TOTP som skapats på
+    GAMLA klustret EFTER 2026-07-03 06:5x fångas inte; gör en färsk räddning strax
+    före fas 5-cutovern om något nytt tillkommit.
 - [ ] **[Claude]** Re-seala actions-runnerns kubeconfig — gamla innehållet pekar
   på p1.local:6443. Generera ny mot m720q, seala med `kubeseal --fetch-cert`
   mot nya klustret, committa.
