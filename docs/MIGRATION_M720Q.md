@@ -288,24 +288,52 @@ M720q ska köra alla workloads tills Pi:erna är med.
     snapshotsen (cron 03:00, retention 14) körs av servern. `k3s etcd-snapshot`-
     CLI:t loggar ofarliga "Unknown flag ... skipping" (subkommandot har färre
     flaggor än `k3s server` — servern applicerar dem, bevisat ovan).
-- [ ] **[Bo]** Hämta kubeconfig till hosten och gör den till context, t.ex.:
+- [x] **[Bo]** Hämta kubeconfig till hosten och gör den till context, t.ex.:
   ```bash
   ssh bo@<m720q-ip> 'sudo cat /etc/rancher/k3s/k3s.yaml' \
     | sed 's/127.0.0.1/<m720q-ip>/' > ~/.kube/m720q.yaml
   # merga in i ~/.kube/config som context "homelab-new"
   ```
   Kör sedan `./claude-box.sh kube homelab-new` så Claude når nya klustret.
+  → Klart 2026-07-03: `kubectl config current-context` = `homelab-new`, når
+    m720q (Node Ready, `v1.36.2+k3s1`).
 
 ## Fas 4 — Flux-bootstrap + dataåterställning
 
 Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
 
-- [ ] **[Bo]** Återställ nyckeln (host, context `homelab-new`):
+- [x] **[Bo]** Återställ nyckeln (host, context `homelab-new`):
   `kubectl apply -f ~/sealed-secrets-keys-backup.yaml`
-- [ ] **[Claude]** Installera flux-operator (Helm) + git-auth-secret för repot,
+  → Klart 2026-07-03: 9 `sealed-secrets-key*`-secrets ligger i `kube-system`
+    (märkta `sealedsecrets.bitnami.com/sealed-secrets-key`). Nyckeln från gamla
+    klustret är på plats FÖRE Flux — sealed secrets kan dekrypteras.
+- [x] **[Claude]** Installera flux-operator (Helm) + git-auth-secret för repot,
   applicera rot-`flux.yaml` (FluxInstance).
+  → Klart 2026-07-03. flux-operator v0.53.0 via Helm OCI-chart
+    (`oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator`). Alla 7
+    controllers uppe. **Git-auth:** `flux.yaml` har `provider: github`, som
+    kräver GitHub App-creds (INTE username/password). Bo genererade ny private
+    key på den befintliga Flux-appen (App ID `1991306`, Installation ID
+    `86929523`); `flux-system`-secreten skapad med
+    `githubAppID`/`githubAppInstallationID`/`githubAppPrivateKey`, `.pem` raderad
+    efteråt (gitignorerad). GitRepository hämtar `refs/heads/main` OK.
 - [ ] **[Claude]** Följ utrullningen (`flux get kustomizations`), bekräfta att
   sealed secrets dekrypteras: `kubectl get sealedsecrets -A` utan fel i status.
+  → **Två bootstrap-blockerare hittade och lösta 2026-07-03:**
+    1. **Chart-repot flyttat:** `gitops/infrastructure/sources/sealed-secrets.yaml`
+       pekade på `https://bitnami-labs.github.io/sealed-secrets` (nu 404 —
+       GitHub Pages-siten borttagen). Bytt till `https://bitnami.github.io/sealed-secrets`
+       (chart 2.17.7 / appVersion 0.32.2 finns där). Fix i PR (denna branch).
+    2. **CRD-moment-22:** `infrastructure-controllers` innehåller både
+       sealed-secrets-HelmReleasen OCH SealedSecret-CR:er (t.ex.
+       cloudflare-tunnel). På ett tomt kluster faller hela kustomizationens
+       dry-run på `no matches for kind "SealedSecret"` → controllern som skapar
+       CRD:n hinner aldrig appliceras. Löst genom att applicera just
+       sealed-secrets-HelmReleasen manuellt en gång (`kubectl apply -f
+       .../sealed-secrets/helmrelease.yaml`); Flux adopterar den sen utan drift.
+       Controllern (v0.32.2) registrerade alla 9 återställda nycklar → sealed
+       secrets dekrypteras. (Framtida fresh-bootstraps: överväg att flytta
+       sealed-secrets till `infrastructure-crds` så CRD:n finns före CR:erna.)
 - [ ] **[Claude]** Återställ databaser från S3-dumpar (engångs-restore via
   `kubectl exec psql < dump` är OK — det är migrations, inte restores, som är
   GitOps): timescaledb, homelab-settings, backstage. Verifiera radantal mot

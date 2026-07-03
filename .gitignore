@@ -47,3 +47,6 @@ scripts/.venv-mcp/
 ansible/collections/
 ansible/group_vars/all/vault.yml
 ansible/*.retry
+
+# Flux GitHub App private key (bootstrap only, never commit)
+flux-app.pem
