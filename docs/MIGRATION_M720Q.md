@@ -454,9 +454,25 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     Detta var en engångssnapshot (fas 0) — HomeKit-parningar/TOTP som skapats på
     GAMLA klustret EFTER 2026-07-03 06:5x fångas inte; gör en färsk räddning strax
     före fas 5-cutovern om något nytt tillkommit.
-- [ ] **[Claude]** Re-seala actions-runnerns kubeconfig — gamla innehållet pekar
+- [x] **[Claude]** Re-seala actions-runnerns kubeconfig — gamla innehållet pekar
   på p1.local:6443. Generera ny mot m720q, seala med `kubeseal --fetch-cert`
   mot nya klustret, committa.
+  → Klart 2026-07-03. SealedSecret `github-actions-kubeconfig` i ns
+    `actions-runners` (nyckel `KUBECONFIG_DATA`, monteras på `/etc/kubeconfig/config`
+    i runnern). Kustomizationen definierar ingen egen SA/RBAC för identiteten, och
+    det gamla `p1.local:6443`-innehållet var alltså admin-kubeconfig:en — så jag
+    genererade nya klustrets admin-kubeconfig (`kubectl config view --raw --minify
+    --flatten` på `homelab-new`-contexten; server redan `https://192.168.50.212:6443`)
+    och sealade om den. Sealat mot nya klustrets controller
+    (`--controller-name sealed-secrets --controller-namespace kube-system`, v0.32.2,
+    INTE p1). Verifierat: applicerad live → controller-event "SealedSecret unsealed
+    successfully", dekrypterad kubeconfig pekar på .212:6443 och funkar (`get nodes`
+    = m720q Ready, `auth can-i patch deployments` = yes). Bara ciphertext-raden
+    ändrad i filen; metadata/template orört. Plaintext-kubeconfig:en raderades ur
+    scratchpad, aldrig committad. **Obs (säkerhet):** identiteten är cluster-admin,
+    precis som förr — inga workflows kör kubectl idag (bara bygg/push), men om det
+    införs vore en scopad ServiceAccount-token (bara deployments patch/restart)
+    säkrare än admin i CI-monterad secret. Lämnad som ev. fas 6-härdning.
 - [ ] **[Claude]** Smoke-test via port-forward: homelab-api, heatpump-web,
   Grafana, Authelia-login.
 
