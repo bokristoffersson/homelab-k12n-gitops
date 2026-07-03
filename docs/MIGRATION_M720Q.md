@@ -93,14 +93,25 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
   `rust:1.96`), mergad och grön.
 - [x] **[Claude]** Samma PR eller egen: byt cloudflared till multi-arch-tagg
   med pinnad version (inte `latest`). → `2026.6.1` (bekräftat amd64+arm64 på Docker Hub).
-- [ ] **[Claude]** PR: städa nodbindningar — ta bort homebridge-nodeSelector
+- [x] **[Claude]** PR: städa nodbindningar — ta bort homebridge-nodeSelector
   `p0`, Prometheus-nodeSelector `p1` och `longhorn/node-nvme.yaml` (på nya
   noden monteras NVMe direkt på Longhorns default-path `/var/lib/longhorn`).
-- [ ] **[Claude]** Samma PR: sätt Longhorns `defaultClassReplicaCount: 1` i
+  → PR #130 mergad. **OBS:** Prometheus-nodeSelectorn fick återinföras i PR
+  #133 — gamla klustret kör fortfarande på riktigt tills fas 5, och utan
+  pinning hamnade Prometheus direkt på p0 (96% CPU), samma mönster som
+  tidigare destabiliserat redpandas raft. Ta bort den nodeSelectorn igen
+  först vid den faktiska fas 5-cutovern, inte som fas 0-städning.
+- [x] **[Claude]** Samma PR: sätt Longhorns `defaultClassReplicaCount: 1` i
   HelmRelease-values (en nod kan inte hålla 3 repliker — volymer fastnar
-  annars i degraded). Höjs i fas 5.
-- [ ] **[Claude]** Verifiera färska S3-dumpar: kolla senaste lyckade körning av
+  annars i degraded). Höjs i fas 5. → Mergad i PR #130. Påverkar bara nya
+  volymer, inga befintliga volymer på gamla klustret krympte.
+- [x] **[Claude]** Verifiera färska S3-dumpar: kolla senaste lyckade körning av
   backup-cronjobs för timescaledb, homelab-settings, backstage; testläs en dump.
+  → Hittade att timescaledb- och homelab-settings-backuperna varit trasiga i
+  minst 3 dagar (hårdkodat fel lösenord, PR #131) och att backstage-backupen
+  aldrig backat upp riktig data (dumpade fel databas — Backstage har en
+  databas per plugin, PR #132: bytt till `pg_dumpall`). Alla tre verifierade
+  med riktig `pg_dump` mot klustret efter fix — fungerar nu.
 - [ ] **[Bo + Claude]** Rädda o-backat state (välj ambitionsnivå): tar/`kubectl cp`
   ut Homebridge-volymen (HomeKit-parningen!), Authelia-storage (TOTP),
   Pi-hole-config, ev. Grafana. Acceptera förlust av Loki-loggar och
