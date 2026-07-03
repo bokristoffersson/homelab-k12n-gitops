@@ -31,13 +31,13 @@ spec:
 
     prometheus:
       prometheusSpec:
-        # Pin Prometheus to p1. Almost all stateful workloads (redpanda,
-        # timescaledb, etc.) run on p0, which is CPU-saturated; that starves
-        # the redpanda broker's raft and destabilises consumer-group
-        # coordination. p1 is near-idle. The longhorn PV has a replica on p1,
-        # so it can attach there.
-        nodeSelector:
-          kubernetes.io/hostname: p1
+        # nodeSelector removed for the M720q migration (single control-plane
+        # node during Fas 0-4). It previously pinned Prometheus to p1 because
+        # p0 was CPU-saturated by stateful workloads (redpanda, timescaledb),
+        # which destabilised the redpanda broker's raft/consumer-group
+        # coordination. Revisit once p0/p1 rejoin as agents in Fas 5 - if the
+        # same CPU contention resurfaces, this pinning (or a similar one) may
+        # need to come back.
         storageSpec:
           volumeClaimTemplate:
             spec:
