@@ -271,8 +271,10 @@ M720q ska köra alla workloads tills Pi:erna är med.
     `sshd -T` visade fortfarande `yes`. sshd använder FÖRSTA värdet per nyckel,
     och Ubuntus `50-cloud-init.conf` (`PasswordAuthentication yes`) läses före
     vår `99-hardening.conf`. Fix: döpt om till `00-hardening.conf` (läses före
-    50-, vinner) + tar bort gamla 99-filen. Re-körs FÖRST när Bo lagt in sin
-    SSH-nyckel (annars låses lösenordsinloggning innan nyckel finns).
+    50-, vinner) + tar bort gamla 99-filen. **Applicerat 2026-07-03** efter att
+    Bo lagt in sin SSH-nyckel: `sshd -T` = `passwordauthentication no`,
+    lösenordsförsök ger nu `Permission denied (publickey)`, nyckel-login (Bo +
+    boxen) intakt.
 - [x] **[Claude]** Verifiera: `ssh m720q 'sudo k3s kubectl get nodes'`,
   ta manuell etcd-snapshot (`k3s etcd-snapshot save`) och bekräfta S3-uppladdning.
   → Node **Ready**, `v1.36.2+k3s1`, roll `control-plane,etcd`. Verifierat i kraft:
