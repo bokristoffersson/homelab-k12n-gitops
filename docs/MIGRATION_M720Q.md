@@ -154,7 +154,11 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
   - Hostname: `m720q`, användare: `bo`
   - "Install OpenSSH server": JA; importera gärna SSH-nyckel från GitHub
   - Ingen extra snap-paketering behövs
-- [ ] **[Bo]** DHCP-reservation för M720q i routern; notera IP:t här: `______`
+- [ ] **[Bo]** M720q-IP: **`192.168.50.212`** (nästa efter Pi:erna .210/.211).
+  Satt statiskt i Ubuntu-installern (Manual IPv4: 192.168.50.0/24, gateway
+  192.168.50.1, DNS 1.1.1.1/8.8.8.8 — INTE Pi-hole, undvik kyckling-och-ägg vid
+  boot). Lägg ändå in en DHCP-reservation för .212 i routern så poolen aldrig
+  delar ut den. Detta IP ska in i k3s `tls-san` (fas 3) och ansible-inventory.
 - [ ] **[Bo]** Lägg in claude-boxens pubnyckel så Ansible når maskinen:
   ```bash
   cd ~/Development/apple-container
