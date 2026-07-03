@@ -82,14 +82,15 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
     -l sealedsecrets.bitnami.com/sealed-secrets-key \
     -o yaml > ~/sealed-secrets-keys-backup.yaml
   ```
-- [ ] **[Claude]** PR: multi-arch-byggen. Lägg till amd64 i de 8 workflows
+- [x] **[Claude]** PR: multi-arch-byggen. Lägg till amd64 i de 8 workflows
   (lista ovan). Rust: matrix-bygg nativt (`ubuntu-24.04` för amd64,
   `ubuntu-24.04-arm` för arm64) + manifest-merge-steg — bygg INTE Rust under
   QEMU. Verifiera efteråt med `gh run watch` + kontrollera plattformar i GHCR.
-  → PR öppnad, klar för granskning. **OBS:** docker-build/docker-merge-jobben
-  triggas bara på `push` till `main` (inte på PR-events) — full verifiering av
-  multi-arch-manifesten (gh run watch + GHCR-koll) måste alltså göras EFTER
-  merge, inte innan. Bocka av när det är gjort.
+  → PR #127 mergad. Alla 8 images bekräftat amd64+arm64 i GHCR (registry API,
+  `:main`-taggen). En app (heatpump-web-leptos) failade första push-till-main
+  körningen — `wasm-bindgen-test` → `wit-bindgen 0.51.0` kräver `edition2024`,
+  som `rust:1.83` i Dockerfilen inte klarade av. Fixat i PR #128 (bump till
+  `rust:1.96`), mergad och grön.
 - [x] **[Claude]** Samma PR eller egen: byt cloudflared till multi-arch-tagg
   med pinnad version (inte `latest`). → `2026.6.1` (bekräftat amd64+arm64 på Docker Hub).
 - [ ] **[Claude]** PR: städa nodbindningar — ta bort homebridge-nodeSelector
@@ -107,7 +108,7 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
 - [ ] **[Bo]** Kartlägg IP-beroenden: vilken broker-IP pekar Shelly-sensorn på?
   Pekar några klienter på Pi-hole som DNS? Bestäm ny IP-plan (DHCP-reservation
   för M720q; peka om devices vid cutover i fas 5).
-- [ ] **[Bo]** Bygg om claude-boxen så nya verktygen finns:
+- [x] **[Bo]** Bygg om claude-boxen så nya verktygen finns:
   ```bash
   cd ~/Development/apple-container
   container build --tag claude-box:latest --file Containerfile .
