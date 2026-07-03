@@ -112,10 +112,22 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
   aldrig backat upp riktig data (dumpade fel databas — Backstage har en
   databas per plugin, PR #132: bytt till `pg_dumpall`). Alla tre verifierade
   med riktig `pg_dump` mot klustret efter fix — fungerar nu.
-- [ ] **[Bo + Claude]** Rädda o-backat state (välj ambitionsnivå): tar/`kubectl cp`
+- [x] **[Bo + Claude]** Rädda o-backat state (välj ambitionsnivå): tar/`kubectl cp`
   ut Homebridge-volymen (HomeKit-parningen!), Authelia-storage (TOTP),
   Pi-hole-config, ev. Grafana. Acceptera förlust av Loki-loggar och
-  Redpanda-logg (topics återskapas av rpk-jobbet).
+  Redpanda-logg (topics återskapas av rpk-jobbet). → Klart 2026-07-03: tar +
+  `kubectl cp` + uppladdat till `s3://k12n-homelab-db-backups/pre-migration-state/20260703/`
+  (samma bucket som pg-dumparna, egen prefix):
+  - `homebridge-state-backup.tar.gz` (23M, hela `/homebridge` utom loggfil —
+    persist/ har HomeKit-parningen)
+  - `authelia-data-backup.tar.gz` (275K, `/data` — TOTP-registreringar)
+  - `pihole-config-backup.tar.gz` (3.1M, `/etc/pihole` utom `pihole-FTL.db*`
+    som bara är query-statistik, ~1GB, motsvarande "logg" - inte config)
+  - `grafana-data-backup.tar.gz` (154K, `/var/lib/grafana` — grafana.db med
+    ev. manuellt skapade dashboards/users utöver GitOps-provisionerade)
+  Detta är en engångssnapshot, inte en löpande backup — färskare data
+  (nya HomeKit-parningar, TOTP-registreringar) före fas 5-cutover fångas
+  inte automatiskt.
 - [x] **[Bo]** Kartlägg IP-beroenden: vilken broker-IP pekar Shelly-sensorn på?
   Pekar några klienter på Pi-hole som DNS? Bestäm ny IP-plan (DHCP-reservation
   för M720q; peka om devices vid cutover i fas 5). → Shelly-sensorn kör DHCP,
