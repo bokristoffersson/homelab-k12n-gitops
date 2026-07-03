@@ -142,30 +142,42 @@ fysiska moment eller kommandon på macOS-hosten). Bocka av steg allteftersom
 
 ## Fas 1 — M720q: fysisk setup + OS  *(Claude instruerar, Bo utför)*
 
-- [ ] **[Bo]** Skapa USB-sticka med **Ubuntu Server 24.04 LTS (amd64)** —
+- [x] **[Bo]** Skapa USB-sticka med **Ubuntu Server 24.04 LTS (amd64)** —
   ladda ner ISO, skriv med balenaEtcher eller
   `sudo dd if=ubuntu-24.04-live-server-amd64.iso of=/dev/diskN bs=4m`.
-- [ ] **[Bo]** BIOS på M720q (F1 vid boot):
+  → Bo installerade **Ubuntu Server 26.04 LTS** (nyare LTS, släppt apr 2026),
+  inte 24.04. Avviker från beslutstabellen men 26.04 är en giltig LTS; k3s och
+  ansible-rollerna påverkas inte nämnvärt. Justera versionsreferenser i
+  ansible/fas 2 därefter.
+- [ ] **[Bo]** BIOS på M720q (F1 vid boot) — **bekräfta att detta är satt** (går
+  ej att verifiera via SSH):
   - **Power → After Power Loss: Power On** (homelab-krav: startar själv efter strömavbrott)
   - Boot order: USB först (tillfälligt)
   - Intel VT-x/VT-d: enabled
   - Secure Boot: kan vara på (Ubuntu stödjer det)
-- [ ] **[Bo]** Installera Ubuntu på **SATA-SSD:n** (välj rätt disk — INTE NVMe:n!):
+- [x] **[Bo]** Installera Ubuntu på **SATA-SSD:n** (välj rätt disk — INTE NVMe:n!):
   - Hostname: `m720q`, användare: `bo`
   - "Install OpenSSH server": JA; importera gärna SSH-nyckel från GitHub
   - Ingen extra snap-paketering behövs
-- [ ] **[Bo]** M720q-IP: **`192.168.50.212`** (nästa efter Pi:erna .210/.211).
+  → Klart: OS på `sda` (SATA-SSD, 238.5G, LVM `ubuntu-vg`, root 100G). NVMe
+  (`nvme0n1`, 931.5G) helt tom. **OBS:** installern la bara 100G i root-LV:t —
+  ~135G i vg:n är oallokerat, men det spelar ingen roll eftersom etcd/containerd
+  + Longhorn hamnar på NVMe:n (fas 2).
+- [x] **[Bo]** M720q-IP: **`192.168.50.212`** (nästa efter Pi:erna .210/.211).
   Satt statiskt i Ubuntu-installern (Manual IPv4: 192.168.50.0/24, gateway
   192.168.50.1, DNS 1.1.1.1/8.8.8.8 — INTE Pi-hole, undvik kyckling-och-ägg vid
   boot). Lägg ändå in en DHCP-reservation för .212 i routern så poolen aldrig
   delar ut den. Detta IP ska in i k3s `tls-san` (fas 3) och ansible-inventory.
-- [ ] **[Bo]** Lägg in claude-boxens pubnyckel så Ansible når maskinen:
+- [x] **[Bo]** Lägg in claude-boxens pubnyckel så Ansible når maskinen:
   ```bash
   cd ~/Development/apple-container
   ./claude-box.sh ssh-setup pubkey | ssh bo@<m720q-ip> 'cat >> ~/.ssh/authorized_keys'
   ```
-- [ ] **[Claude]** Lägg till `m720q` i `~/.ssh/config` i boxen (IP från ovan) och
+  → Bekräftat: `ssh m720q` funkar nyckelbaserat från boxen.
+- [x] **[Claude]** Lägg till `m720q` i `~/.ssh/config` i boxen (IP från ovan) och
   verifiera `ssh m720q 'hostname && lsblk'` — kontrollera att NVMe:n syns.
+  → Klart 2026-07-03: SSH-config uppdaterad, `ssh m720q` ger hostname `m720q`,
+  arch `x86_64`, NVMe 931.5G tom och synlig.
 
 ## Fas 2 — Ansible-struktur
 
