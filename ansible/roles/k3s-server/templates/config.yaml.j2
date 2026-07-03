@@ -2,6 +2,12 @@
 cluster-init: true
 secrets-encryption: true
 protect-kernel-defaults: true
+# Ingress is managed by GitOps (Flux HelmRelease in the `traefik` namespace),
+# so disable k3s's bundled Traefik addon — otherwise k3s installs its own
+# Traefik in kube-system that fights the Flux-managed one over the Traefik CRDs
+# and crash-loops the helm-install-traefik job. ServiceLB (klipper) is kept.
+disable:
+  - traefik
 {% if k3s_token is defined and k3s_token and k3s_token != "CHANGE-ME-long-random-string" %}
 token: "{{ k3s_token }}"
 {% endif %}
