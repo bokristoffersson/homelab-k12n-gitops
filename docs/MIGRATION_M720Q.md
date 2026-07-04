@@ -496,8 +496,25 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     verifiering via Cloudflare-tunneln; backend + OIDC + återställd TOTP-storage är
     bevisat uppe här.
 
-**Fas 4 klar.** Kvarstår före fas 5: skapa Redpanda-topicen `homelab-heatpump-telemetry`
-(rpk-topic-jobbet) — settings-consumern loggar `UnknownTopicOrPartition` tills dess.
+**Fas 4 klar.**
+
+- [x] **[Claude]** Skapa saknade Redpanda-topics (blockerade dataväg + settings-consumern).
+  → Klart 2026-07-04. `topic-creator-job`:et var kvar på de gamla topic-namnen
+    (`energy-realtime`, `heatpump-telemetry`, `heatpump-realtime`, `heatpump-settings`,
+    `sensor-state`) — det uppdaterades aldrig efter "homelab-"-namnbytet. På färska
+    klustret (auto_create_topics_enabled=false) skapades därför fel namn och
+    consumers/producers fick `UnknownTopicOrPartition`. Kartlade de faktiska namnen
+    ur app-configarna: mqtt-kafka-bridge producerar `homelab-{energy-realtime,
+    heatpump-telemetry,plug-telemetry,temperature-indoor}`; timescaledb-sinken
+    konsumerar dessutom `homelab-temperature-outdoor`. Skapade de 4 saknade live
+    (`homelab-plug-telemetry` fanns redan) med rpk. Verifierat: alla 5 finns, och
+    consumer-grupperna blev **Stable** direkt (energy-ws, homelab-settings,
+    homelab-settings-api, homelab-settings-outbox-processor, timescaledb-{energy,
+    heatpump,temperature}) — inga `UnknownTopic`-fel längre. Fixade även
+    `topic-creator-job.yaml` + `docs/topics.md` i repot till rätt namn (denna PR),
+    så framtida bootstraps blir korrekta. **Obs:** de 5 gamla tomma topicsen ligger
+    kvar oanvända på klustret (rpk raderar inte topics vid namnbyte i jobbet) —
+    ofarliga, kan städas med `rpk topic delete` vid tillfälle.
 
 ## Fas 5 — Cutover + Pi:erna som agenter
 
