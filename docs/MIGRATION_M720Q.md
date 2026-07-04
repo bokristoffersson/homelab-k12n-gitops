@@ -513,16 +513,64 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     heatpump,temperature}) — inga `UnknownTopic`-fel längre. Fixade även
     `topic-creator-job.yaml` + `docs/topics.md` i repot till rätt namn (denna PR),
     så framtida bootstraps blir korrekta. **Obs:** de 5 gamla tomma topicsen ligger
-    kvar oanvända på klustret (rpk raderar inte topics vid namnbyte i jobbet) —
-    ofarliga, kan städas med `rpk topic delete` vid tillfälle.
+    kvar oanvända på klustret (rpk raderar inte topics vid namnbyte i jobbet).
+    → **Städat 2026-07-04:** verifierade high-watermark=0 och inga consumers på
+      de 5 gamla (`energy-realtime`, `heatpump-realtime`, `heatpump-settings`,
+      `heatpump-telemetry`, `sensor-state`) och raderade dem med `rpk topic delete`.
+      Kvar nu: bara de 5 korrekta `homelab-*`.
 
 ## Fas 5 — Cutover + Pi:erna som agenter
 
-- [ ] **[Claude]** Skala ner cloudflared på GAMLA klustret först (annars
+- [x] **[Claude]** Skala ner cloudflared på GAMLA klustret först (annars
   round-robinar tunneln mellan klustren), verifiera sedan att
   `https://homelab.k12n.com` och `https://auth.k12n.com` svarar från nya.
+  → **KLART 2026-07-04.** Bo pausade gamla klustrets Flux
+    (`flux suspend kustomization infrastructure-controllers`) och skalade ner dess
+    cloudflared till 0. Verifierat från nya sidan att tunneln nu bara servar nytt:
+    publikt `https://homelab.k12n.com/` 200, `/api/v1/energy/latest` 401 (auth),
+    `https://auth.k12n.com/api/health` 200 + OIDC-discovery 200 (riktiga https-
+    vägen), `https://grafana.k12n.com/api/health` `database:ok`. **Definitivt
+    bevis:** en unik probe `?p=cutover-verify-<n>` skickad till publika URL:en
+    dök upp i NYA klustrets Traefik-access-logg. Riktig produktionstrafik syns
+    också landa på nytt (`/api/v1/energy/hourly-total` 200 via homelab-api).
+    **OBS servern flyttades fysiskt + bootade om strax innan** — återhämtade sig
+    rent (transient DNS-deadlock fix#3 under boot, self-healade när pihole kom upp).
+  → (Tidigare readiness-not, nu uppfyllt:) Nya klustret var verifierat redo att
+    serva ensamt; cutovern var blockerad på Bo — claude-boxen har bara `homelab-new`-context,
+    ingen åtkomst till gamla klustret. Verifierat på nytt: Traefik 1/1 +
+    oauth2-proxy 2/2 + nya cloudflared 2/2 (4 tunnel-anslutningar sedan 14h,
+    dvs trafiken round-robinar redan nu mellan klustren). Via Traefik med
+    rätt Host/X-Forwarded-Proto: homelab.k12n.com→200, auth.k12n.com→200
+    (+`/api/health` OK), grafana.k12n.com→302/login, `/api/v1` utan token→401.
+    (`heatpump.k12n.com`→404 = repots nuvarande tillstånd, legacy-hostnamn utan
+    Traefik-route; inte en regression.) **Bo kör steg 1** mot GAMLA klustret:
+    `kubectl scale deploy/cloudflared -n cloudflare-tunnel --replicas=0`
+    (eller växla min context med `./claude-box.sh kube homelab` så gör jag det).
 - [ ] **[Bo]** Peka om Shelly-sensorns MQTT-broker till ny IP; peka om
   Pi-hole-DNS-klienter enligt IP-planen från fas 0.
+  → **Ny broker-endpoint: `192.168.50.212:1883`** (Mosquitto LoadBalancer =
+    m720q node-IP, verifierad 2026-07-04). Nya klustrets mqtt-kafka-bridge är
+    ansluten dit och prenumererar redan på `shellyhtg3-e4b32322a0f4/events/rpc`
+    (+ `saveeye/telemetry`, `tele/+/STATE`, `thermiq_heatpump/data`), alla 4
+    streams aktiva → data flödar så fort sensorn pekas om. Övriga MQTT-enheter
+    (heatpump/thermiq, Tasmota-plugs, saveeye) behöver också pekas om till samma
+    broker-IP.
+  → **Inflödet till GAMLA klustret stannade ~2026-07-04 11:05 UTC** (senaste
+    raden `energy_consumption` 11:05, `heatpump_status` 10:57, `now()` 11:54 =
+    ~50 min utan nya rader) → tolkat som att enheterna pekats om runt då.
+  → **Delta-dump räddad till S3 2026-07-04** (så data mellan fas-4-dumparna och
+    ompekningen inte tappas vid teardown). Bara säkerhetskopia — INGEN inläsning i
+    nya klustret ännu (Bo beslutar). Dumpad från gamla klustret via engångs-pod
+    (`amazon/aws-cli`, creds från `timescaledb-backup-aws`), upplagt i
+    `s3://k12n-homelab-db-backups/pre-migration-state/delta-20260704/`:
+    - timescaledb time > `2026-07-03 19:57:04` (fas-4-cutoff), rad-filtrerad
+      `\copy ... WITH CSV HEADER`: energy_consumption 54 482, heatpump_status
+      1 525, temperature_sensors 9, spot_prices 200 (day-ahead, redundant — nya
+      hämtar själv), apns_device_tokens 1 (oförändrad, full tabell).
+    - `homelab_settings_full.sql.gz` — full `pg_dump` (writes stannade ~00:30 vid
+      cutover; 3 nya outbox-rader i fönstret + all state).
+    - `MANIFEST.txt` med gränser, radantal och inläsningsinstruktion (dedup mot
+      nya klustrets egen data vid gränsen ~11:05 via `ON CONFLICT DO NOTHING`).
 - [ ] **[Claude]** Övervaka dataflödet ~1 dygn: Shelly → Mosquitto → Redpanda →
   TimescaleDB → homelab-api; kontrollera att grafer fylls på och att
   redpanda-sink/settings-consumern är friska.
