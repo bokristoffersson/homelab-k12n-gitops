@@ -32,41 +32,22 @@ spec:
 
               echo "Redpanda is ready. Creating topics..."
 
-              # Create topics (rpk topic create is idempotent - skips if exists)
-              rpk topic create energy-realtime \
+              # Topic names match the homelab-* names produced by mqtt-kafka-bridge
+              # and consumed by the timescaledb sink, energy-ws and homelab-settings.
+              # rpk topic create is idempotent - skips if the topic already exists.
+              rpk topic create homelab-energy-realtime \
                 --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
                 --partitions 1 \
                 --replicas 1 \
                 --topic-config retention.ms=86400000 \
-                --topic-config segment.ms=3600000 || echo "Topic energy-realtime already exists"
+                --topic-config segment.ms=3600000 || echo "Topic homelab-energy-realtime already exists"
 
-              rpk topic create heatpump-realtime \
+              rpk topic create homelab-heatpump-telemetry \
                 --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
                 --partitions 1 \
                 --replicas 1 \
                 --topic-config retention.ms=3600000 \
-                --topic-config segment.ms=3600000 || echo "Topic heatpump-realtime already exists"
-
-              rpk topic create heatpump-settings \
-                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
-                --partitions 1 \
-                --replicas 1 \
-                --topic-config retention.ms=604800000 \
-                --topic-config segment.ms=3600000 || echo "Topic heatpump-settings already exists"
-
-              rpk topic create heatpump-telemetry \
-                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
-                --partitions 1 \
-                --replicas 1 \
-                --topic-config retention.ms=3600000 \
-                --topic-config segment.ms=3600000 || echo "Topic heatpump-telemetry already exists"
-
-              rpk topic create sensor-state \
-                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
-                --partitions 1 \
-                --replicas 1 \
-                --topic-config retention.ms=86400000 \
-                --topic-config segment.ms=3600000 || echo "Topic sensor-state already exists"
+                --topic-config segment.ms=3600000 || echo "Topic homelab-heatpump-telemetry already exists"
 
               rpk topic create homelab-plug-telemetry \
                 --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
@@ -74,6 +55,20 @@ spec:
                 --replicas 1 \
                 --topic-config retention.ms=86400000 \
                 --topic-config segment.ms=3600000 || echo "Topic homelab-plug-telemetry already exists"
+
+              rpk topic create homelab-temperature-indoor \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=86400000 \
+                --topic-config segment.ms=3600000 || echo "Topic homelab-temperature-indoor already exists"
+
+              rpk topic create homelab-temperature-outdoor \
+                --brokers redpanda-v2.redpanda-v2.svc.cluster.local:9092 \
+                --partitions 1 \
+                --replicas 1 \
+                --topic-config retention.ms=86400000 \
+                --topic-config segment.ms=3600000 || echo "Topic homelab-temperature-outdoor already exists"
 
               echo "All topics created successfully!"
 

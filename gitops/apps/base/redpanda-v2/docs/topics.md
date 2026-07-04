@@ -20,12 +20,11 @@ Topics in Redpanda are managed directly via `rpk` commands executed in a Kuberne
 
 | Topic | Partitions | Replicas | Retention | Purpose |
 |-------|------------|----------|-----------|---------|
-| `energy-realtime` | 1 | 1 | 24 hours | Real-time energy consumption data |
-| `heatpump-realtime` | 1 | 1 | 1 hour | Real-time heatpump telemetry |
-| `homelab-settings` | 1 | 1 | 7 days | Homelab settings configuration changes |
-| `heatpump-telemetry` | 1 | 1 | 1 hour | General heatpump telemetry |
-| `sensor-state` | 1 | 1 | 24 hours | IoT sensor state changes |
+| `homelab-energy-realtime` | 1 | 1 | 24 hours | Real-time energy consumption data |
+| `homelab-heatpump-telemetry` | 1 | 1 | 1 hour | Heatpump telemetry (sink + settings confirmation) |
 | `homelab-plug-telemetry` | 1 | 1 | 24 hours | Tasmota power plug state telemetry |
+| `homelab-temperature-indoor` | 1 | 1 | 24 hours | Indoor temperature/humidity telemetry |
+| `homelab-temperature-outdoor` | 1 | 1 | 24 hours | Outdoor temperature telemetry |
 
 ### Legacy Topics
 
