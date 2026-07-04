@@ -571,6 +571,29 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
       cutover; 3 nya outbox-rader i fönstret + all state).
     - `MANIFEST.txt` med gränser, radantal och inläsningsinstruktion (dedup mot
       nya klustrets egen data vid gränsen ~11:05 via `ON CONFLICT DO NOTHING`).
+  → **Delta INLÄST i nya klustret 2026-07-04** (Bo gav klartecken). Filerna hämtade
+    från S3 (`delta-20260704/`), verifierade (md5 + radantal) och lastade via temp-
+    tabeller i `timescaledb`-poden. **Dedup:** de tre MQTT-hypertabellerna saknar
+    unik constraint, så `ON CONFLICT` funkar inte där — deduppade i stället på
+    `time` med `INSERT ... SELECT ... WHERE NOT EXISTS (same time)` (dry-run med
+    ROLLBACK först för att bekräfta överlappet). Resultat:
+    - **energy_consumption**: +54 481 (1 rad hoppades — `19:57:04.825192`, låg i
+      både fas-4-restoren och deltat pga `time > '19:57:04'`-filtret utan sub-sek).
+      Gap:et 19:57→11:05 nu fyllt (största seam-gap 5m40s, ingen ~15h-lucka).
+    - **heatpump_status**: +1 525 (rent seam, delta slutar 10:57, live börjar 11:04).
+    - **temperature_sensors**: +9 (rent, 0 rader efter cutoff fanns).
+    - **spot_prices**: +0 (`ON CONFLICT (delivery_area,time) DO NOTHING` — alla 200
+      fanns redan, nya klustrets spotprice-api hämtar dem själv; redundant som väntat).
+    - **apns_device_tokens**: +0 (`ON CONFLICT (token)` — oförändrad, fanns redan).
+    - **homelab_settings**: INGEN inläsning behövdes. De 3 "nya" outbox-raderna
+      (1449-1451) är `plug_schedule`-events kl 23:00/23:30/00:30 som nya klustrets
+      EGEN outbox-processor redan genererat (samma scheman, samma timer) → identiska
+      logiska events, inga saknade affärshändelser. `settings`-raden på nya klustret
+      är nyare (`12:05`) OCH mer komplett (indoor_target_temp/mode/curve satta; deltat
+      hade dem NULL). **`power_plugs`-avvikelse (ej åtgärdad, flaggad till Bo):** nya
+      klustret visar båda pluggarna `ON` (inaktuellt, 20:03 igår), deltat `OFF`
+      (11:48 idag) — cachead device-state som self-healar när Tasmota-pluggarna
+      pekas om till nya brokern (kvar i steget nedan); fysisk plugg = sanning.
 - [ ] **[Claude]** Övervaka dataflödet ~1 dygn: Shelly → Mosquitto → Redpanda →
   TimescaleDB → homelab-api; kontrollera att grafer fylls på och att
   redpanda-sink/settings-consumern är friska.
