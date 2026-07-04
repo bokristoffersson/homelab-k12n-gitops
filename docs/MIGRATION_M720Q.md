@@ -609,6 +609,16 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     homelab-settings-api, homelab-settings-outbox-processor, timescaledb-{energy,
     heatpump,temperature}). Pluggarna rapporterar live (`power_plugs` färsk).
     Övervakas till ~2026-07-05 eftermiddag.
+  → **In-cluster watch (överlever att skalet stängs):** CronJob `migration-watch`
+    i ns `timescaledb`, `*/30 * * * *`, `postgres:16` som frågar TimescaleDB och
+    loggar en rad `energy=.. heatpump=.. temperature=.. verdict=OK|WARN` (WARN om
+    energy >5min / heatpump >15min / temperature >150min bakom). Freshness i
+    TimescaleDB är tillräcklig proxy för hela kedjan device→MQTT→redpanda→sink.
+    **Applicerad live (imperativt, EJ GitOps)** — tillfällig; manifest i scratchpad.
+    Granska: `kubectl get cronjob -n timescaledb migration-watch` +
+    `kubectl logs -n timescaledb -l app=migration-watch --tail=50 --prune=false`
+    (eller `job/migration-watch-<n>`). **MÅSTE tas bort efter fönstret:**
+    `kubectl delete cronjob migration-watch -n timescaledb`.
 - [ ] **[Bo]** Ominstallera Pi:erna EN i taget med Ubuntu Server 24.04 (arm64):
   flasha SD/SSD, hostname p0/p1, OpenSSH på, lägg in claude-box-pubnyckeln
   (samma kommando som fas 1).
