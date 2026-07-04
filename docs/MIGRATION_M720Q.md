@@ -546,8 +546,14 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     Traefik-route; inte en regression.) **Bo kör steg 1** mot GAMLA klustret:
     `kubectl scale deploy/cloudflared -n cloudflare-tunnel --replicas=0`
     (eller växla min context med `./claude-box.sh kube homelab` så gör jag det).
-- [ ] **[Bo]** Peka om Shelly-sensorns MQTT-broker till ny IP; peka om
+- [x] **[Bo]** Peka om Shelly-sensorns MQTT-broker till ny IP; peka om
   Pi-hole-DNS-klienter enligt IP-planen från fas 0.
+  → **KLART 2026-07-04:** Shelly + heatpump/thermiq pekades om ~11:05, Tasmota-
+    pluggarna strax efter (Bo hade glömt dem först). Alla 4 MQTT-streams flödar nu
+    till nya klustret. `power_plugs`-avvikelsen från delta-analysen löste sig av
+    sig själv så fort pluggarna pekats om: live `tele/+/STATE`-telemetri skrev
+    över den inaktuella cachen (båda `OFF`, färsk `wifi_rssi`, updated <3 min) —
+    ingen manuell DB-skrivning behövdes.
   → **Ny broker-endpoint: `192.168.50.212:1883`** (Mosquitto LoadBalancer =
     m720q node-IP, verifierad 2026-07-04). Nya klustrets mqtt-kafka-bridge är
     ansluten dit och prenumererar redan på `shellyhtg3-e4b32322a0f4/events/rpc`
@@ -597,6 +603,12 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
 - [ ] **[Claude]** Övervaka dataflödet ~1 dygn: Shelly → Mosquitto → Redpanda →
   TimescaleDB → homelab-api; kontrollera att grafer fylls på och att
   redpanda-sink/settings-consumern är friska.
+  → **Baslinje 2026-07-04 (~12:10 UTC), alla enheter ompekade:** energy 0,7s
+    bakom, heatpump 7s, temperature 1h45m (normalt — Shelly skickar vid ändring /
+    var 2:a timme). Alla 7 consumer-grupper **Stable** (energy-ws, homelab-settings,
+    homelab-settings-api, homelab-settings-outbox-processor, timescaledb-{energy,
+    heatpump,temperature}). Pluggarna rapporterar live (`power_plugs` färsk).
+    Övervakas till ~2026-07-05 eftermiddag.
 - [ ] **[Bo]** Ominstallera Pi:erna EN i taget med Ubuntu Server 24.04 (arm64):
   flasha SD/SSD, hostname p0/p1, OpenSSH på, lägg in claude-box-pubnyckeln
   (samma kommando som fas 1).
