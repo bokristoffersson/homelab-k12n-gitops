@@ -1,13 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: minecraft
 
 resources:
   - namespace.yaml
   - pvc.yaml
-  - configmap.yaml
   - minecraft-rcon-sealed.yaml
   - deployment.yaml
   - service.yaml
+
+# Hashed ConfigMap so edits (e.g. WHITELIST) roll the pod automatically —
+# envFrom ConfigMaps are not hot-reloaded (CLAUDE.md deployment workflow).
+configMapGenerator:
+  - name: minecraft-config
+    envs:
+      - minecraft.env
 
 labels:
   - pairs:
