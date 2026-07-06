@@ -22,6 +22,12 @@ spec:
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      # Pin to pi0: HomeKit (HAP) needs a stable LAN IP + mDNS advertisement, and
+      # HomeKit ports are only opened in ufw on the node running Homebridge. pi0
+      # is compute-only (excluded from Longhorn) and the least pod-busy node, so
+      # its mDNS advertiser sees the fewest transient pod veth interfaces.
+      nodeSelector:
+        kubernetes.io/hostname: pi0
       initContainers:
         - name: setup
           image: homebridge/homebridge:2026-04-20

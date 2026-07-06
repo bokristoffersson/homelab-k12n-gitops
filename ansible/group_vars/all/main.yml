@@ -25,3 +25,11 @@ servicelb_lan_ports:
   - { port: 53, proto: udp }     # pihole DNS
   # - { port: 80, proto: tcp }   # traefik http
   # - { port: 443, proto: tcp }  # traefik https
+
+# HomeKit / Homebridge (hostNetwork, pinned to pi0). HAP + mDNS can't go through
+# an L7 gateway, so the bridge sits on the LAN and these are opened from the LAN.
+# Opened on all nodes (harmless — only the pinned node listens).
+homekit_lan_ports:
+  - { port: 51826, proto: tcp }  # HomeKit bridge (HAP)
+  - { port: 5353, proto: udp }   # mDNS / Bonjour discovery
+  - { port: 8581, proto: tcp }   # Homebridge config UI
