@@ -11,7 +11,10 @@ all:
         m720q:
           ansible_host: 192.168.50.212
     agent:
-      # p0/p1 are added here in phase 5 once reinstalled as agents, e.g.:
-      #   p0: { ansible_host: 192.168.50.210 }
-      #   p1: { ansible_host: 192.168.50.211 }
-      hosts: {}
+      # Reinstalled Pis rejoin as agents in phase 5. Fresh installs came up on
+      # DHCP-assigned IPs and kept their installer hostnames (pi0/pi1), so the
+      # k8s node names are pi0/pi1 rather than the originally-planned p0/p1.
+      # TODO(bo): add DHCP reservations so these IPs stay stable across reboots.
+      hosts:
+        pi0: { ansible_host: 192.168.50.210 }  # Pi4, arm64 (node-static .210, outside DHCP pool)
+        pi1: { ansible_host: 192.168.50.211 }  # Pi5, arm64 (node-static .211, outside DHCP pool)
