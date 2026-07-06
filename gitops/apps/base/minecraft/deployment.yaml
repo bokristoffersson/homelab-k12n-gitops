@@ -25,7 +25,7 @@ spec:
         fsGroup: 1000        # so the itzg (uid 1000) process can write the Longhorn volume
       containers:
         - name: minecraft
-          image: itzg/minecraft-server:java21   # MC 26.x needs Java 21
+          image: itzg/minecraft-server:java25   # MC 26.2 requires Java 25 (verified via PaperMC API)
           envFrom:
             - configMapRef:
                 name: minecraft-config
@@ -38,6 +38,8 @@ spec:
           ports:
             - name: minecraft
               containerPort: 25565
+            - name: rcon
+              containerPort: 25575   # RCON — in-cluster only (kubectl exec / future playit); not exposed via Service
           resources:
             requests:
               cpu: "1"
