@@ -41,13 +41,13 @@
     proto: tcp
     src: "{{ lan_cidr }}"
 
-- name: Allow kubelet (10250/tcp) and flannel VXLAN (8472/udp) from cluster nodes
+- name: Allow kubelet (10250/tcp), node-exporter (9100/tcp) and flannel VXLAN (8472/udp) from cluster nodes
   community.general.ufw:
     rule: allow
     port: "{{ item.1.port }}"
     proto: "{{ item.1.proto }}"
     src: "{{ item.0 }}"
-  loop: "{{ cluster_node_ips | product([{'port': 10250, 'proto': 'tcp'}, {'port': 8472, 'proto': 'udp'}]) | list }}"
+  loop: "{{ cluster_node_ips | product([{'port': 10250, 'proto': 'tcp'}, {'port': 9100, 'proto': 'tcp'}, {'port': 8472, 'proto': 'udp'}]) | list }}"
   loop_control:
     label: "{{ item.0 }}:{{ item.1.port }}/{{ item.1.proto }}"
 
