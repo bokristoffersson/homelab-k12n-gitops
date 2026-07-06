@@ -61,6 +61,16 @@
   loop_control:
     label: "{{ item.port }}/{{ item.proto }}"
 
+- name: Allow HomeKit/Homebridge ports from LAN (hostNetwork; only the pinned node listens)
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    src: "{{ lan_cidr }}"
+  loop: "{{ homekit_lan_ports }}"
+  loop_control:
+    label: "{{ item.port }}/{{ item.proto }}"
+
 - name: Enable ufw
   community.general.ufw:
     state: enabled
