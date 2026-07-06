@@ -2,20 +2,21 @@
 
 ## Project Overview
 
-This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructure runs on a k3s cluster deployed across two Raspberry Pi nodes with various services for home automation, monitoring, and data collection.
+This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructure runs on a CIS-hardened k3s cluster: a Lenovo M720q (amd64) control-plane with two Raspberry Pi agents (arm64), running services for home automation, monitoring, and data collection. (Migrated from the original two-Pi cluster in 2026-07; see `docs/MIGRATION_M720Q.md`.)
 
 ## Infrastructure
 
-- **Cluster Type**: k3s
-- **Nodes**:
-  - p0.local (Raspberry Pi)
-  - p1.local (Raspberry Pi)
-- **Architecture**: arm64
+- **Cluster Type**: k3s (embedded etcd, CIS-hardened: secrets-encryption, protect-kernel-defaults, audit log, PSA baseline)
+- **Nodes** (static IPs; the box has no mDNS, so always use IPs):
+  - `m720q` — 192.168.50.212, amd64, control-plane + etcd
+  - `pi0` — 192.168.50.210, arm64, agent (Pi4; compute-only — excluded from Longhorn as it runs off an SD card. Homebridge is pinned here for HomeKit.)
+  - `pi1` — 192.168.50.211, arm64, agent (Pi5; NVMe — runs Longhorn replicas + Prometheus)
+- **Architecture**: multi-arch (amd64 + arm64) — workload images MUST build for both so they can schedule on any node
 - **Container Registry**: GitHub Container Registry (ghcr.io)
 
 ### Key Technologies
 - **GitOps**: FluxCD for continuous deployment
-- **Kubernetes**: k3s cluster (arm64)
+- **Kubernetes**: k3s cluster (CIS-hardened; multi-arch amd64+arm64)
 - **Authentication**: Authelia (OIDC IdP, config-as-code at `https://auth.k12n.com`) + oauth2-proxy (auth gateway)
 - **Ingress**: Traefik with ForwardAuth middleware
 - **Databases**:
@@ -130,15 +131,15 @@ gh pr create --title "Title" --body "Description"
 - Never force push to `main`
 
 ### Sealed Secrets
-Claude has SSH access to `p1.local` (which has `kubectl` + `kubeseal` configured against
-the cluster) and **may create sealed secrets directly** by running the snippet below over
-SSH and committing the resulting `*-sealed.yaml` file. Guidelines:
-1. **Run `kubeseal` on `p1.local`** (it has the controller cert), then commit the sealed
-   output. Never commit a plain (unsealed) `Secret` or raw secret values.
-2. For secrets that depend on values only the user has (e.g. an Apple APNs `.p8` key),
-   ask the user to place the file on `p1.local` and provide the non-secret identifiers;
-   then seal it.
-3. Use this format for sealed secret creation (run on `p1.local`):
+`kubeseal` runs **locally in the claude-box** against the active kubectl context — it
+reaches the sealed-secrets controller through the Kubernetes API, so **no SSH to a node is
+needed** (the old `p1.local` flow is retired). Create sealed secrets directly and commit
+the resulting `*-sealed.yaml`. Guidelines:
+1. Run the snippet below locally (kubectl context = the homelab cluster). Never commit a
+   plain (unsealed) `Secret` or raw secret values.
+2. For secrets that depend on values only the user has (e.g. an Apple APNs `.p8` key), ask
+   the user to provide the file + non-secret identifiers, then seal it.
+3. Sealed secret creation format:
 
 ```bash
 kubectl create secret generic <secret-name> \
@@ -152,6 +153,9 @@ kubeseal \
   --controller-namespace kube-system \
   --format=yaml > <secret-name>-sealed.yaml
 ```
+
+`kubeseal` fetches the controller cert automatically via the API; add `--fetch-cert` once
+to cache it locally for offline sealing if needed.
 
 ### Database Migrations
 
