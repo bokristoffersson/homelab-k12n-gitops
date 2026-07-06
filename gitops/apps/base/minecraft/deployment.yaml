@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft
+  namespace: minecraft
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # single instance on an RWO volume — never run two pods
+  selector:
+    matchLabels:
+      app: minecraft
+  template:
+    metadata:
+      labels:
+        app: minecraft
+    spec:
+      # Java Minecraft is RAM-heavy → run on m720q (amd64, 32 GB). itzg image is
+      # multi-arch so it could run on a Pi, but m720q is the right home.
+      nodeSelector:
+        kubernetes.io/hostname: m720q
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000        # so the itzg (uid 1000) process can write the Longhorn volume
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:java21   # MC 26.x needs Java 21
+          envFrom:
+            - configMapRef:
+                name: minecraft-config
+          env:
+            - name: RCON_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minecraft-rcon
+                  key: RCON_PASSWORD
+          ports:
+            - name: minecraft
+              containerPort: 25565
+          resources:
+            requests:
+              cpu: "1"
+              memory: 3Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          startupProbe:              # world generation can take a few minutes on first boot
+            exec:
+              command: ["mc-health"]
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["mc-health"]
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["mc-health"]
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: minecraft-data

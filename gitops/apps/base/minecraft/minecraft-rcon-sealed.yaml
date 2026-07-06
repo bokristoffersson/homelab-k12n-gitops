@@ -1,0 +1,13 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: minecraft-rcon
+  namespace: minecraft
+spec:
+  encryptedData:
+    RCON_PASSWORD: AgAyTaADsxPTtNLkN4iA6zj2XleVJ2BkxkooFL4CJLOpkrpqFjKjEO2plOeQ+ifmrcUCLy8JcqzGkj7gsnY3Sdn7nD/5opAn6/vc4qnwgItLQ/8J4BmcW8uDY8etf9qtXayX0QsRoF59GCORkDcICnVjr9oQE2hGRrbJNe3lJ6bObulko+uRC/joTj76ZslvSB0z5W7tAvfgHezxnAemaKbLpa00Drsgmn1R75j6Qc23P72Km32ZuOcVklhvXaLVq2ODN0SCULs/HjKHLrwqXXvtHSZFI53JkSGYC805H5qqqhOoXNWVPtVZjQgh1XC+gRn6apvSsxkvIO/30LiLK+XzNXgo4iisYOvI3xyMwycUOsvoh8XWI5wncT2E5JeZhDurHKGHoHGVOjpVjGe3x8IG9YKIzXYNdOdri59ovqG1S4aGlhy6zZ8mXIIW/QxbD27U6coKuj3A2y4/39U97FOuWQc8bF0Cg9odVIm+ze4+EeCXjBedIgb4weAUCbAfZYG67NrqiVs+PHc4SBZK3zd2dcW6tmGIW+bYsrMv3bXO2PI55/VyIww67NUWhT7H+O4etNNYogBI52q/BuUj73G55MbdHya3F2uKKJvdMeKMdUSZDeYN+kNpJ95aYsrfm1tGyb6ZMAw6aI+RKZI07pzy4I9Xg+H+j3YSBDRaYRlWrqB4atriZZLtCRWhOqIM8TxQtp2o1Qlvn3Wab8N9n/teflNzadfexlQRuMLF
+  template:
+    metadata:
+      name: minecraft-rcon
+      namespace: minecraft

@@ -386,3 +386,19 @@ spec:
   wait: true
   dependsOn:
     - name: timescaledb
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: minecraft
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/minecraft
+  prune: true
+  wait: true
+  dependsOn:
+    - name: infrastructure-controllers
