@@ -13,8 +13,8 @@ lan_cidr: "192.168.50.0/24"
 # p0/p1 are appended here in phase 5.
 cluster_node_ips:
   - "192.168.50.212"   # m720q
-  # - "192.168.50.210" # p0 (phase 5)
-  # - "192.168.50.211" # p1 (phase 5)
+  - "192.168.50.210"   # pi0 (Pi4, rejoined as agent in phase 5)
+  - "192.168.50.211"   # pi1 (Pi5, rejoined as agent in phase 5)
 
 # servicelb (klipper) ports that LAN clients hit directly on the node.
 # Cloudflare Tunnel is the primary ingress path, so traefik 80/443 stay closed

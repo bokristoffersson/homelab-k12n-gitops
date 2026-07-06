@@ -4,3 +4,7 @@ metadata:
   name: monitoring
   labels:
     name: monitoring
+    # node-exporter needs hostNetwork/hostPID/hostPort/hostPath, which the
+    # cluster-default PSA enforce=baseline forbids (Fas 3). Same relax as
+    # redpanda-v2/homebridge (Fas 4 note #5).
+    pod-security.kubernetes.io/enforce: privileged

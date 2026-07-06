@@ -2,3 +2,7 @@
 server: "https://{{ k3s_api_ip }}:{{ k3s_api_port }}"
 token: "{{ k3s_token }}"
 protect-kernel-defaults: true
+# Pin node IP to the inventory address so the node registers deterministically
+# and survives an IP change (kube-router/flannel otherwise chase the stale IP
+# from the Node object after a static-IP switch). Nodes use fixed LAN IPs.
+node-ip: {{ ansible_host }}

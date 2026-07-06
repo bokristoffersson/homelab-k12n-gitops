@@ -1,4 +1,26 @@
 ---
+# k3s ServiceLB (klipper) publishes the pihole LoadBalancer's hostPort 53 on
+# EVERY node. With net.ipv4.conf.all.route_localnet=1 (kube-proxy default) the
+# CNI hostport DNAT rewrites the node's own queries to the 127.0.0.53 stub over
+# to the svclb pod — which on a fresh agent (cold image cache) isn't running
+# yet, so node DNS dies and containerd can't pull ANY image: a chicken-and-egg
+# deadlock (see docs/MIGRATION_M720Q.md phase-4 note #3, hit again on pi0).
+# Pointing /etc/resolv.conf at the systemd-resolved *uplink* file (real
+# upstreams, not the 127.0.0.53 stub) makes host/containerd DNS route straight
+# to upstream, immune to the ServiceLB :53 hijack on every boot.
+- name: Check for the systemd-resolved uplink file
+  ansible.builtin.stat:
+    path: /run/systemd/resolve/resolv.conf
+  register: resolved_uplink
+
+- name: Point node DNS at the systemd-resolved uplink (bypass k3s ServiceLB :53 hijack)
+  ansible.builtin.file:
+    src: /run/systemd/resolve/resolv.conf
+    dest: /etc/resolv.conf
+    state: link
+    force: true
+  when: resolved_uplink.stat.exists
+
 - name: Create k3s config directory
   ansible.builtin.file:
     path: /etc/rancher/k3s
