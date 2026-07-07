@@ -80,7 +80,7 @@ data:
       
       LAG=$(kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
         rpk group describe "redpanda-v2/$group" -f json 2>/dev/null | \
-        grep -o '"lag":[0-9]*' | head -1 | cut -d: -f2 || echo "0")
+        grep -o '"lag":[0-9]*' | head -1 | cut -d: -f2 || true)
       
       if [ -z "$LAG" ]; then
         LAG=0
@@ -96,10 +96,15 @@ data:
     
     # Check MQTT bridge health
     echo "Checking MQTT bridge health..."
+    # grep -c prints "0" AND exits 1 when there are no matches; a `|| echo "0"`
+    # here appended a second "0", producing a multi-line "0\n0" that broke the
+    # numeric test ("sh: 0: unknown operand") and failed the whole job. Use
+    # `|| true` so the printed count is the only value.
     ERROR_COUNT=$(kubectl logs -n mqtt-kafka-bridge deployment/mqtt-kafka-bridge --since=15m 2>/dev/null | \
-      grep -c "Connection lost" || echo "0")
-    
-    if [ $ERROR_COUNT -gt 10 ]; then
+      grep -c "Connection lost" || true)
+    [ -z "$ERROR_COUNT" ] && ERROR_COUNT=0
+
+    if [ "$ERROR_COUNT" -gt 10 ]; then
       send_slack_alert "MQTT bridge has $ERROR_COUNT connection errors in last 15m" "critical"
       echo "ALERT: MQTT bridge error count: $ERROR_COUNT"
     else

@@ -72,6 +72,11 @@ spec:
 
     alertmanager:
       alertmanagerSpec:
+        # Mount the existing slack-webhook secret (the same one the health-check
+        # CronJob uses) so the Slack receiver reads the webhook URL from a file —
+        # no plaintext URL in git.
+        secrets:
+          - slack-webhook
         storage:
           volumeClaimTemplate:
             spec:
@@ -81,7 +86,49 @@ spec:
               resources:
                 requests:
                   storage: 10Gi
+      config:
+        global:
+          resolve_timeout: 5m
+        route:
+          group_by: ["namespace", "alertname"]
+          group_wait: 30s
+          group_interval: 5m
+          repeat_interval: 4h
+          receiver: slack
+          routes:
+            # Watchdog (always-firing dead-man's switch) + InfoInhibitor are
+            # internal signals — never notify.
+            - receiver: "null"
+              matchers:
+                - alertname =~ "Watchdog|InfoInhibitor"
+        receivers:
+          - name: "null"
+          - name: slack
+            slack_configs:
+              - api_url_file: /etc/alertmanager/secrets/slack-webhook/SLACK_WEBHOOK_URL
+                channel: "#homelab-alerts"   # webhook is channel-bound; adjust if desired
+                send_resolved: true
+                title: '{{ if eq .Status "firing" }}🔥 FIRING{{ else }}✅ RESOLVED{{ end }} | {{ .CommonLabels.alertname }} ({{ .CommonLabels.severity }})'
+                text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ if .Annotations.description }} — {{ .Annotations.description }}{{ end }}{{ "\n" }}{{ end }}'
 
     # Grafana is deployed separately (grafana namespace / own HelmRelease).
     grafana:
       enabled: false
+
+    # k3s runs kube-controller-manager, kube-scheduler and kube-proxy embedded in
+    # the k3s process and does not expose the metrics endpoints kube-prometheus-
+    # stack scrapes — so KubeControllerManagerDown / KubeSchedulerDown /
+    # KubeProxyDown fire as permanent false positives. Disable those components'
+    # ServiceMonitors and their alert rules.
+    kubeControllerManager:
+      enabled: false
+    kubeScheduler:
+      enabled: false
+    kubeProxy:
+      enabled: false
+    defaultRules:
+      rules:
+        kubeControllerManager: false
+        kubeSchedulerAlerting: false
+        kubeSchedulerRecording: false
+        kubeProxy: false
