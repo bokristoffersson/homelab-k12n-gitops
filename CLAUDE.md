@@ -8,9 +8,11 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 
 - **Cluster Type**: k3s (embedded etcd, CIS-hardened: secrets-encryption, protect-kernel-defaults, audit log, PSA baseline)
 - **Nodes** (static IPs; the box has no mDNS, so always use IPs):
-  - `m720q` — 192.168.50.212, amd64, control-plane + etcd
+  - `m720q` — 192.168.50.212, amd64, control-plane + etcd; **primary Longhorn storage node** (1 TB NVMe at `/var/lib/longhorn`)
   - `pi0` — 192.168.50.210, arm64, agent (Pi4; compute-only — excluded from Longhorn as it runs off an SD card. Homebridge is pinned here for HomeKit.)
-  - `pi1` — 192.168.50.211, arm64, agent (Pi5; NVMe — runs Longhorn replicas + Prometheus)
+  - `pi1` — 192.168.50.211, arm64, agent (Pi5; NVMe — second Longhorn storage node + runs Prometheus)
+
+  **Longhorn storage nodes: `m720q` + `pi1`** (default replica count 2; `pi0` excluded). A `longhorn` PVC attaches to a pod on any node — the engine runs with the pod and reaches replicas over the network — so a Longhorn PVC is compatible with a `nodeSelector` pin to `m720q` (it keeps a local replica there plus a redundant copy on `pi1`).
 - **Architecture**: multi-arch (amd64 + arm64) — workload images MUST build for both so they can schedule on any node
 - **Container Registry**: GitHub Container Registry (ghcr.io)
 

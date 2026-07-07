@@ -23,6 +23,7 @@ servicelb_lan_ports:
   - { port: 1883, proto: tcp }   # mosquitto MQTT (Shelly sensor after cutover)
   - { port: 53, proto: tcp }     # pihole DNS
   - { port: 53, proto: udp }     # pihole DNS
+  - { port: 25565, proto: tcp }  # minecraft (Java) — LAN play via ServiceLB
   # - { port: 80, proto: tcp }   # traefik http
   # - { port: 443, proto: tcp }  # traefik https
 
