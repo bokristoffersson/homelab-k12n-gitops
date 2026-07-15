@@ -2,3 +2,19 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - cert-manager-crds.yaml
+  # Traefik CRDs, vendored from the traefik chart 38.0.1 crds/ dir.
+  # The Helm chart only installs these on the FIRST `helm install` (Flux
+  # install.crds: Create) and skips them on every upgrade, so a fresh-cluster
+  # reconcile (e.g. the M720Q rebuild) comes up WITHOUT them, breaking all
+  # IngressRoute/Middleware routing. Managing them here keeps them present
+  # regardless of the release's install/upgrade state.
+  - traefik.io_ingressroutes.yaml
+  - traefik.io_ingressroutetcps.yaml
+  - traefik.io_ingressrouteudps.yaml
+  - traefik.io_middlewares.yaml
+  - traefik.io_middlewaretcps.yaml
+  - traefik.io_serverstransports.yaml
+  - traefik.io_serverstransporttcps.yaml
+  - traefik.io_tlsoptions.yaml
+  - traefik.io_tlsstores.yaml
+  - traefik.io_traefikservices.yaml
