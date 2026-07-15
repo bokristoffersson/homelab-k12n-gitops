@@ -40,6 +40,22 @@ configMapGenerator:
         grafana_dashboard: "1"
       annotations:
         grafana_folder: Homelab
+  - name: grafana-dashboard-flux-cluster
+    files:
+      - dashboards/flux-cluster.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: Homelab
+  - name: grafana-dashboard-flux-control-plane
+    files:
+      - dashboards/flux-control-plane.json
+    options:
+      labels:
+        grafana_dashboard: "1"
+      annotations:
+        grafana_folder: Homelab
 
 generatorOptions:
   disableNameSuffixHash: true

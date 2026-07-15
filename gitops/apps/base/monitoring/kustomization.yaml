@@ -8,3 +8,4 @@ resources:
   - serviceaccount.yaml
   - monitoring-script-configmap.yaml
   - cronjob.yaml
+  - flux-podmonitor.yaml

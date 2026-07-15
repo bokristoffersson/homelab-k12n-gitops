@@ -1,0 +1,30 @@
+---
+# Scrapes the Flux controllers' /metrics (port http-prom) so Prometheus has
+# the gotk_* series the Flux dashboards render. Discovered automatically by
+# kube-prometheus-stack (podMonitorSelectorNilUsesHelmValues: false). The pods
+# live in flux-system; this PodMonitor object lives in monitoring.
+# Source: fluxcd/flux2-monitoring-example.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flux-system
+  labels:
+    app.kubernetes.io/part-of: flux
+    app.kubernetes.io/component: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - helm-controller
+          - source-controller
+          - kustomize-controller
+          - notification-controller
+          - image-automation-controller
+          - image-reflector-controller
+  podMetricsEndpoints:
+    - port: http-prom
