@@ -17,7 +17,7 @@ pipeline:
         root.time = $ts
         root.device_serial = $device_serial
         root.meter_type = $meter_type
-        root.wifi_rssi = this.fields.wifi_rssi.number().floor()
+        root.wifi_rssi = this.fields.wifi_rssi.number().floor() | null
         root.active_power_total = this.fields.active_power_total.number().floor()
         root.active_power_l1 = this.fields.active_power_l1.number().floor()
         root.active_power_l2 = this.fields.active_power_l2.number().floor()
