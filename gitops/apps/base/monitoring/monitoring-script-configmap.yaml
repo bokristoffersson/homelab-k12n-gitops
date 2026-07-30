@@ -6,94 +6,134 @@ metadata:
 data:
   check-health.sh: |
     #!/bin/sh
-    set -e
-    
+    # Stateful health check: Slack is only notified on state transitions
+    # (OK -> FIRING sends an alert, FIRING -> OK sends a recovery message),
+    # plus a reminder every REALERT_SECONDS while a check stays firing.
+    # Previous run's state lives in the monitoring-health-state ConfigMap,
+    # created and written by this script. That ConfigMap must NOT be added
+    # to GitOps: Flux drift-correction would wipe the state on every
+    # reconcile, turning every alert into a new transition.
+    #
+    # No `set -e`: a transient kubectl/psql/rpk failure should skip that
+    # single check (logged as SKIP, state untouched), not fail the Job.
+
     SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL}"
+    STATE_CM=monitoring-health-state
+    REALERT_SECONDS=14400         # remind about still-firing checks every 4h
     ALERT_THRESHOLD_TEMP=7200     # 2 hours for temperature
     ALERT_THRESHOLD_ENERGY=600    # 10 minutes for energy
     ALERT_THRESHOLD_HEATPUMP=600  # 10 minutes for heatpump
     LAG_THRESHOLD=1000            # 1000 messages
-    
+
     send_slack_alert() {
       local message="$1"
       local severity="$2"
       local icon="⚠️"
-      
+
       case "$severity" in
         critical) icon="🚨" ;;
         warning) icon="⚠️" ;;
         info) icon="ℹ️" ;;
       esac
-      
+
       curl -X POST "$SLACK_WEBHOOK_URL" \
         -H 'Content-Type: application/json' \
         -d "{\"text\":\"$icon *$severity* | $message\"}" \
         -s -o /dev/null
     }
-    
-    # Check temperature data freshness
-    echo "Checking temperature data freshness..."
-    TEMP_AGE=$(kubectl exec -n timescaledb deployment/timescaledb -- \
-      psql -U postgres -d telemetry -tAc \
-      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(time))), 999999) FROM temperature_sensors;")
-    
-    if [ $(echo "$TEMP_AGE > $ALERT_THRESHOLD_TEMP" | bc) -eq 1 ]; then
-      HOURS=$(echo "$TEMP_AGE / 3600" | bc)
-      send_slack_alert "No temperature data for ${HOURS}h (last reading: $(echo "$TEMP_AGE / 60" | bc)m ago)" "warning"
-      echo "ALERT: Temperature data is $TEMP_AGE seconds old"
-    else
-      echo "Temperature data OK ($(echo "$TEMP_AGE / 60" | bc)m old)"
-    fi
-    
-    # Check energy data freshness
-    echo "Checking energy data freshness..."
-    ENERGY_AGE=$(kubectl exec -n timescaledb deployment/timescaledb -- \
-      psql -U postgres -d telemetry -tAc \
-      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(ts))), 999999) FROM energy;")
-    
-    if [ $(echo "$ENERGY_AGE > $ALERT_THRESHOLD_ENERGY" | bc) -eq 1 ]; then
-      send_slack_alert "No energy data for $(echo "$ENERGY_AGE / 60" | bc)m" "critical"
-      echo "ALERT: Energy data is $ENERGY_AGE seconds old"
-    else
-      echo "Energy data OK ($(echo "$ENERGY_AGE" | bc)s old)"
-    fi
-    
-    # Check heatpump data freshness
-    echo "Checking heatpump data freshness..."
-    HEATPUMP_AGE=$(kubectl exec -n timescaledb deployment/timescaledb -- \
-      psql -U postgres -d telemetry -tAc \
-      "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX(time))), 999999) FROM heatpump_status;")
-    
-    if [ $(echo "$HEATPUMP_AGE > $ALERT_THRESHOLD_HEATPUMP" | bc) -eq 1 ]; then
-      send_slack_alert "No heatpump data for $(echo "$HEATPUMP_AGE / 60" | bc)m" "warning"
-      echo "ALERT: Heatpump data is $HEATPUMP_AGE seconds old"
-    else
-      echo "Heatpump data OK ($(echo "$HEATPUMP_AGE" | bc)s old)"
-    fi
-    
-    # Check Kafka consumer group lag
-    echo "Checking Kafka consumer group lag..."
-    CONSUMER_GROUPS="timescaledb-energy timescaledb-heatpump timescaledb-temperature heatpump-settings"
-    
-    for group in $CONSUMER_GROUPS; do
-      echo "Checking consumer group: redpanda-v2/$group"
-      
-      LAG=$(kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
-        rpk group describe "redpanda-v2/$group" -f json 2>/dev/null | \
-        grep -o '"lag":[0-9]*' | head -1 | cut -d: -f2 || true)
-      
-      if [ -z "$LAG" ]; then
-        LAG=0
-      fi
-      
-      if [ $LAG -gt $LAG_THRESHOLD ]; then
-        send_slack_alert "High consumer lag for $group: $LAG messages" "warning"
-        echo "ALERT: Consumer group $group has lag of $LAG"
+
+    get_state() {
+      kubectl get configmap "$STATE_CM" -n monitoring \
+        -o jsonpath="{.data.$1}" 2>/dev/null
+    }
+
+    set_state() {
+      kubectl patch configmap "$STATE_CM" -n monitoring --type merge \
+        -p "{\"data\":{\"$1\":\"$2\"}}" -o name >/dev/null 2>&1
+    }
+
+    # evaluate <state_key> <FIRING|OK> [message] [severity]
+    # State values: "FIRING:<epoch of last notification>" or "OK".
+    evaluate() {
+      local key="$1" status="$2" message="$3" severity="$4"
+      local prev prev_status prev_ts now
+      prev=$(get_state "$key")
+      prev_status=${prev%%:*}
+      prev_ts=${prev##*:}
+      case "$prev_ts" in ''|*[!0-9]*) prev_ts=0 ;; esac
+      now=$(date +%s)
+
+      if [ "$status" = "FIRING" ]; then
+        echo "ALERT: $message"
+        if [ "$prev_status" != "FIRING" ]; then
+          send_slack_alert "$message" "$severity"
+          set_state "$key" "FIRING:$now"
+        elif [ $((now - prev_ts)) -ge "$REALERT_SECONDS" ]; then
+          send_slack_alert "$message (still firing)" "$severity"
+          set_state "$key" "FIRING:$now"
+        fi
       else
-        echo "Consumer group $group OK (lag: $LAG)"
+        if [ "$prev_status" = "FIRING" ]; then
+          send_slack_alert "$key recovered" "info"
+        fi
+        [ "$prev" != "OK" ] && set_state "$key" "OK"
       fi
+    }
+
+    # State ConfigMap is created on first run; harmless no-op afterwards.
+    kubectl create configmap "$STATE_CM" -n monitoring >/dev/null 2>&1
+
+    # check_freshness <state_key> <table> <time_column> <threshold> <severity> <label>
+    # ::bigint in SQL so the shell can compare without bc; COALESCE covers an
+    # empty table, an empty result covers a failed query (-> SKIP).
+    check_freshness() {
+      local key="$1" table="$2" column="$3" threshold="$4" severity="$5" label="$6"
+      local age
+      echo "Checking $label data freshness..."
+      age=$(kubectl exec -n timescaledb deployment/timescaledb -- \
+        psql -U postgres -d telemetry -tAc \
+        "SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MAX($column)))::bigint, 999999) FROM $table;" 2>/dev/null)
+      case "$age" in
+        ''|*[!0-9-]*)
+          echo "SKIP: $label freshness query failed" ;;
+        *)
+          if [ "$age" -gt "$threshold" ]; then
+            evaluate "$key" FIRING "No $label data for $((age / 60))m" "$severity"
+          else
+            echo "$label data OK (${age}s old)"
+            evaluate "$key" OK
+          fi ;;
+      esac
+    }
+
+    check_freshness temp temperature_sensors time "$ALERT_THRESHOLD_TEMP" warning temperature
+    check_freshness energy energy ts "$ALERT_THRESHOLD_ENERGY" critical energy
+    check_freshness heatpump heatpump_status time "$ALERT_THRESHOLD_HEATPUMP" warning heatpump
+
+    # Check Kafka consumer group lag. rpk's TOTAL-LAG line sums all partitions
+    # (this rpk build ignores `-f json`, so parse the text output).
+    echo "Checking Kafka consumer group lag..."
+    CONSUMER_GROUPS="timescaledb-energy timescaledb-heatpump timescaledb-temperature homelab-settings homelab-settings-api"
+
+    for group in $CONSUMER_GROUPS; do
+      LAG=$(kubectl exec -n redpanda-v2 redpanda-v2-0 -c redpanda -- \
+        rpk group describe "$group" 2>/dev/null | \
+        awk '/^TOTAL-LAG/ {print $2}')
+      key="lag_$(echo "$group" | tr '-' '_')"
+
+      case "$LAG" in
+        ''|*[!0-9]*)
+          echo "SKIP: lag query failed for $group" ;;
+        *)
+          if [ "$LAG" -gt "$LAG_THRESHOLD" ]; then
+            evaluate "$key" FIRING "High consumer lag for $group: $LAG messages" warning
+          else
+            echo "Consumer group $group OK (lag: $LAG)"
+            evaluate "$key" OK
+          fi ;;
+      esac
     done
-    
+
     # Check MQTT bridge health
     echo "Checking MQTT bridge health..."
     # grep -c prints "0" AND exits 1 when there are no matches; a `|| echo "0"`
@@ -105,10 +145,20 @@ data:
     [ -z "$ERROR_COUNT" ] && ERROR_COUNT=0
 
     if [ "$ERROR_COUNT" -gt 10 ]; then
-      send_slack_alert "MQTT bridge has $ERROR_COUNT connection errors in last 15m" "critical"
-      echo "ALERT: MQTT bridge error count: $ERROR_COUNT"
+      evaluate mqtt_bridge FIRING "MQTT bridge has $ERROR_COUNT connection errors in last 15m" critical
     else
       echo "MQTT bridge OK (errors: $ERROR_COUNT)"
+      evaluate mqtt_bridge OK
     fi
-    
+
+    # Dead man's switch: ping healthchecks.io on every completed run — firing
+    # checks included; the ping means "monitoring is alive", not "all green".
+    # If the pings stop (cluster down, CronJob broken, node dead) healthchecks.io
+    # alerts externally. HEALTHCHECKS_PING_URL comes from the optional
+    # healthchecks-ping secret; without it the ping is skipped.
+    if [ -n "$HEALTHCHECKS_PING_URL" ]; then
+      curl -fsS -m 10 --retry 3 -o /dev/null "$HEALTHCHECKS_PING_URL" || \
+        echo "WARN: healthchecks.io ping failed"
+    fi
+
     echo "Health check complete"

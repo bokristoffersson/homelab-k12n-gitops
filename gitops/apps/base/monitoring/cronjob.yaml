@@ -10,7 +10,11 @@ spec:
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
-      backoffLimit: 1
+      # A single transient (DB/broker briefly unreachable) should not leave a
+      # permanent Failed job; and finished jobs self-clean after 48h so a
+      # Failed one cannot keep KubeJobFailed firing for weeks.
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 172800
       template:
         metadata:
           labels:
@@ -25,7 +29,7 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  apk add --no-cache curl bc
+                  apk add --no-cache curl
                   sh /scripts/check-health.sh
               env:
                 - name: SLACK_WEBHOOK_URL
@@ -33,6 +37,15 @@ spec:
                     secretKeyRef:
                       name: slack-webhook
                       key: SLACK_WEBHOOK_URL
+                # Dead man's switch (healthchecks.io ping URL). Optional so the
+                # CronJob runs before the sealed secret exists; the script skips
+                # the ping when the variable is unset.
+                - name: HEALTHCHECKS_PING_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: healthchecks-ping
+                      key: HEALTHCHECKS_PING_URL
+                      optional: true
               volumeMounts:
                 - name: scripts
                   mountPath: /scripts
