@@ -1,0 +1,32 @@
+# Runtime safety net for the m720q's intermittent cooling-fan fault (sole
+# control-plane): if the fan dies while the node is up, CPU temperature is the
+# only observable signal — Linux cannot read the EC-controlled fan RPM on this
+# box. Matches both the m720q's coretemp (idle ~45 C, critical trip 119 C) and
+# the Pis' SoC thermal zone (throttling starts at 85 C).
+# Picked up by Prometheus via ruleSelectorNilUsesHelmValues: false and routed
+# to Slack by Alertmanager (warning/critical hit the default slack receiver).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homelab-node-thermal
+  namespace: monitoring
+spec:
+  groups:
+    - name: node-thermal
+      rules:
+        - alert: NodeCPUTemperatureHigh
+          expr: max by (instance) (node_hwmon_temp_celsius{chip=~"platform_coretemp.*|thermal_thermal_zone.*"}) > 85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "CPU temperature high on {{ $labels.instance }}"
+            description: "Max CPU/SoC temperature has been above 85 C for 10m (now {{ $value | printf \"%.0f\" }} C). On m720q, suspect the intermittent fan fault."
+        - alert: NodeCPUTemperatureCritical
+          expr: max by (instance) (node_hwmon_temp_celsius{chip=~"platform_coretemp.*|thermal_thermal_zone.*"}) > 95
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "CPU temperature critical on {{ $labels.instance }}"
+            description: "Max CPU/SoC temperature has been above 95 C for 2m (now {{ $value | printf \"%.0f\" }} C) — thermal shutdown risk; check cooling now."

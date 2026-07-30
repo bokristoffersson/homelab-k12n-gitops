@@ -9,3 +9,4 @@ resources:
   - monitoring-script-configmap.yaml
   - cronjob.yaml
   - flux-podmonitor.yaml
+  - prometheusrule-node-thermal.yaml
