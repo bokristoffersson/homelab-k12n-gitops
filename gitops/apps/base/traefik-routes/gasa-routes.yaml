@@ -1,0 +1,70 @@
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gasa-routes
+  namespace: traefik
+spec:
+  entryPoints:
+    - web
+  routes:
+    # OAuth2 Proxy callbacks (public - must be highest priority)
+    - match: Host(`gasa.k12n.com`) && PathPrefix(`/oauth2`)
+      kind: Rule
+      priority: 200
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+      services:
+        - name: oauth2-proxy
+          namespace: oauth2-proxy
+          port: 4180
+
+    # Shared iCal feed (public - calendar apps cannot log in; access is
+    # guarded by the secret token in the path, validated by gasa-api)
+    - match: Host(`gasa.k12n.com`) && PathPrefix(`/ical`)
+      kind: Rule
+      priority: 190
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: gasa-api
+          namespace: gasa
+          port: 8080
+
+    # API (protected; plain 401 on expiry - the SPA restarts the login flow)
+    - match: Host(`gasa.k12n.com`) && PathPrefix(`/api`)
+      kind: Rule
+      priority: 100
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: gasa-api
+          namespace: gasa
+          port: 8080
+
+    # SPA catch-all (protected; oauth2-errors redirects browsers to sign-in)
+    - match: Host(`gasa.k12n.com`)
+      kind: Rule
+      priority: 10
+      middlewares:
+        - name: https-scheme
+          namespace: traefik
+        - name: oauth2-proxy-auth
+          namespace: traefik
+        - name: oauth2-errors
+          namespace: traefik
+        - name: security-headers
+          namespace: traefik
+      services:
+        - name: gasa-web
+          namespace: gasa
+          port: 80

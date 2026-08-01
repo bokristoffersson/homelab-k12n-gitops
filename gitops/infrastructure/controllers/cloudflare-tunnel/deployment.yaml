@@ -96,6 +96,10 @@ data:
       - hostname: whoami.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80
 
+      # Gasa - driving practice booking (via Traefik)
+      - hostname: gasa.k12n.com
+        service: http://traefik.traefik.svc.cluster.local:80
+
       # Legacy hostnames (keep during transition)
       - hostname: heatpump.k12n.com
         service: http://traefik.traefik.svc.cluster.local:80

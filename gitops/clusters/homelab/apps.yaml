@@ -370,6 +370,7 @@ spec:
     - name: heatpump-web
     - name: homelab-chat-api
     - name: spotprice
+    - name: gasa
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -402,3 +403,20 @@ spec:
   wait: true
   dependsOn:
     - name: infrastructure-controllers
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: gasa
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./gitops/apps/homelab/gasa
+  prune: true
+  wait: true
+  dependsOn:
+    - name: infrastructure-controllers
+---

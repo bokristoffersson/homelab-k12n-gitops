@@ -1,0 +1,22 @@
+# Local development configuration. The production config is provided via a
+# ConfigMap (gitops/apps/base/gasa/configs/gasa-api-config.yaml).
+database:
+  url: "postgresql://postgres:postgres@localhost:5432/gasa"
+  max_connections: 5
+  min_connections: 1
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+
+app:
+  base_url: "http://localhost:8080"
+  admin_emails:
+    - "bo.kristoffersson@gmail.com"
+  ical_token: "dev-token"
+
+# Local development only: injects a fake authenticated user when the
+# oauth2-proxy headers are absent. Must never appear in the production config.
+dev_user:
+  username: "bo"
+  email: "bo.kristoffersson@gmail.com"

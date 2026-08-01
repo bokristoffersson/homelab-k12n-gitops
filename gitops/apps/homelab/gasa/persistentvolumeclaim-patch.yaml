@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: gasa
+spec:
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 5Gi

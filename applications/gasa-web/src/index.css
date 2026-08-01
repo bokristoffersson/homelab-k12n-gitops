@@ -1,0 +1,266 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #f4f5f7;
+  --card: #ffffff;
+  --text: #1c2430;
+  --muted: #66707c;
+  --border: #e3e6ea;
+  --primary: #1d6f42;
+  --primary-dark: #175936;
+  --free: #e7f5ec;
+  --free-text: #1d6f42;
+  --booked: #eef1f5;
+  --booked-text: #4a5462;
+  --danger: #b4232c;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 3rem;
+}
+
+.page-message {
+  max-width: 640px;
+  margin: 4rem auto;
+  text-align: center;
+  color: var(--muted);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.header h1 {
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.user-chip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+  text-transform: capitalize;
+}
+
+.toast {
+  background: #fdecea;
+  color: var(--danger);
+  border: 1px solid #f5c6c4;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.day-heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+  text-transform: capitalize;
+}
+
+.slot-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.slot-card.free {
+  border-left: 4px solid var(--primary);
+}
+
+.slot-card.booked {
+  border-left: 4px solid #b9c1cb;
+}
+
+.slot-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.slot-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.slot-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.chip-free {
+  background: var(--free);
+  color: var(--free-text);
+}
+
+.chip-booked {
+  background: var(--booked);
+  color: var(--booked-text);
+  text-transform: capitalize;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.45rem 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.btn-danger {
+  color: var(--danger);
+}
+
+.admin-toggle {
+  margin-bottom: 0.5rem;
+}
+
+.admin-panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-panel h2 {
+  font-size: 1.1rem;
+}
+
+.admin-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  flex: 1;
+}
+
+.admin-panel input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.6rem;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--card);
+}
+
+.form-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.calendar-info {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-top: 2rem;
+}
+
+.calendar-info h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-info p {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.calendar-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
