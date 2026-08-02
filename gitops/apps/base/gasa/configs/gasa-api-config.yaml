@@ -1,5 +1,8 @@
 # Production configuration for gasa-api. Secret values are injected via
-# environment variables from sealed secrets ($(VAR) substitution at startup).
+# environment variables from sealed secrets, using dollar-paren placeholder
+# substitution at startup. NOTE: the substitution scans the WHOLE file
+# including comments, so never write a dollar-paren placeholder here unless
+# a matching env var exists.
 database:
   url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres.gasa.svc.cluster.local:5432/gasa"
   max_connections: 5
