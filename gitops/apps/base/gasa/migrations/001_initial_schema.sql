@@ -1,12 +1,8 @@
 -- Migration: 001_initial_schema
--- Description: Create the gasa database and the slots table for driving-practice bookings.
--- All statements are idempotent: this script re-runs on every Flux sync.
-
--- Create gasa database if it doesn't exist
-SELECT 'CREATE DATABASE gasa'
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'gasa')\gexec
-
-\c gasa
+-- Description: Create the slots table for driving-practice bookings.
+-- Runs against the gasa database (run_migrations.sh creates the database
+-- and connects with PGDATABASE=gasa). All statements are idempotent:
+-- this script re-runs on every Flux sync.
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,
