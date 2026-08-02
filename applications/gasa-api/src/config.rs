@@ -93,12 +93,16 @@ impl Config {
 
 /// Substitute environment variables in format $(VAR_NAME)
 fn substitute_env_vars(content: &str) -> Result<String> {
+    substitute_vars(content, |name| env::var(name).ok())
+}
+
+fn substitute_vars(content: &str, lookup: impl Fn(&str) -> Option<String>) -> Result<String> {
     let mut result = content.to_string();
     let re = regex::Regex::new(r"\$\(([A-Z_]+)\)").unwrap();
 
     for cap in re.captures_iter(content) {
         let var_name = &cap[1];
-        let var_value = env::var(var_name)
+        let var_value = lookup(var_name)
             .with_context(|| format!("Environment variable {} not set", var_name))?;
         result = result.replace(&format!("$({})", var_name), &var_value);
     }
@@ -132,14 +136,25 @@ mod tests {
     }
 
     #[test]
-    fn test_substitute_env_vars() {
-        env::set_var("TEST_USER", "testuser");
-        env::set_var("TEST_PASSWORD", "testpass");
+    fn test_substitute_vars() {
+        // Injected lookup instead of process env: thread-safe under the
+        // multi-threaded test runner
+        let lookup = |name: &str| match name {
+            "TEST_USER" => Some("testuser".to_string()),
+            "TEST_PASSWORD" => Some("testpass".to_string()),
+            _ => None,
+        };
 
         let input = "postgresql://$(TEST_USER):$(TEST_PASSWORD)@localhost";
-        let result = substitute_env_vars(input).unwrap();
+        let result = substitute_vars(input, lookup).unwrap();
 
         assert_eq!(result, "postgresql://testuser:testpass@localhost");
+    }
+
+    #[test]
+    fn test_substitute_vars_missing_var_errors() {
+        let result = substitute_vars("$(MISSING_VAR)", |_| None);
+        assert!(result.is_err());
     }
 
     #[test]
