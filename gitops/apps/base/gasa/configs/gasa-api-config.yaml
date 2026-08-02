@@ -16,6 +16,7 @@ app:
   base_url: "https://gasa.k12n.com"
   admin_emails:
     - "bo.kristoffersson@gmail.com"
+    - "johanna@k12n.com"
   ical_token: "$(ICAL_TOKEN)"
 
 # iCloud SMTP. Username is the Apple ID; from must be an address/alias verified
