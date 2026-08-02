@@ -18,6 +18,11 @@ app:
     - "bo.kristoffersson@gmail.com"
     - "johanna@k12n.com"
   ical_token: "$(ICAL_TOKEN)"
+  # Username override per email, for accounts whose email local-part is not
+  # a nice display name (keys must be lowercase)
+  display_names:
+    "arvid.kristoffersson@icloud.com": "arvid"
+    "ludvigkristoffersson@icloud.com": "ludvig"
 
 # iCloud SMTP. Username is the Apple ID; from must be an address/alias verified
 # in iCloud Mail (custom domain k12n.com is hosted there).
