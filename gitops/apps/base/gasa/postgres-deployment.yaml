@@ -16,6 +16,10 @@ spec:
       labels:
         app: postgres
     spec:
+      # Pin to the primary Longhorn storage node so the volume replica is
+      # local (pi0 is excluded from Longhorn; see CLAUDE.md node notes)
+      nodeSelector:
+        kubernetes.io/hostname: m720q
       containers:
         - name: postgres
           image: postgres:16-alpine
