@@ -38,7 +38,18 @@ fn user_from_headers(request: &Request<Body>) -> Option<(String, Option<String>)
         .filter(|s| !s.is_empty())
         .map(str::to_owned);
 
-    Some((user.to_string(), email))
+    Some((username_for(user, email.as_deref()), email))
+}
+
+/// Human-readable username. oauth2-proxy fills X-Auth-Request-User from the
+/// OIDC `sub` claim, which in Authelia is an opaque UUID - so prefer the
+/// email local-part (erik@k12n.com -> erik) when an email is present.
+fn username_for(header_user: &str, email: Option<&str>) -> String {
+    email
+        .and_then(|e| e.split('@').next())
+        .filter(|s| !s.is_empty())
+        .unwrap_or(header_user)
+        .to_string()
 }
 
 pub async fn require_proxy_auth(
@@ -93,6 +104,29 @@ mod tests {
             user_from_headers(&request),
             Some(("erik".to_string(), Some("erik@example.com".to_string())))
         );
+    }
+
+    #[test]
+    fn test_uuid_sub_replaced_by_email_local_part() {
+        // Authelia's sub claim is an opaque UUID; the username must come
+        // from the email instead
+        let request = make_request(vec![
+            (
+                "X-Auth-Request-User",
+                "18c33579-7073-4b53-840d-ae8ab2adc9aa",
+            ),
+            ("X-Auth-Request-Email", "erik@k12n.com"),
+        ]);
+        assert_eq!(
+            user_from_headers(&request),
+            Some(("erik".to_string(), Some("erik@k12n.com".to_string())))
+        );
+    }
+
+    #[test]
+    fn test_username_falls_back_to_header_without_email() {
+        assert_eq!(username_for("someuser", None), "someuser");
+        assert_eq!(username_for("someuser", Some("@broken")), "someuser");
     }
 
     #[test]
