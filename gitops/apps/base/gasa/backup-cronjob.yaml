@@ -18,6 +18,11 @@ spec:
             app: postgres-backup
         spec:
           restartPolicy: OnFailure
+          # Co-locate with postgres on m720q: dump traffic stays node-local.
+          # (amazon/aws-cli:2.36.14 is multi-arch amd64+arm64, so this is a
+          # locality choice, not an architecture requirement.)
+          nodeSelector:
+            kubernetes.io/hostname: m720q
           # Dump and upload run as separate stock images sharing an emptyDir,
           # so nothing is installed at runtime (no apt-get in the pod).
           initContainers:
