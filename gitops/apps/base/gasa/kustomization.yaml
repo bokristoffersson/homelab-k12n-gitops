@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gasa
+resources:
+  - namespace.yaml
+  - persistentvolumeclaim.yaml
+  - postgres-deployment.yaml
+  - postgres-service.yaml
+  - migration-job.yaml
+  - backup-cronjob.yaml
+  - gasa-api-deployment.yaml
+  - gasa-api-service.yaml
+  - gasa-web-deployment.yaml
+  - gasa-web-service.yaml
+  - postgres-credentials-sealed.yaml
+  - gasa-api-secrets-sealed.yaml
+  - backup-aws-credentials-sealed.yaml
+
+configMapGenerator:
+  - name: gasa-api-config
+    files:
+      - config.yaml=configs/gasa-api-config.yaml
+  - name: postgres-migrations
+    files:
+      - migrations/001_initial_schema.sql
+      - migrations/run_migrations.sh

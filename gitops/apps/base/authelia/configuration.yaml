@@ -192,6 +192,7 @@ data:
             access_token_signed_response_alg: 'RS256'
             redirect_uris:
               - 'https://homelab.k12n.com/oauth2/callback'
+              - 'https://gasa.k12n.com/oauth2/callback'
             response_types:
               - 'code'
             grant_types:

@@ -1,0 +1,26 @@
+# Production configuration for gasa-api. Secret values are injected via
+# environment variables from sealed secrets ($(VAR) substitution at startup).
+database:
+  url: "postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@postgres.gasa.svc.cluster.local:5432/gasa"
+  max_connections: 5
+  min_connections: 1
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+
+app:
+  base_url: "https://gasa.k12n.com"
+  admin_emails:
+    - "bo.kristoffersson@gmail.com"
+  ical_token: "$(ICAL_TOKEN)"
+
+# iCloud SMTP. Username is the Apple ID; from must be an address/alias verified
+# in iCloud Mail (custom domain k12n.com is hosted there).
+smtp:
+  host: "smtp.mail.me.com"
+  port: 587
+  username: "bo@k12n.com"
+  password: "$(SMTP_PASSWORD)"
+  from: "Övningskörning <bo@k12n.com>"
+  notify_email: "bo.kristoffersson@gmail.com"

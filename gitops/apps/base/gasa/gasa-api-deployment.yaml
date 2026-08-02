@@ -1,0 +1,83 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gasa-api
+  namespace: gasa
+  labels:
+    app: gasa-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gasa-api
+  template:
+    metadata:
+      labels:
+        app: gasa-api
+    spec:
+      # NOTE: no imagePullSecrets - the ghcr.io/bokristoffersson/gasa-api
+      # package must be made PUBLIC after the first CI build, or this pod
+      # stays in ImagePullBackOff. The cluster-wide ghcr-secret is broken
+      # since the M720q rebuild (all images are pulled anonymously);
+      # tracked as a follow-up in issue #157.
+      containers:
+        - name: gasa-api
+          image: ghcr.io/bokristoffersson/gasa-api:main
+          # Mutable :main tag - pull on every (re)start so new images are picked up.
+          imagePullPolicy: Always
+          env:
+            - name: APP_CONFIG
+              value: /config/config.yaml
+            - name: RUST_LOG
+              value: "info"
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_USERNAME
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_PASSWORD
+            - name: ICAL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gasa-api-secrets
+                  key: ICAL_TOKEN
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gasa-api-secrets
+                  key: SMTP_PASSWORD
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: gasa-api-config
