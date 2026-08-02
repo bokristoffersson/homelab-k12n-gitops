@@ -18,33 +18,25 @@ spec:
             app: postgres-backup
         spec:
           restartPolicy: OnFailure
-          containers:
-            - name: backup
-              image: postgres:16
+          # Dump and upload run as separate stock images sharing an emptyDir,
+          # so nothing is installed at runtime (no apt-get in the pod).
+          initContainers:
+            - name: dump
+              image: postgres:16-alpine
               command:
-                - /bin/bash
+                - /bin/sh
                 - -c
                 - |
-                  set -eo pipefail
+                  set -e
+                  set -o pipefail
 
-                  # Install AWS CLI
-                  echo "Installing AWS CLI..."
-                  apt-get update && apt-get install -y awscli
-
-                  # Create backup filename
                   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-                  BACKUP_FILE="/tmp/gasa-${TIMESTAMP}.sql.gz"
-                  S3_KEY="${S3_PREFIX}/gasa-${TIMESTAMP}.sql.gz"
+                  BACKUP_FILE="/backup/gasa-${TIMESTAMP}.sql.gz"
 
-                  echo "Starting backup..."
-                  echo "Database: ${PGDATABASE}"
-                  echo "S3 Destination: s3://${S3_BUCKET}/${S3_KEY}"
-
-                  # Create and compress backup
+                  echo "Starting backup of database ${PGDATABASE}..."
                   pg_dump -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE -F p -b | gzip > "$BACKUP_FILE"
 
-                  # Show backup info
-                  echo "Backup created: $BACKUP_FILE"
+                  echo "Backup created:"
                   ls -lh "$BACKUP_FILE"
 
                   # Sanity check: a real dump is never this small. Catches
@@ -56,21 +48,6 @@ spec:
                     echo "ERROR: backup file is suspiciously small (${ACTUAL_BYTES} bytes, expected >= ${MIN_BYTES})"
                     exit 1
                   fi
-
-                  # Upload to S3
-                  echo "Uploading to S3..."
-                  aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/${S3_KEY}" --region $AWS_REGION
-
-                  # Verify upload
-                  if aws s3 ls "s3://${S3_BUCKET}/${S3_KEY}" --region $AWS_REGION > /dev/null 2>&1; then
-                    echo "Backup successfully uploaded to S3"
-                    rm "$BACKUP_FILE"
-                  else
-                    echo "ERROR: Failed to verify backup in S3"
-                    exit 1
-                  fi
-
-                  echo "Backup complete"
               env:
                 - name: PGHOST
                   value: postgres
@@ -88,6 +65,41 @@ spec:
                       key: DATABASE_PASSWORD
                 - name: PGDATABASE
                   value: gasa
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            - name: upload
+              image: amazon/aws-cli:2.36.14
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+
+                  BACKUP_FILE=$(ls /backup/gasa-*.sql.gz)
+                  S3_KEY="${S3_PREFIX}/$(basename $BACKUP_FILE)"
+
+                  echo "Uploading to s3://${S3_BUCKET}/${S3_KEY}..."
+                  aws s3 cp "$BACKUP_FILE" "s3://${S3_BUCKET}/${S3_KEY}" --region $AWS_REGION
+
+                  # Verify upload
+                  if aws s3 ls "s3://${S3_BUCKET}/${S3_KEY}" --region $AWS_REGION > /dev/null 2>&1; then
+                    echo "Backup successfully uploaded to S3"
+                  else
+                    echo "ERROR: Failed to verify backup in S3"
+                    exit 1
+                  fi
+
+                  echo "Backup complete"
+              env:
                 - name: AWS_ACCESS_KEY_ID
                   valueFrom:
                     secretKeyRef:
@@ -120,3 +132,9 @@ spec:
                 limits:
                   cpu: 200m
                   memory: 256Mi
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              emptyDir: {}

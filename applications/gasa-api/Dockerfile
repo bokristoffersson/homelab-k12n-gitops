@@ -1,12 +1,14 @@
 # Build stage
-FROM rust:latest AS builder
+FROM rust:1.96 AS builder
 
 WORKDIR /app
 
-# Cache dependencies by building with dummy main.rs first
+# Cache dependencies by building with dummy source files first
+# Both lib.rs and main.rs dummies per CLAUDE.md (handles lib+bin and bin-only crates)
 COPY Cargo.toml Cargo.lock ./
 RUN mkdir src && \
-    echo "fn main() {}" > src/main.rs && \
+    echo "pub fn lib_dummy() {}" > src/lib.rs && \
+    echo "fn main() {println!(\"if you see this, the build broke\")}" > src/main.rs && \
     cargo build --release && \
     rm -rf src
 

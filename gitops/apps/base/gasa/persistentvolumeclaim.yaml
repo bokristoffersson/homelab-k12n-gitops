@@ -5,6 +5,7 @@ metadata:
   name: postgres-data
   namespace: gasa
 spec:
+  storageClassName: longhorn
   accessModes:
     - ReadWriteOnce
   resources:
