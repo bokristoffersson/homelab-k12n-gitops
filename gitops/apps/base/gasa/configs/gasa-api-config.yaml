@@ -29,7 +29,7 @@ app:
 smtp:
   host: "smtp.mail.me.com"
   port: 587
-  username: "bo@k12n.com"
+  username: "bo.kristoffersson@me.com"
   password: "$(SMTP_PASSWORD)"
   from: "Övningskörning <bo@k12n.com>"
   notify_email: "bo.kristoffersson@gmail.com"
