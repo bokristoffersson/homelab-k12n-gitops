@@ -5,7 +5,10 @@ metadata:
   name: postgres-migration
   namespace: gasa
   annotations:
-    # Force job to recreate on each apply to run migrations
+    # Flux recreates the Job ONLY when its spec changes and the patch fails on
+    # immutable fields (i.e. when the postgres-migrations ConfigMap hash changes
+    # because a migration was added/edited) - not on every 10-minute sync.
+    # Same pattern as the homelab-settings and timescaledb migration Jobs.
     kustomize.toolkit.fluxcd.io/force: "true"
 spec:
   ttlSecondsAfterFinished: 86400  # Clean up after 24 hours
