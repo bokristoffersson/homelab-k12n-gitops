@@ -31,6 +31,10 @@ pub struct AppConfig {
     pub base_url: String,
     pub admin_emails: Vec<String>,
     pub ical_token: String,
+    /// Optional map from email (lowercase) to username, for accounts whose
+    /// email local-part is not a nice name (e.g. firstnamelastname@icloud.com).
+    #[serde(default)]
+    pub display_names: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -89,6 +93,22 @@ impl Config {
             None => false,
         }
     }
+
+    /// Human-readable username. oauth2-proxy fills X-Auth-Request-User from
+    /// the OIDC `sub` claim, which in Authelia is an opaque UUID - so prefer,
+    /// in order: the configured display_names entry for the email, the email
+    /// local-part (erik@k12n.com -> erik), and finally the raw header value.
+    pub fn username_for(&self, header_user: &str, email: Option<&str>) -> String {
+        if let Some(email) = email {
+            if let Some(name) = self.app.display_names.get(&email.to_lowercase()) {
+                return name.clone();
+            }
+            if let Some(local) = email.split('@').next().filter(|s| !s.is_empty()) {
+                return local.to_string();
+            }
+        }
+        header_user.to_string()
+    }
 }
 
 /// Substitute environment variables in format $(VAR_NAME)
@@ -129,6 +149,7 @@ mod tests {
                 base_url: "https://gasa.k12n.com".into(),
                 admin_emails,
                 ical_token: "secret".into(),
+                display_names: std::collections::HashMap::new(),
             },
             smtp: None,
             dev_user: None,
@@ -169,5 +190,37 @@ mod tests {
         let config = test_config(vec!["admin@example.com".into()]);
         assert!(!config.is_admin(Some("kid@example.com")));
         assert!(!config.is_admin(None));
+    }
+
+    #[test]
+    fn test_username_for_prefers_display_names_map() {
+        let mut config = test_config(vec![]);
+        config
+            .app
+            .display_names
+            .insert("ludvigkristoffersson@icloud.com".into(), "ludvig".into());
+        assert_eq!(
+            config.username_for("some-uuid", Some("LudvigKristoffersson@icloud.com")),
+            "ludvig"
+        );
+    }
+
+    #[test]
+    fn test_username_for_falls_back_to_email_local_part() {
+        let config = test_config(vec![]);
+        assert_eq!(
+            config.username_for(
+                "18c33579-7073-4b53-840d-ae8ab2adc9aa",
+                Some("erik@k12n.com")
+            ),
+            "erik"
+        );
+    }
+
+    #[test]
+    fn test_username_for_falls_back_to_header_user() {
+        let config = test_config(vec![]);
+        assert_eq!(config.username_for("someuser", None), "someuser");
+        assert_eq!(config.username_for("someuser", Some("@broken")), "someuser");
     }
 }
