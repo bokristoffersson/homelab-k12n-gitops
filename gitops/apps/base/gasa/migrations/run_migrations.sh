@@ -27,10 +27,11 @@ fi
 
 echo "Running migrations..."
 
-# Run each migration file in order against the gasa database.
-# ON_ERROR_STOP makes a failing statement fail the Job instead of
+# Run each migration file in order against the gasa database. Only files
+# matching the NNN_name.sql convention are applied, in explicit version
+# order. ON_ERROR_STOP makes a failing statement fail the Job instead of
 # being silently skipped.
-for migration_file in /migrations/*.sql; do
+for migration_file in $(ls /migrations/[0-9][0-9][0-9]_*.sql | sort); do
   if [ -f "$migration_file" ]; then
     migration_name=$(basename "$migration_file")
     echo "Applying migration: $migration_name"
