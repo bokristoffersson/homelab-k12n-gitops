@@ -51,16 +51,16 @@ spec:
           namespace: gasa
           port: 8080
 
-    # SPA catch-all (protected; oauth2-errors redirects browsers to sign-in)
+    # SPA catch-all: served publicly like heatpump-web (static assets only,
+    # all data sits behind the protected /api routes). On a 401 from /api
+    # the SPA navigates to /oauth2/start?rd=... which gives a proper 302
+    # login chain. The Traefik errors middleware turned out to keep the
+    # original 401 status, so browsers never followed its redirect.
     - match: Host(`gasa.k12n.com`)
       kind: Rule
       priority: 10
       middlewares:
         - name: https-scheme
-          namespace: traefik
-        - name: oauth2-proxy-auth
-          namespace: traefik
-        - name: oauth2-errors
           namespace: traefik
         - name: security-headers
           namespace: traefik
