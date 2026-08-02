@@ -1,8 +1,13 @@
 -- Migration: 001_initial_schema
 -- Description: Create the slots table for driving-practice bookings.
--- Runs against the gasa database (run_migrations.sh creates the database
--- and connects with PGDATABASE=gasa). All statements are idempotent:
--- this script re-runs on every Flux sync.
+--
+-- DATABASE CONTEXT: this file executes in the *gasa* database, not the
+-- maintenance DB the Job env points at. run_migrations.sh first creates
+-- the gasa database if missing, then runs every migration with
+-- `PGDATABASE=gasa psql -v ON_ERROR_STOP=1 -f <file>`. Unlike the
+-- TimescaleDB migrations there is no `\c` in the SQL itself.
+--
+-- All statements are idempotent: this script re-runs on every Flux sync.
 
 CREATE TABLE IF NOT EXISTS schema_migrations (
   version INTEGER PRIMARY KEY,

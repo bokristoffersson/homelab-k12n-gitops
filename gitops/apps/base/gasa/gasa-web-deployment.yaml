@@ -16,6 +16,10 @@ spec:
       labels:
         app: gasa-web
     spec:
+      # NOTE: no imagePullSecrets - the ghcr.io/bokristoffersson/gasa-web
+      # package must be made PUBLIC after the first CI build, or this pod
+      # stays in ImagePullBackOff. (The cluster-wide ghcr-secret pattern is
+      # broken since the M720q rebuild; all images are pulled anonymously.)
       containers:
         - name: web
           image: ghcr.io/bokristoffersson/gasa-web:main
