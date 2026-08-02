@@ -5,6 +5,7 @@ Reads CLAUDE.md principles and analyzes changed files.
 """
 
 import os
+import re
 import sys
 from anthropic import Anthropic
 from github import Github
@@ -245,6 +246,17 @@ def main():
     ]
     violations_clean = " ".join(meaningful_lines).strip()
     has_violations = violations_clean not in ["", "none found.", "none found", "none.", "none"]
+
+    # The model sometimes reasons inside the violations section and retracts its
+    # findings there ("...Retracting. None found after thorough review."), which
+    # fails the exact-match check above even though the review approves. The
+    # Recommendation line in the summary is the model's actual verdict - when
+    # present, it is authoritative.
+    recommendation = re.search(
+        r"\*\*Recommendation\*\*:?\s*\**\s*(APPROVE|REQUEST CHANGES)", review, re.IGNORECASE
+    )
+    if recommendation:
+        has_violations = recommendation.group(1).upper() == "REQUEST CHANGES"
 
     # Post to PR
     print("💬 Posting review comment to PR...")
