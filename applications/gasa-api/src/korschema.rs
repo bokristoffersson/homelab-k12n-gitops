@@ -370,16 +370,29 @@ pub async fn students(
     ))
 }
 
+/// Match a raw student name against the configured list, returning the
+/// configured spelling so database rows are always keyed consistently.
+fn canonical_student<'a>(students: &'a [String], raw: &str) -> Option<&'a str> {
+    let raw = raw.trim();
+    students
+        .iter()
+        .find(|s| s.eq_ignore_ascii_case(raw))
+        .map(String::as_str)
+}
+
 /// Resolve the {student} path segment: must be a configured student and the
 /// caller must be allowed to access them.
-fn authorize_student(state: &AppState, user: &CurrentUser, student: &str) -> Result<(), AppError> {
-    if !state.config.app.students.iter().any(|s| s == student) {
-        return Err(AppError::NotFound);
-    }
-    if !can_access_student(user, student) {
+fn authorize_student<'a>(
+    state: &'a AppState,
+    user: &CurrentUser,
+    student: &str,
+) -> Result<&'a str, AppError> {
+    let canonical =
+        canonical_student(&state.config.app.students, student).ok_or(AppError::NotFound)?;
+    if !can_access_student(user, canonical) {
         return Err(AppError::Forbidden);
     }
-    Ok(())
+    Ok(canonical)
 }
 
 pub async fn progress(
@@ -387,8 +400,8 @@ pub async fn progress(
     Extension(user): Extension<CurrentUser>,
     Path(student): Path<String>,
 ) -> Result<Json<ProgressResponse>, AppError> {
-    authorize_student(&state, &user, &student)?;
-    Ok(Json(state.korschema.progress(&student).await?))
+    let student = authorize_student(&state, &user, &student)?;
+    Ok(Json(state.korschema.progress(student).await?))
 }
 
 pub async fn set_check(
@@ -396,13 +409,13 @@ pub async fn set_check(
     Extension(user): Extension<CurrentUser>,
     Path((student, exercise_id)): Path<(String, i32)>,
 ) -> Result<Json<Check>, AppError> {
-    authorize_student(&state, &user, &student)?;
+    let student = authorize_student(&state, &user, &student)?;
     if !can_edit_checks(&user) {
         return Err(AppError::Forbidden);
     }
     let check = state
         .korschema
-        .set_check(&student, exercise_id, &user.username)
+        .set_check(student, exercise_id, &user.username)
         .await
         .map_err(map_fk_violation)?;
     Ok(Json(check))
@@ -413,11 +426,11 @@ pub async fn clear_check(
     Extension(user): Extension<CurrentUser>,
     Path((student, exercise_id)): Path<(String, i32)>,
 ) -> Result<StatusCode, AppError> {
-    authorize_student(&state, &user, &student)?;
+    let student = authorize_student(&state, &user, &student)?;
     if !can_edit_checks(&user) {
         return Err(AppError::Forbidden);
     }
-    state.korschema.clear_check(&student, exercise_id).await?;
+    state.korschema.clear_check(student, exercise_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -427,11 +440,11 @@ pub async fn add_note(
     Path((student, lesson_id)): Path<(String, i32)>,
     Json(req): Json<NoteRequest>,
 ) -> Result<(StatusCode, Json<Note>), AppError> {
-    authorize_student(&state, &user, &student)?;
+    let student = authorize_student(&state, &user, &student)?;
     let text = validate_note_text(&req.text).map_err(AppError::Validation)?;
     let note = state
         .korschema
-        .add_note(&student, lesson_id, &user.username, text)
+        .add_note(student, lesson_id, &user.username, text)
         .await
         .map_err(map_fk_violation)?;
     Ok((StatusCode::CREATED, Json(note)))
@@ -475,6 +488,16 @@ mod tests {
         // Admin sees everyone's
         assert!(can_access_student(&user("johanna", true), "arvid"));
         assert!(can_access_student(&user("johanna", true), "ludvig"));
+    }
+
+    #[test]
+    fn test_canonical_student_normalizes() {
+        let students = vec!["arvid".to_string(), "ludvig".to_string()];
+        assert_eq!(canonical_student(&students, "arvid"), Some("arvid"));
+        assert_eq!(canonical_student(&students, "Arvid"), Some("arvid"));
+        assert_eq!(canonical_student(&students, " ludvig "), Some("ludvig"));
+        assert_eq!(canonical_student(&students, "erik"), None);
+        assert_eq!(canonical_student(&students, ""), None);
     }
 
     #[test]

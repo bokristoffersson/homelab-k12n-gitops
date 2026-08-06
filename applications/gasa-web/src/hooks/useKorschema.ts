@@ -11,7 +11,8 @@ export function useSchedule() {
   return useQuery({
     queryKey: ['korschema', 'schedule'],
     queryFn: () => api.get<Schedule>('/api/korschema/schedule'),
-    staleTime: Infinity,
+    // Content is seeded/static but can change on redeploys - refresh hourly
+    staleTime: 60 * 60 * 1000,
   })
 }
 
@@ -57,7 +58,8 @@ export function useToggleCheck(student: string, onError?: (e: Error) => void) {
     }) => {
       const path = `/api/korschema/progress/${student}/checks/${exerciseId}`
       if (checked) {
-        await api.put<Check>(path)
+        // Empty JSON body so the PUT is never a bodyless request
+        await api.put<Check>(path, {})
       } else {
         await api.delete<void>(path)
       }
