@@ -4,6 +4,7 @@ mod email;
 mod error;
 mod handlers;
 mod ics;
+mod korschema;
 mod models;
 mod repository;
 mod routes;
@@ -14,7 +15,10 @@ use std::sync::Arc;
 use tokio::signal;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::{config::Config, email::EmailService, handlers::AppState, repository::SlotsRepository};
+use crate::{
+    config::Config, email::EmailService, handlers::AppState, korschema::KorschemaRepository,
+    repository::SlotsRepository,
+};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -42,7 +46,8 @@ async fn main() -> Result<()> {
 
     let bind_addr = config.api_bind_address();
     let app_state = AppState {
-        repository: SlotsRepository::new(db_pool),
+        repository: SlotsRepository::new(db_pool.clone()),
+        korschema: KorschemaRepository::new(db_pool),
         config: Arc::new(config),
         email,
     };

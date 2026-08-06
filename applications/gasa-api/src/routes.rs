@@ -1,11 +1,11 @@
 use axum::{
     middleware,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use tower_http::trace::TraceLayer;
 
-use crate::{auth, handlers, handlers::AppState};
+use crate::{auth, handlers, handlers::AppState, korschema};
 
 pub fn create_router(state: AppState) -> Router {
     let api = Router::new()
@@ -20,6 +20,17 @@ pub fn create_router(state: AppState) -> Router {
             post(handlers::book_slot).delete(handlers::cancel_booking),
         )
         .route("/calendar-url", get(handlers::calendar_url))
+        .route("/korschema/schedule", get(korschema::schedule))
+        .route("/korschema/students", get(korschema::students))
+        .route("/korschema/progress/{student}", get(korschema::progress))
+        .route(
+            "/korschema/progress/{student}/checks/{exercise_id}",
+            put(korschema::set_check).delete(korschema::clear_check),
+        )
+        .route(
+            "/korschema/progress/{student}/notes/{lesson_id}",
+            post(korschema::add_note),
+        )
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_proxy_auth,

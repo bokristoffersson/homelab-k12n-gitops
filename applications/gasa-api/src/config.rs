@@ -35,6 +35,10 @@ pub struct AppConfig {
     /// email local-part is not a nice name (e.g. firstnamelastname@icloud.com).
     #[serde(default)]
     pub display_names: std::collections::HashMap<String, String>,
+    /// Usernames of the students tracked by the korschema module. Progress
+    /// rows are keyed by these names; other usernames are rejected.
+    #[serde(default)]
+    pub students: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -150,6 +154,7 @@ mod tests {
                 admin_emails,
                 ical_token: "secret".into(),
                 display_names: std::collections::HashMap::new(),
+                students: vec![],
             },
             smtp: None,
             dev_user: None,

@@ -23,6 +23,11 @@ app:
   display_names:
     "arvid.kristoffersson@icloud.com": "arvid"
     "ludvigkristoffersson@icloud.com": "ludvig"
+  # Students tracked by the korschema module (proxy-auth usernames).
+  # Progress rows are keyed by these names.
+  students:
+    - "arvid"
+    - "ludvig"
 
 # iCloud SMTP. Username is the Apple ID; from must be an address/alias verified
 # in iCloud Mail (custom domain k12n.com is hosted there).

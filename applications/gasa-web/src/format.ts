@@ -9,8 +9,17 @@ const timeFormat = new Intl.DateTimeFormat('sv-SE', {
   minute: '2-digit',
 })
 
+const shortDateFormat = new Intl.DateTimeFormat('sv-SE', {
+  day: 'numeric',
+  month: 'short',
+})
+
 export function formatDay(iso: string): string {
   return dayFormat.format(new Date(iso))
+}
+
+export function formatShortDate(iso: string): string {
+  return shortDateFormat.format(new Date(iso))
 }
 
 export function formatTimeRange(startIso: string, endIso: string): string {

@@ -23,4 +23,6 @@ configMapGenerator:
   - name: postgres-migrations
     files:
       - migrations/001_initial_schema.sql
+      - migrations/002_korschema.sql
+      - migrations/003_korschema_seed.sql
       - migrations/run_migrations.sh
