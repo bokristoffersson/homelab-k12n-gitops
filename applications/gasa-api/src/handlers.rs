@@ -22,6 +22,7 @@ use crate::{
 #[derive(Clone)]
 pub struct AppState {
     pub repository: SlotsRepository,
+    pub korschema: crate::korschema::KorschemaRepository,
     pub config: Arc<Config>,
     pub email: EmailService,
 }
