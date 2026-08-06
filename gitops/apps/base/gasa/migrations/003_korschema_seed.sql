@@ -7,6 +7,9 @@
 -- upserts on the natural keys (ord / lesson_id+ord) keep the database in
 -- sync with this file while the generated PKs - which the dynamic tables
 -- (checks, notes) reference - stay stable.
+--
+-- NOTE: records itself in schema_migrations as (3, 'korschema_seed') at
+-- the END of this file, per project convention.
 
 -- Fas 1: Grunderna — manövrering
 INSERT INTO korschema_phases (ord, name, meta, intro) VALUES
