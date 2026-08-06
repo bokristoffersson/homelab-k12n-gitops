@@ -9,7 +9,10 @@
 -- (checks, notes) reference - stay stable.
 --
 -- NOTE: records itself in schema_migrations as (3, 'korschema_seed') at
--- the END of this file, per project convention.
+-- the END of this file, per project convention. run_migrations.sh does
+-- NOT skip files based on schema_migrations - it applies every
+-- NNN_*.sql on every job run - so these upserts genuinely re-sync
+-- content each time; the schema_migrations row is bookkeeping only.
 
 -- Fas 1: Grunderna — manövrering
 INSERT INTO korschema_phases (ord, name, meta, intro) VALUES

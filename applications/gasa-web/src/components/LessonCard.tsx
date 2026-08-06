@@ -8,8 +8,12 @@ interface Props {
   checks: Map<number, Check>
   notes: LessonNote[]
   done: boolean
-  /** Admin annotates the selected student; students are read-only. */
-  canCheck: boolean
+  /**
+   * Checkboxes are clickable for admins only (checks are handledare-gated,
+   * also enforced by the API). Notes may be written by both the student
+   * and the admin, so the note form does not depend on this.
+   */
+  isAdmin: boolean
   student: string
   onError: (error: Error) => void
 }
@@ -19,7 +23,7 @@ export default function LessonCard({
   checks,
   notes,
   done,
-  canCheck,
+  isAdmin,
   student,
   onError,
 }: Props) {
@@ -67,11 +71,11 @@ export default function LessonCard({
               const check = checks.get(exercise.id)
               return (
                 <li key={exercise.id}>
-                  <label className={`exercise ${canCheck ? 'checkable' : ''}`}>
+                  <label className={`exercise ${isAdmin ? 'checkable' : ''}`}>
                     <input
                       type="checkbox"
                       checked={check !== undefined}
-                      disabled={!canCheck || toggle.isPending}
+                      disabled={!isAdmin || toggle.isPending}
                       onChange={(e) =>
                         toggle.mutate({
                           exerciseId: exercise.id,

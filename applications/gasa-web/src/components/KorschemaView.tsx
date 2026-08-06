@@ -198,7 +198,7 @@ function ScheduleBody({
               checks={checksById}
               notes={notesByLesson.get(lesson.id) ?? []}
               done={isLessonDone(lesson, checked)}
-              canCheck={isAdmin}
+              isAdmin={isAdmin}
               student={progress.student}
               onError={onError}
             />
