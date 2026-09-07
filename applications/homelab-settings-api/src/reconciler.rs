@@ -19,24 +19,16 @@ use tokio::time::interval;
 
 use crate::repositories::{outbox::OutboxRepository, plugs::PlugsRepository};
 
-/// Configuration for the desired-state reconciler
+/// Configuration for the desired-state reconciler, from the
+/// RECONCILE_INTERVAL_SECS / RECONCILE_GRACE_SECS env vars
 #[derive(Debug, Clone)]
 pub struct ReconcilerConfig {
-    /// How often to look for mismatches (default: 300 seconds). Also used as
-    /// the per-plug backoff: at most one reconcile command per interval.
+    /// How often to look for mismatches. Also used as the per-plug backoff:
+    /// at most one reconcile command per interval.
     pub interval_secs: u64,
     /// How long a desired-state change may sit unconverged before the
     /// reconciler steps in, leaving the normal command path room to finish
     pub grace_secs: u64,
-}
-
-impl Default for ReconcilerConfig {
-    fn default() -> Self {
-        Self {
-            interval_secs: 300,
-            grace_secs: 120,
-        }
-    }
 }
 
 /// Reconciler that runs as a background task

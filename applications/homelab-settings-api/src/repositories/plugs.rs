@@ -175,13 +175,25 @@ impl PlugsRepository {
     ///
     /// Homebridge (HomeKit/Siri) publishes plug commands directly to MQTT,
     /// bypassing this API. When the reported state disagrees with desired and
-    /// no recent unconfirmed command explains the gap, the change was external
-    /// and the user's latest intent wins — otherwise the reconciler would
-    /// fight Siri and flip the plug back. Recent pending/published/failed
-    /// commands matching the desired action DO explain the gap (a command in
-    /// flight or one the device never applied), so those block adoption and
-    /// leave the reconciler in charge.
-    pub async fn adopt_external_state(&self, plug_id: &str, reported: bool) -> Result<bool> {
+    /// no recent command explains the gap, the change was external and the
+    /// user's latest intent wins — otherwise the reconciler would fight Siri
+    /// and flip the plug back.
+    ///
+    /// What blocks adoption depends on the echo type (`is_transition`):
+    /// - pending/published commands matching desired always block — the echo
+    ///   may predate a command still in flight.
+    /// - failed commands block only periodic echoes (tele/STATE reporting an
+    ///   unchanged state): that echo is just the state the device was stuck
+    ///   at, and adopting it would cancel reconciliation of the lost command.
+    ///   A transition echo (stat/POWER fires only when the state actually
+    ///   changed) means someone actuated the plug — Siri, button, HomeKit —
+    ///   and that overrides even a failed command's intent.
+    pub async fn adopt_external_state(
+        &self,
+        plug_id: &str,
+        reported: bool,
+        is_transition: bool,
+    ) -> Result<bool> {
         let result = sqlx::query(
             r#"
             UPDATE power_plugs p
@@ -193,7 +205,10 @@ impl PlugsRepository {
                   SELECT 1 FROM outbox o
                   WHERE o.aggregate_type = 'power_plug'
                     AND o.aggregate_id = p.plug_id
-                    AND o.status IN ('pending', 'published', 'failed')
+                    AND (
+                        o.status IN ('pending', 'published')
+                        OR ($3 = false AND o.status = 'failed')
+                    )
                     AND o.created_at > NOW() - INTERVAL '15 minutes'
                     AND o.payload->>'action' =
                         CASE WHEN p.desired_status THEN 'ON' ELSE 'OFF' END
@@ -202,6 +217,7 @@ impl PlugsRepository {
         )
         .bind(plug_id)
         .bind(reported)
+        .bind(is_transition)
         .execute(&self.pool)
         .await?;
 
@@ -230,9 +246,12 @@ impl PlugsRepository {
                     AND o.status IN ('pending', 'published')
               )
               AND NOT EXISTS (
+                  -- backoff counts actual attempts; confirmed/superseded rows
+                  -- must not suppress a reconcile of a fresh mismatch
                   SELECT 1 FROM outbox o
                   WHERE o.aggregate_type = 'power_plug'
                     AND o.aggregate_id = p.plug_id
+                    AND o.status IN ('pending', 'published', 'failed')
                     AND o.created_at > NOW() - ($2 * INTERVAL '1 second')
               )
             ORDER BY p.plug_id

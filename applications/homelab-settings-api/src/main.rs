@@ -76,7 +76,11 @@ async fn main() -> Result<()> {
 
     // Create and spawn desired-state reconciler task
     tracing::info!("Initializing desired-state reconciler...");
-    let reconciler = DesiredStateReconciler::new(db_pool.clone(), ReconcilerConfig::default());
+    let reconciler_config = ReconcilerConfig {
+        interval_secs: env_u64("RECONCILE_INTERVAL_SECS", 300),
+        grace_secs: env_u64("RECONCILE_GRACE_SECS", 120),
+    };
+    let reconciler = DesiredStateReconciler::new(db_pool.clone(), reconciler_config);
     let reconciler_handle = tokio::spawn(async move {
         reconciler.run().await;
     });
@@ -138,6 +142,13 @@ async fn main() -> Result<()> {
 
     tracing::info!("Application shutdown complete");
     Ok(())
+}
+
+fn env_u64(name: &str, default: u64) -> u64 {
+    std::env::var(name)
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(default)
 }
 
 async fn shutdown_signal() {
