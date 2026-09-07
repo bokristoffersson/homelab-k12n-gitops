@@ -191,6 +191,7 @@ pub struct PowerPlugSchedule {
     #[serde(with = "time_format")]
     pub time_of_day: NaiveTime,
     pub enabled: bool,
+    pub last_fired_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -273,7 +274,7 @@ impl SchedulesRepository {
     pub async fn get_by_plug_id(&self, plug_id: &str) -> Result<Vec<PowerPlugSchedule>> {
         let schedules = sqlx::query_as::<_, PowerPlugSchedule>(
             r#"
-            SELECT id, plug_id, action, time_of_day, enabled, created_at, updated_at
+            SELECT id, plug_id, action, time_of_day, enabled, last_fired_at, created_at, updated_at
             FROM power_plug_schedules
             WHERE plug_id = $1
             ORDER BY time_of_day
@@ -290,7 +291,7 @@ impl SchedulesRepository {
     pub async fn get_by_id(&self, id: i64) -> Result<PowerPlugSchedule> {
         let schedule = sqlx::query_as::<_, PowerPlugSchedule>(
             r#"
-            SELECT id, plug_id, action, time_of_day, enabled, created_at, updated_at
+            SELECT id, plug_id, action, time_of_day, enabled, last_fired_at, created_at, updated_at
             FROM power_plug_schedules
             WHERE id = $1
             "#,
@@ -320,7 +321,7 @@ impl SchedulesRepository {
             r#"
             INSERT INTO power_plug_schedules (plug_id, action, time_of_day, enabled, created_at, updated_at)
             VALUES ($1, $2, $3, $4, NOW(), NOW())
-            RETURNING id, plug_id, action, time_of_day, enabled, created_at, updated_at
+            RETURNING id, plug_id, action, time_of_day, enabled, last_fired_at, created_at, updated_at
             "#,
         )
         .bind(plug_id)
@@ -360,7 +361,7 @@ impl SchedulesRepository {
             query.push_str(&format!(", enabled = ${}", bind_count));
         }
 
-        query.push_str(" WHERE id = $1 RETURNING id, plug_id, action, time_of_day, enabled, created_at, updated_at");
+        query.push_str(" WHERE id = $1 RETURNING id, plug_id, action, time_of_day, enabled, last_fired_at, created_at, updated_at");
 
         let mut query_builder = sqlx::query_as::<_, PowerPlugSchedule>(&query).bind(id);
 
@@ -396,30 +397,50 @@ impl SchedulesRepository {
         Ok(())
     }
 
-    /// Get enabled schedules due in the current minute (for scheduler in Phase 6)
-    #[allow(dead_code)]
+    /// Get enabled schedules whose time_of_day has passed today (local time)
+    /// but have not fired since today's scheduled instant. Unlike an
+    /// exact-minute window this catches up after tick drift or pod restarts:
+    /// a schedule missed at 18:00 still fires when the next tick runs.
+    ///
+    /// The updated_at guard keeps a schedule created or edited *after* its
+    /// time has already passed today from firing retroactively — it starts
+    /// tomorrow instead.
+    ///
+    /// `local_midnight_utc + time_of_day` is today's scheduled instant. On the
+    /// two DST transition days per year this is off by one hour, which only
+    /// shifts the already-fired-today comparison, not the firing time.
     pub async fn get_due_schedules(
         &self,
-        current_time: NaiveTime,
+        current_local_time: NaiveTime,
+        local_midnight_utc: DateTime<Utc>,
     ) -> Result<Vec<PowerPlugSchedule>> {
-        // Match schedules within the current minute (00 seconds to 59 seconds)
-        let time_start = current_time.with_second(0).unwrap_or(current_time);
-        let time_end = current_time.with_second(59).unwrap_or(current_time);
-
         let schedules = sqlx::query_as::<_, PowerPlugSchedule>(
             r#"
-            SELECT id, plug_id, action, time_of_day, enabled, created_at, updated_at
+            SELECT id, plug_id, action, time_of_day, enabled, last_fired_at, created_at, updated_at
             FROM power_plug_schedules
             WHERE enabled = true
-              AND time_of_day >= $1
-              AND time_of_day <= $2
+              AND time_of_day <= $1
+              AND updated_at < ($2 + time_of_day::interval)
+              AND (last_fired_at IS NULL OR last_fired_at < ($2 + time_of_day::interval))
+            ORDER BY time_of_day ASC
             "#,
         )
-        .bind(time_start)
-        .bind(time_end)
+        .bind(current_local_time)
+        .bind(local_midnight_utc)
         .fetch_all(&self.pool)
         .await?;
 
         Ok(schedules)
+    }
+
+    /// Record that a schedule fired, within the same transaction as the
+    /// outbox insert so a crash cannot fire it twice or lose the marker
+    pub async fn mark_fired_in_tx(tx: &mut Transaction<'_, Postgres>, id: i64) -> Result<()> {
+        sqlx::query("UPDATE power_plug_schedules SET last_fired_at = NOW() WHERE id = $1")
+            .bind(id)
+            .execute(&mut **tx)
+            .await?;
+
+        Ok(())
     }
 }
