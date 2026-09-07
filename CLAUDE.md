@@ -41,6 +41,9 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **minecraft**: itzg/minecraft-server in ns `minecraft`, pinned to `m720q` (Longhorn PVC), LAN-exposed via ServiceLB
 
 ### IoT Devices
+- Tasmota smart plugs (single-channel)
+  - Commands on `cmnd/{plug_id}/POWER`; state echoes on `stat/{plug_id}/POWER` (transitions only) and `tele/{plug_id}/STATE` (periodic, TelePeriod)
+  - The mqtt-kafka-bridge streams only match single-channel topics — a multi-channel device (`POWER1`/`POWER2`) needs new bridge topic filters
 - Shelly H&T Gen3 (temperature/humidity sensor)
   - MQTT topic: `shellyhtg3-e4b32322a0f4/events/rpc`
   - Wakes every 1 minute, sends on temp change ≥0.5°C or humidity ≥5%
@@ -68,7 +71,9 @@ IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → Timesca
 ### Write Paths to Devices
 
 - **Primary**: `heatpump-web` → `homelab-settings-api` (REST + outbox) → MQTT → device. DB is updated atomically with the outbox entry; the outbox processor publishes to MQTT and tracks delivery. Used for all UI-driven mutations.
-- **Exception — `homebridge`**: HomeKit/Siri commands publish directly to Mosquitto (`cmnd/{plug_id}/POWER`, `thermiq_heatpump/write`) without going through `homelab-settings-api`. DB state stays consistent because the device echoes its new state on the telemetry topic, which `mqtt-kafka-bridge` already forwards to Redpanda → TimescaleDB. Accepted tradeoff for homelab scale: avoids a custom Homebridge plugin and Authelia service-account JWT in exchange for losing per-command audit in the outbox table.
+- **Plug command confirmation loop**: a plug command is only `confirmed` when the device echoes the matching state back (Tasmota `stat/+/POWER` → `homelab-plug-telemetry` → outbox processor). Unconfirmed commands are republished after `CONFIRM_TIMEOUT_SECS` up to `max_retries`, then marked `failed` (monitoring alerts on failed rows). A new command supersedes older undelivered ones for the same plug. Commands are idempotent (level-triggered ON/OFF), which is what makes at-least-once republish safe.
+- **Desired state**: `power_plugs.desired_status` records intent (set by toggle, scheduler, or reconcile-adoption); `status` is the reported state from telemetry. A reconciler task in `homelab-settings-api` re-issues commands (source `reconcile`) while they disagree. The plug scheduler runs on `TZ=Europe/Stockholm` and tracks `last_fired_at`, so missed fires catch up after restarts instead of being skipped.
+- **Exception — `homebridge`**: HomeKit/Siri commands publish directly to Mosquitto (`cmnd/{plug_id}/POWER`, `thermiq_heatpump/write`) without going through `homelab-settings-api`. DB state stays consistent because the device echoes its new state on the telemetry topic, which `mqtt-kafka-bridge` already forwards to Redpanda → TimescaleDB. The Kafka consumer adopts such external state changes as the new desired state (transition echoes from `stat/+/POWER` override even a recent failed command; periodic `tele/+/STATE` echoes never override an unconverged command), so the reconciler never fights Siri. Accepted tradeoff for homelab scale: avoids a custom Homebridge plugin and Authelia service-account JWT in exchange for losing per-command audit in the outbox table.
 
 ### Backup Strategy
 - **TimescaleDB**: Daily backup at 2 AM to S3

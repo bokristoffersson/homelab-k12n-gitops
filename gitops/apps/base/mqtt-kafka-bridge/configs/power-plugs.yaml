@@ -19,6 +19,9 @@ pipeline:
         root.status = if this.POWER == "ON" { true } else { false }
         root.wifi_rssi = this.Wifi.RSSI | null
         root.uptime_seconds = this.UptimeSec | null
+        # periodic report of (possibly unchanged) state, as opposed to the
+        # transition echoes from the stat stream
+        root.origin = "tele"
 
 output:
   kafka:

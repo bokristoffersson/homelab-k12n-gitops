@@ -3,6 +3,7 @@ mod auth;
 mod config;
 mod error;
 mod kafka;
+mod reconciler;
 mod repositories;
 mod scheduler;
 
@@ -17,6 +18,7 @@ use crate::{
     auth::JwtValidator,
     config::Config,
     kafka::KafkaConsumerService,
+    reconciler::{DesiredStateReconciler, ReconcilerConfig},
     repositories::{OutboxRepository, PlugsRepository, SchedulesRepository, SettingsRepository},
     scheduler::{ScheduleExecutor, SchedulerConfig},
 };
@@ -72,6 +74,17 @@ async fn main() -> Result<()> {
         scheduler.run().await;
     });
 
+    // Create and spawn desired-state reconciler task
+    tracing::info!("Initializing desired-state reconciler...");
+    let reconciler_config = ReconcilerConfig {
+        interval_secs: env_u64("RECONCILE_INTERVAL_SECS", 300),
+        grace_secs: env_u64("RECONCILE_GRACE_SECS", 120),
+    };
+    let reconciler = DesiredStateReconciler::new(db_pool.clone(), reconciler_config);
+    let reconciler_handle = tokio::spawn(async move {
+        reconciler.run().await;
+    });
+
     // Initialize JWT validator if auth is configured
     let jwt_validator = if let Some(auth_config) = &config.auth {
         if !auth_config.issuers.is_empty() {
@@ -125,9 +138,20 @@ async fn main() -> Result<()> {
     // Abort background tasks on shutdown
     kafka_handle.abort();
     scheduler_handle.abort();
+    reconciler_handle.abort();
 
     tracing::info!("Application shutdown complete");
     Ok(())
+}
+
+fn env_u64(name: &str, default: u64) -> u64 {
+    match std::env::var(name) {
+        Ok(v) => v.parse().unwrap_or_else(|_| {
+            tracing::warn!("Invalid {}='{}', using default {}", name, v, default);
+            default
+        }),
+        Err(_) => default,
+    }
 }
 
 async fn shutdown_signal() {

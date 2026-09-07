@@ -33,6 +33,13 @@ spec:
             # shifts 1-2h with DST.
             - name: TZ
               value: "Europe/Stockholm"
+            # Desired-state reconciler: how often mismatches are checked (also
+            # the per-plug backoff) and how long a fresh desired change gets
+            # before the reconciler steps in.
+            - name: RECONCILE_INTERVAL_SECS
+              value: "300"
+            - name: RECONCILE_GRACE_SECS
+              value: "120"
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
