@@ -21,9 +21,10 @@ RUN touch src/main.rs && \
 # Runtime stage - use newer Debian with GLIBC 2.38+
 FROM debian:trixie-slim
 
-# Install CA certificates for HTTPS connections
+# CA certificates for HTTPS; tzdata so the TZ env var resolves (the plug
+# scheduler runs on local time — without zoneinfo chrono falls back to UTC)
 RUN apt-get update && \
-    apt-get install -y ca-certificates && \
+    apt-get install -y ca-certificates tzdata && \
     rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
