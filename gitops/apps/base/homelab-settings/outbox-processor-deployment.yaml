@@ -55,8 +55,12 @@ spec:
               value: "redpanda-v2.redpanda-v2.svc.cluster.local:9092"
             - name: KAFKA_TOPIC
               value: "homelab-heatpump-telemetry"
+            - name: KAFKA_PLUG_TOPIC
+              value: "homelab-plug-telemetry"
             - name: KAFKA_GROUP_ID
               value: "homelab-settings-outbox-processor"
+            - name: CONFIRM_TIMEOUT_SECS
+              value: "90"
           resources:
             requests:
               cpu: 10m

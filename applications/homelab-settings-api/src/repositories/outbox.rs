@@ -68,12 +68,37 @@ impl OutboxRepository {
         Ok(entry)
     }
 
+    /// Mark older undelivered commands for a plug as superseded. Without this,
+    /// the outbox processor's confirmation-timeout retry could republish a
+    /// stale command after a newer one and flip the plug back.
+    async fn supersede_plug_commands_in_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        plug_id: &str,
+    ) -> Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE outbox
+            SET status = 'superseded'
+            WHERE aggregate_type = 'power_plug'
+              AND aggregate_id = $1
+              AND status IN ('pending', 'published')
+            "#,
+        )
+        .bind(plug_id)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
+    }
+
     /// Insert a power plug command within an existing transaction (manual toggle)
     pub async fn insert_plug_command_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         plug_id: &str,
         status: bool,
     ) -> Result<OutboxEntry> {
+        Self::supersede_plug_commands_in_tx(tx, plug_id).await?;
+
         let payload = serde_json::json!({
             "plug_id": plug_id,
             "status": status,
@@ -116,6 +141,8 @@ impl OutboxRepository {
         status: bool,
         schedule_id: i64,
     ) -> Result<OutboxEntry> {
+        Self::supersede_plug_commands_in_tx(tx, plug_id).await?;
+
         let payload = serde_json::json!({
             "plug_id": plug_id,
             "status": status,

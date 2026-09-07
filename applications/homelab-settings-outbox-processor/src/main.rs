@@ -22,8 +22,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("MQTT broker: {}", config.mqtt_broker);
     info!("Kafka brokers: {}", config.kafka_brokers);
     info!("Kafka topic: {}", config.kafka_topic);
+    info!("Kafka plug topic: {}", config.kafka_plug_topic);
     info!("Kafka group: {}", config.kafka_group_id);
     info!("Poll interval: {}s", config.poll_interval_secs);
+    info!("Confirmation timeout: {}s", config.confirm_timeout_secs);
 
     // Connect to database
     let pool = db::connect(&config.database_url).await?;
@@ -85,14 +87,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool_clone = pool.clone();
     let kafka_brokers = config.kafka_brokers.clone();
     let kafka_topic = config.kafka_topic.clone();
+    let kafka_plug_topic = config.kafka_plug_topic.clone();
     let kafka_group_id = config.kafka_group_id.clone();
     tokio::spawn(async move {
-        kafka::start_confirmation_listener(pool_clone, kafka_brokers, kafka_topic, kafka_group_id)
-            .await;
+        kafka::start_confirmation_listener(
+            pool_clone,
+            kafka_brokers,
+            kafka_topic,
+            kafka_plug_topic,
+            kafka_group_id,
+        )
+        .await;
     });
     info!("Kafka confirmation listener spawned");
 
-    // Main processing loop
+    // Main processing loop. Reconcile runs after publishing so a row requeued
+    // by the timeout is republished on the next cycle, not within the same
+    // iteration. Retry spacing itself comes from published_at being reset on
+    // every publish, so attempts are always a full timeout apart.
     loop {
         match process_pending_entries(&pool, &mqtt_client).await {
             Ok(processed) => {
@@ -105,8 +117,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
+        if let Err(e) = reconcile_unconfirmed(&pool, config.confirm_timeout_secs).await {
+            error!("Error reconciling unconfirmed commands: {}", e);
+        }
+
         sleep(Duration::from_secs(config.poll_interval_secs)).await;
     }
+}
+
+/// Close the loop on published plug commands: the device must echo the new
+/// state (via the Kafka confirmation listener) within the timeout, otherwise
+/// the command is republished until max_retries, then marked failed.
+async fn reconcile_unconfirmed(
+    pool: &sqlx::PgPool,
+    timeout_secs: u64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let failed = outbox::fail_unconfirmed_plug_commands(pool, timeout_secs).await?;
+    if failed > 0 {
+        error!(
+            "{} plug command(s) never confirmed by device state, marked as failed",
+            failed
+        );
+    }
+
+    let requeued = outbox::requeue_unconfirmed_plug_commands(pool, timeout_secs).await?;
+    if requeued > 0 {
+        warn!(
+            "Requeued {} plug command(s) for republish (no device state confirmation within {}s)",
+            requeued, timeout_secs
+        );
+    }
+
+    Ok(())
 }
 
 /// Map database field names to ThermIQ "d" parameter names
