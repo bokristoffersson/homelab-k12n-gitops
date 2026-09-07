@@ -2,8 +2,16 @@
 //!
 //! Runs every minute to check for due power plug schedules and creates
 //! outbox entries for scheduled actions.
+//!
+//! A schedule is due when its time_of_day has passed today (local time, so
+//! the pod's TZ must be set correctly) and it has not fired since today's
+//! scheduled instant. This is restart-safe: if a tick drifts across a minute
+//! boundary or the pod restarts at the scheduled minute, the schedule still
+//! fires on the next tick instead of being skipped for the day. Catch-up
+//! fires run in time_of_day order, so the plug converges to the state the
+//! latest passed schedule intended.
 
-use chrono::{Local, Timelike};
+use chrono::{DateTime, Local, TimeZone, Utc};
 use sqlx::PgPool;
 use std::time::Duration;
 use tokio::time::interval;
@@ -15,17 +23,12 @@ use crate::repositories::plugs::SchedulesRepository;
 pub struct SchedulerConfig {
     /// How often to check for due schedules (default: 60 seconds)
     pub check_interval_secs: u64,
-    /// Timezone offset in hours from UTC (for local time matching)
-    /// Not currently used - we use the system's local time
-    #[allow(dead_code)]
-    pub timezone_offset_hours: i32,
 }
 
 impl Default for SchedulerConfig {
     fn default() -> Self {
         Self {
             check_interval_secs: 60,
-            timezone_offset_hours: 0,
         }
     }
 }
@@ -47,14 +50,12 @@ impl ScheduleExecutor {
     /// outbox entries to trigger MQTT commands.
     pub async fn run(&self) {
         tracing::info!(
-            "Schedule executor started (interval: {}s)",
-            self.config.check_interval_secs
+            "Schedule executor started (interval: {}s, local timezone: {})",
+            self.config.check_interval_secs,
+            Local::now().format("%Z %z")
         );
 
         let mut interval = interval(Duration::from_secs(self.config.check_interval_secs));
-
-        // Skip the first immediate tick to align with minute boundaries
-        interval.tick().await;
 
         loop {
             interval.tick().await;
@@ -69,36 +70,30 @@ impl ScheduleExecutor {
     async fn check_and_execute_schedules(
         &self,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Get current local time (truncated to the current minute)
         let now = Local::now();
-        let current_time = now.time().with_second(0).and_then(|t| t.with_nanosecond(0));
 
-        let current_time = match current_time {
+        let local_midnight_utc = match local_midnight_utc(&now) {
             Some(t) => t,
             None => {
-                tracing::warn!("Failed to truncate current time");
+                tracing::warn!("Failed to resolve local midnight, skipping tick");
                 return Ok(());
             }
         };
 
-        tracing::debug!(
-            "Checking for due schedules at {}",
-            current_time.format("%H:%M")
-        );
-
-        // Get schedules due in the current minute
         let schedules_repo = SchedulesRepository::new(self.pool.clone());
-        let due_schedules = schedules_repo.get_due_schedules(current_time).await?;
+        let due_schedules = schedules_repo
+            .get_due_schedules(now.time(), local_midnight_utc)
+            .await?;
 
         if due_schedules.is_empty() {
-            tracing::debug!("No schedules due at {}", current_time.format("%H:%M"));
+            tracing::debug!("No schedules due at {}", now.format("%H:%M"));
             return Ok(());
         }
 
         tracing::info!(
             "Found {} schedule(s) due at {}",
             due_schedules.len(),
-            current_time.format("%H:%M")
+            now.format("%H:%M")
         );
 
         // Process each due schedule
@@ -145,6 +140,9 @@ impl ScheduleExecutor {
             )
             .await?;
 
+        // Record the fire atomically with the outbox insert
+        SchedulesRepository::mark_fired_in_tx(&mut tx, schedule.id).await?;
+
         // Commit transaction
         tx.commit().await?;
 
@@ -156,4 +154,14 @@ impl ScheduleExecutor {
 
         Ok(())
     }
+}
+
+/// UTC instant of today's local midnight; None only if the local midnight
+/// does not exist in the timezone (never the case for CET/CEST)
+fn local_midnight_utc(now: &DateTime<Local>) -> Option<DateTime<Utc>> {
+    let midnight = now.date_naive().and_hms_opt(0, 0, 0)?;
+    Local
+        .from_local_datetime(&midnight)
+        .earliest()
+        .map(|dt| dt.with_timezone(&Utc))
 }

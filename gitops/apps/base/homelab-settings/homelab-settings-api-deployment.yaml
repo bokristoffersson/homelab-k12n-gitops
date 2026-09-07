@@ -28,6 +28,11 @@ spec:
               value: /config/config.yaml
             - name: RUST_LOG
               value: "info"
+            # The plug scheduler interprets time_of_day in the pod's local
+            # timezone; without TZ the pod runs UTC and every schedule
+            # shifts 1-2h with DST.
+            - name: TZ
+              value: "Europe/Stockholm"
             - name: DATABASE_USER
               valueFrom:
                 secretKeyRef:
