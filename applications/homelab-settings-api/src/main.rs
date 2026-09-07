@@ -3,6 +3,7 @@ mod auth;
 mod config;
 mod error;
 mod kafka;
+mod reconciler;
 mod repositories;
 mod scheduler;
 
@@ -17,6 +18,7 @@ use crate::{
     auth::JwtValidator,
     config::Config,
     kafka::KafkaConsumerService,
+    reconciler::{DesiredStateReconciler, ReconcilerConfig},
     repositories::{OutboxRepository, PlugsRepository, SchedulesRepository, SettingsRepository},
     scheduler::{ScheduleExecutor, SchedulerConfig},
 };
@@ -72,6 +74,13 @@ async fn main() -> Result<()> {
         scheduler.run().await;
     });
 
+    // Create and spawn desired-state reconciler task
+    tracing::info!("Initializing desired-state reconciler...");
+    let reconciler = DesiredStateReconciler::new(db_pool.clone(), ReconcilerConfig::default());
+    let reconciler_handle = tokio::spawn(async move {
+        reconciler.run().await;
+    });
+
     // Initialize JWT validator if auth is configured
     let jwt_validator = if let Some(auth_config) = &config.auth {
         if !auth_config.issuers.is_empty() {
@@ -125,6 +134,7 @@ async fn main() -> Result<()> {
     // Abort background tasks on shutdown
     kafka_handle.abort();
     scheduler_handle.abort();
+    reconciler_handle.abort();
 
     tracing::info!("Application shutdown complete");
     Ok(())

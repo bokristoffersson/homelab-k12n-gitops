@@ -150,6 +150,24 @@ impl KafkaConsumerService {
             if status { "ON" } else { "OFF" }
         );
 
+        // A state change with no recent command behind it is external (e.g.
+        // Homebridge/Siri publishing straight to MQTT) — adopt it as the new
+        // desired state so the reconciler does not flip the plug back.
+        match self
+            .plugs_repository
+            .adopt_external_state(plug_id, status)
+            .await
+        {
+            Ok(true) => tracing::info!(
+                "Adopted external state change for plug {}: desired is now {}",
+                plug_id,
+                if status { "ON" } else { "OFF" }
+            ),
+            Ok(false) => {}
+            // Telemetry processing must not fail on the adopt bookkeeping
+            Err(e) => tracing::warn!("Adopt-state check failed for plug {}: {}", plug_id, e),
+        }
+
         Ok(())
     }
 

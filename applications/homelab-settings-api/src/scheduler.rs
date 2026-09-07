@@ -143,6 +143,15 @@ impl ScheduleExecutor {
         // Record the fire atomically with the outbox insert
         SchedulesRepository::mark_fired_in_tx(&mut tx, schedule.id).await?;
 
+        // Record desired state so the reconciler re-issues the command if the
+        // device never converges
+        crate::repositories::plugs::PlugsRepository::set_desired_in_tx(
+            &mut tx,
+            &schedule.plug_id,
+            status,
+        )
+        .await?;
+
         // Commit transaction
         tx.commit().await?;
 

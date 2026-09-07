@@ -120,7 +120,9 @@ impl PlugsRepository {
         self.get_by_id(plug_id).await
     }
 
-    /// Update plug status within a transaction (for outbox pattern)
+    /// Update plug status within a transaction (for outbox pattern).
+    /// Also records the desired state so the reconciler can re-issue the
+    /// command if the device never converges.
     pub async fn update_status_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         plug_id: &str,
@@ -129,7 +131,10 @@ impl PlugsRepository {
         let plug = sqlx::query_as::<_, PowerPlug>(
             r#"
             UPDATE power_plugs
-            SET status = $2, updated_at = NOW()
+            SET status = $2,
+                desired_status = $2,
+                desired_updated_at = NOW(),
+                updated_at = NOW()
             WHERE plug_id = $1
             RETURNING plug_id, name, status, wifi_rssi, uptime_seconds, updated_at
             "#,
@@ -141,6 +146,104 @@ impl PlugsRepository {
         .ok_or_else(|| AppError::NotFound(format!("Plug {} not found", plug_id)))?;
 
         Ok(plug)
+    }
+
+    /// Record the desired state without touching the reported status (used by
+    /// the scheduler, which unlike the manual toggle never updated status
+    /// optimistically)
+    pub async fn set_desired_in_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        plug_id: &str,
+        status: bool,
+    ) -> Result<()> {
+        sqlx::query(
+            r#"
+            UPDATE power_plugs
+            SET desired_status = $2, desired_updated_at = NOW()
+            WHERE plug_id = $1
+            "#,
+        )
+        .bind(plug_id)
+        .bind(status)
+        .execute(&mut **tx)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Adopt an externally caused state change as the new desired state.
+    ///
+    /// Homebridge (HomeKit/Siri) publishes plug commands directly to MQTT,
+    /// bypassing this API. When the reported state disagrees with desired and
+    /// no recent unconfirmed command explains the gap, the change was external
+    /// and the user's latest intent wins — otherwise the reconciler would
+    /// fight Siri and flip the plug back. Recent pending/published/failed
+    /// commands matching the desired action DO explain the gap (a command in
+    /// flight or one the device never applied), so those block adoption and
+    /// leave the reconciler in charge.
+    pub async fn adopt_external_state(&self, plug_id: &str, reported: bool) -> Result<bool> {
+        let result = sqlx::query(
+            r#"
+            UPDATE power_plugs p
+            SET desired_status = $2, desired_updated_at = NOW()
+            WHERE p.plug_id = $1
+              AND p.desired_status IS NOT NULL
+              AND p.desired_status IS DISTINCT FROM $2
+              AND NOT EXISTS (
+                  SELECT 1 FROM outbox o
+                  WHERE o.aggregate_type = 'power_plug'
+                    AND o.aggregate_id = p.plug_id
+                    AND o.status IN ('pending', 'published', 'failed')
+                    AND o.created_at > NOW() - INTERVAL '15 minutes'
+                    AND o.payload->>'action' =
+                        CASE WHEN p.desired_status THEN 'ON' ELSE 'OFF' END
+              )
+            "#,
+        )
+        .bind(plug_id)
+        .bind(reported)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    /// Plugs whose reported state disagrees with the desired state and need a
+    /// reconcile command. Excludes plugs with a command already in flight and
+    /// rate-limits to one new attempt per backoff window.
+    pub async fn get_state_mismatches(
+        &self,
+        grace_secs: u64,
+        backoff_secs: u64,
+    ) -> Result<Vec<(String, bool)>> {
+        let rows = sqlx::query_as::<_, (String, bool)>(
+            r#"
+            SELECT p.plug_id, p.desired_status
+            FROM power_plugs p
+            WHERE p.desired_status IS NOT NULL
+              AND p.desired_status IS DISTINCT FROM p.status
+              AND p.desired_updated_at < NOW() - make_interval(secs => $1::double precision)
+              AND NOT EXISTS (
+                  SELECT 1 FROM outbox o
+                  WHERE o.aggregate_type = 'power_plug'
+                    AND o.aggregate_id = p.plug_id
+                    AND o.status IN ('pending', 'published')
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM outbox o
+                  WHERE o.aggregate_type = 'power_plug'
+                    AND o.aggregate_id = p.plug_id
+                    AND o.created_at > NOW() - make_interval(secs => $2::double precision)
+              )
+            ORDER BY p.plug_id
+            "#,
+        )
+        .bind(grace_secs as i64)
+        .bind(backoff_secs as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
     }
 
     /// Upsert plug telemetry data (used by Kafka consumer in Phase 5)

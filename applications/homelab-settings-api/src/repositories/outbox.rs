@@ -91,20 +91,14 @@ impl OutboxRepository {
         Ok(())
     }
 
-    /// Insert a power plug command within an existing transaction (manual toggle)
-    pub async fn insert_plug_command_in_tx(
+    /// Supersede older commands, then insert a new plug command row
+    async fn insert_plug_entry_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         plug_id: &str,
-        status: bool,
+        event_type: &str,
+        payload: serde_json::Value,
     ) -> Result<OutboxEntry> {
         Self::supersede_plug_commands_in_tx(tx, plug_id).await?;
-
-        let payload = serde_json::json!({
-            "plug_id": plug_id,
-            "status": status,
-            "action": if status { "ON" } else { "OFF" },
-            "source": "manual"
-        });
 
         let entry = sqlx::query_as::<_, OutboxEntry>(
             r#"
@@ -123,7 +117,7 @@ impl OutboxRepository {
         )
         .bind("power_plug")
         .bind(plug_id)
-        .bind("plug_toggle")
+        .bind(event_type)
         .bind(payload)
         .bind("pending")
         .bind(0) // retry_count
@@ -134,6 +128,22 @@ impl OutboxRepository {
         Ok(entry)
     }
 
+    /// Insert a power plug command within an existing transaction (manual toggle)
+    pub async fn insert_plug_command_in_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        plug_id: &str,
+        status: bool,
+    ) -> Result<OutboxEntry> {
+        let payload = serde_json::json!({
+            "plug_id": plug_id,
+            "status": status,
+            "action": if status { "ON" } else { "OFF" },
+            "source": "manual"
+        });
+
+        Self::insert_plug_entry_in_tx(tx, plug_id, "plug_toggle", payload).await
+    }
+
     /// Insert a scheduled power plug command within an existing transaction
     pub async fn insert_scheduled_plug_command_in_tx(
         tx: &mut Transaction<'_, Postgres>,
@@ -141,8 +151,6 @@ impl OutboxRepository {
         status: bool,
         schedule_id: i64,
     ) -> Result<OutboxEntry> {
-        Self::supersede_plug_commands_in_tx(tx, plug_id).await?;
-
         let payload = serde_json::json!({
             "plug_id": plug_id,
             "status": status,
@@ -151,32 +159,23 @@ impl OutboxRepository {
             "schedule_id": schedule_id
         });
 
-        let entry = sqlx::query_as::<_, OutboxEntry>(
-            r#"
-            INSERT INTO outbox (
-                aggregate_type,
-                aggregate_id,
-                event_type,
-                payload,
-                status,
-                created_at,
-                retry_count,
-                max_retries
-            ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7)
-            RETURNING *
-            "#,
-        )
-        .bind("power_plug")
-        .bind(plug_id)
-        .bind("plug_schedule")
-        .bind(payload)
-        .bind("pending")
-        .bind(0) // retry_count
-        .bind(3) // max_retries
-        .fetch_one(&mut **tx)
-        .await?;
+        Self::insert_plug_entry_in_tx(tx, plug_id, "plug_schedule", payload).await
+    }
 
-        Ok(entry)
+    /// Insert a reconciler-issued plug command within an existing transaction
+    pub async fn insert_reconcile_plug_command_in_tx(
+        tx: &mut Transaction<'_, Postgres>,
+        plug_id: &str,
+        status: bool,
+    ) -> Result<OutboxEntry> {
+        let payload = serde_json::json!({
+            "plug_id": plug_id,
+            "status": status,
+            "action": if status { "ON" } else { "OFF" },
+            "source": "reconcile"
+        });
+
+        Self::insert_plug_entry_in_tx(tx, plug_id, "plug_reconcile", payload).await
     }
 
     /// Get outbox entry by ID
