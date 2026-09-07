@@ -18,7 +18,9 @@ pub struct OutboxEntry {
     pub max_retries: i32,
 }
 
-/// Get pending outbox entries (status = 'pending', retry_count < max_retries)
+/// Get pending outbox entries. retry_count may equal max_retries here: a
+/// command requeued by the confirmation timeout gets one final publish before
+/// fail_unconfirmed_plug_commands marks it failed.
 pub async fn get_pending_entries(
     pool: &Pool<Postgres>,
     limit: i64,
@@ -29,7 +31,7 @@ pub async fn get_pending_entries(
                created_at, published_at, confirmed_at, error_message, retry_count, max_retries
         FROM outbox
         WHERE status = 'pending'
-          AND retry_count < max_retries
+          AND retry_count <= max_retries
         ORDER BY created_at ASC
         LIMIT $1
         "#,
@@ -104,12 +106,85 @@ pub async fn mark_confirmed(pool: &Pool<Postgres>, aggregate_id: &str) -> Result
         UPDATE outbox
         SET status = 'confirmed',
             confirmed_at = NOW()
-        WHERE aggregate_id = $1
+        WHERE aggregate_type = 'heatpump_setting'
+          AND aggregate_id = $1
           AND status = 'published'
           AND confirmed_at IS NULL
         "#,
     )
     .bind(aggregate_id)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+/// Mark plug commands as confirmed when the device echoes the matching state.
+/// Matching on the echoed action (not just the plug id) ensures an unrelated
+/// telemetry message cannot confirm a command that never took effect.
+pub async fn mark_plug_confirmed(
+    pool: &Pool<Postgres>,
+    plug_id: &str,
+    action: &str,
+) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        UPDATE outbox
+        SET status = 'confirmed',
+            confirmed_at = NOW()
+        WHERE aggregate_type = 'power_plug'
+          AND aggregate_id = $1
+          AND status = 'published'
+          AND payload->>'action' = $2
+        "#,
+    )
+    .bind(plug_id)
+    .bind(action)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+/// Fail plug commands that stayed unconfirmed after exhausting all republishes
+pub async fn fail_unconfirmed_plug_commands(
+    pool: &Pool<Postgres>,
+    timeout_secs: u64,
+) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        UPDATE outbox
+        SET status = 'failed',
+            error_message = 'no device state confirmation after ' || retry_count || ' republish attempt(s)'
+        WHERE aggregate_type = 'power_plug'
+          AND status = 'published'
+          AND published_at < NOW() - make_interval(secs => $1::double precision)
+          AND retry_count >= max_retries
+        "#,
+    )
+    .bind(timeout_secs as i64)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
+/// Requeue plug commands that were published but not confirmed by a device
+/// state echo within the timeout, so the main loop republishes them
+pub async fn requeue_unconfirmed_plug_commands(
+    pool: &Pool<Postgres>,
+    timeout_secs: u64,
+) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        UPDATE outbox
+        SET status = 'pending',
+            retry_count = retry_count + 1,
+            error_message = 'no device state confirmation within timeout, republishing'
+        WHERE aggregate_type = 'power_plug'
+          AND status = 'published'
+          AND published_at < NOW() - make_interval(secs => $1::double precision)
+          AND retry_count < max_retries
+        "#,
+    )
+    .bind(timeout_secs as i64)
     .execute(pool)
     .await?;
     Ok(result.rows_affected())

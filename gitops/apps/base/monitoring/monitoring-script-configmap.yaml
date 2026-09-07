@@ -151,6 +151,26 @@ data:
       evaluate mqtt_bridge OK
     fi
 
+    # Failed device commands. The outbox processor marks a command failed only
+    # after every publish retry and confirmation-timeout republish is
+    # exhausted, so any failed row means a device never applied a command.
+    echo "Checking failed device commands..."
+    FAILED_CMDS=$(kubectl exec -n homelab-settings deployment/postgres -- \
+      psql -U postgres -d homelab_settings -tAc \
+      "SELECT COUNT(*) FROM outbox WHERE status = 'failed' AND created_at > NOW() - INTERVAL '24 hours';" 2>/dev/null)
+
+    case "$FAILED_CMDS" in
+      ''|*[!0-9]*)
+        echo "SKIP: failed-command query failed" ;;
+      *)
+        if [ "$FAILED_CMDS" -gt 0 ]; then
+          evaluate outbox_failed FIRING "$FAILED_CMDS device command(s) failed in last 24h (outbox table in homelab-settings)" warning
+        else
+          echo "Device commands OK (no failed outbox rows in 24h)"
+          evaluate outbox_failed OK
+        fi ;;
+    esac
+
     # Dead man's switch: ping healthchecks.io on every completed run — firing
     # checks included; the ping means "monitoring is alive", not "all green".
     # If the pings stop (cluster down, CronJob broken, node dead) healthchecks.io

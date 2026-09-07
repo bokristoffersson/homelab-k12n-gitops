@@ -9,7 +9,9 @@ pub struct Config {
     pub mqtt_password: Option<String>,
     pub kafka_brokers: String,
     pub kafka_topic: String,
+    pub kafka_plug_topic: String,
     pub kafka_group_id: String,
+    pub confirm_timeout_secs: u64,
 }
 
 impl Config {
@@ -29,8 +31,13 @@ impl Config {
                 .unwrap_or_else(|_| "redpanda-v2.redpanda-v2.svc.cluster.local:9092".to_string()),
             kafka_topic: env::var("KAFKA_TOPIC")
                 .unwrap_or_else(|_| "homelab-heatpump-telemetry".to_string()),
+            kafka_plug_topic: env::var("KAFKA_PLUG_TOPIC")
+                .unwrap_or_else(|_| "homelab-plug-telemetry".to_string()),
             kafka_group_id: env::var("KAFKA_GROUP_ID")
                 .unwrap_or_else(|_| "heatpump-settings-outbox-processor".to_string()),
+            confirm_timeout_secs: env::var("CONFIRM_TIMEOUT_SECS")
+                .unwrap_or_else(|_| "90".to_string())
+                .parse()?,
         })
     }
 }
