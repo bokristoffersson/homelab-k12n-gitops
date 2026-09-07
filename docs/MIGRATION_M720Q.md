@@ -619,6 +619,26 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     `kubectl logs -n timescaledb -l app=migration-watch --tail=50 --prune=false`
     (eller `job/migration-watch-<n>`). **MÅSTE tas bort efter fönstret:**
     `kubectl delete cronjob migration-watch -n timescaledb`.
+  → **Resultat efter ~29h övervakning (2026-07-05 ~18:30 UTC):** energy och
+    heatpump **konstant gröna** hela fönstret (energy ~0,2s bakom, heatpump ~9s;
+    långt under trösklarna). Alla 7 consumer-grupper Stable. Pluggarna live. Enda
+    WARN på varje tick var **temperatur** — och det var ett verkligt fel, inte en
+    tröskeljustering:
+    - **Shelly H&T tystnade vid cutover.** Sista temp-raden `2026-07-04 10:29:51`
+      (= ompekningstidpunkten), `homelab-temperature-indoor` high-watermark 0, noll
+      rader sedan dess. Energy/heatpump/plugs opåverkade.
+    - **Rotorsak: MQTT-auth, inte broker-IP.** Mosquitto-loggen visade `Client
+      shellyhtg3-e4b32322a0f4 disconnected, not authorised` vid varje wake (~var
+      1–2h). Enheten NÅR alltså nya brokern (`192.168.50.212:1883`) men avvisas på
+      credential. Broker-sidan var oförändrad (passwordfilen är samma sealed secret
+      + samma migrerade nyckel; thermiq/saveeye/tasmota autentiserar fint mot den).
+      Klassisk Shelly Gen3-fälla: MQTT-lösenordsfältet nollställdes när Bo ändrade
+      broker-IP vid ompekningen → tomt/fel lösenord skickades.
+    - **Åtgärd (Bo, 2026-07-05):** hittade original-lösenordet och skrev in det på
+      enheten igen (användare `shelly`). **Verifiering pending device-wake** —
+      Shelly hade inte vaknat sedan fixen när detta skrevs; `migration-watch` flippar
+      temp-verdict till OK automatiskt när första raden landar. Bekräfta med topic-
+      watermark >0 + färsk `temperature_sensors`-rad.
 - [ ] **[Bo]** Ominstallera Pi:erna EN i taget med Ubuntu Server 24.04 (arm64):
   flasha SD/SSD, hostname p0/p1, OpenSSH på, lägg in claude-box-pubnyckeln
   (samma kommando som fas 1).
