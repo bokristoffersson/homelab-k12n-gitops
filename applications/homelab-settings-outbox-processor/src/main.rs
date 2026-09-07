@@ -101,12 +101,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
     info!("Kafka confirmation listener spawned");
 
-    // Main processing loop
+    // Main processing loop. Reconcile runs after publishing so a row requeued
+    // by the timeout is republished on the next cycle, not within the same
+    // iteration. Retry spacing itself comes from published_at being reset on
+    // every publish, so attempts are always a full timeout apart.
     loop {
-        if let Err(e) = reconcile_unconfirmed(&pool, config.confirm_timeout_secs).await {
-            error!("Error reconciling unconfirmed commands: {}", e);
-        }
-
         match process_pending_entries(&pool, &mqtt_client).await {
             Ok(processed) => {
                 if processed > 0 {
@@ -116,6 +115,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Err(e) => {
                 error!("Error processing outbox entries: {}", e);
             }
+        }
+
+        if let Err(e) = reconcile_unconfirmed(&pool, config.confirm_timeout_secs).await {
+            error!("Error reconciling unconfirmed commands: {}", e);
         }
 
         sleep(Duration::from_secs(config.poll_interval_secs)).await;
