@@ -37,6 +37,8 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **energy-ws**: Rust/Axum WebSocket server streaming real-time energy data from Redpanda
 - **redpanda-sink**: Kafka consumer writing telemetry to TimescaleDB
 - **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
+- **gasa-api / gasa-web**: driving-practice booking app at `https://gasa.k12n.com` (Rust/Axum + React) with dedicated PostgreSQL in ns `gasa`. Auth differs from the other apps: the whole subdomain sits behind oauth2-proxy ForwardAuth and the API trusts only `X-Auth-Request-*` headers (no JWT validation); admin = email allowlist in `gitops/apps/base/gasa/configs/gasa-api-config.yaml`. Migrations live in `gitops/apps/base/gasa/migrations/`.
+- **minecraft**: itzg/minecraft-server in ns `minecraft`, pinned to `m720q` (Longhorn PVC), LAN-exposed via ServiceLB
 
 ### IoT Devices
 - Shelly H&T Gen3 (temperature/humidity sensor)
@@ -71,6 +73,7 @@ IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → Timesca
 ### Backup Strategy
 - **TimescaleDB**: Daily backup at 2 AM to S3
 - **homelab-settings PostgreSQL** and **Backstage PostgreSQL**: have their own backup CronJobs to S3
+- **gasa PostgreSQL**: daily backup at 2:45 AM to S3 (two-container CronJob: postgres dump init container + aws-cli upload sharing an emptyDir)
 - Authelia has no external identity database to back up — its users live in a sealed-secret file backend (in Git) and session/storage state is local
 - Backups use pg_dump + gzip compression
 - Stored in separate S3 prefixes
@@ -526,6 +529,12 @@ docs/
 
 ## Recent Changes
 
+- Hardened gasa backup CronJob against dump retries leaving multiple files in the shared emptyDir (2026-08-21)
+- m720q BIOS updated M1UKT45A (2019) → M1UKT78A (2025-12) to address the intermittent POST fan fault; original fan kept to test the firmware-fix theory. Node was drained for the update 2026-08-14 and uncordoned 2026-08-21 (2026-08-21)
+- Added körschema module to gasa: 30-lesson driving curriculum, seed SQL generated from `docs/korschema-spec.md` (2026-08-06)
+- Deployed gasa booking app at `https://gasa.k12n.com` (gasa-api, gasa-web, dedicated PostgreSQL + S3 backup) (2026-08-02)
+- Deployed Minecraft server on m720q (2026-07)
+- Migrated cluster from two Raspberry Pis to CIS-hardened m720q control-plane + pi0/pi1 agents; see `docs/MIGRATION_M720Q.md` (2026-07)
 - Migrated OIDC provider from Authentik to Authelia (`https://auth.k12n.com`, config-as-code, file user backend); Authentik fully removed (2026-06-18)
 - Renamed heatpump-settings to homelab-settings (namespace, database, services, images) (2026-02-03)
 - Deployed homelab-settings-api service with separate Kafka consumer group (2026-01-11)

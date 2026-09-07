@@ -513,19 +513,132 @@ Ordningen är viktig — sealed-secrets-nyckeln FÖRE Flux:
     heatpump,temperature}) — inga `UnknownTopic`-fel längre. Fixade även
     `topic-creator-job.yaml` + `docs/topics.md` i repot till rätt namn (denna PR),
     så framtida bootstraps blir korrekta. **Obs:** de 5 gamla tomma topicsen ligger
-    kvar oanvända på klustret (rpk raderar inte topics vid namnbyte i jobbet) —
-    ofarliga, kan städas med `rpk topic delete` vid tillfälle.
+    kvar oanvända på klustret (rpk raderar inte topics vid namnbyte i jobbet).
+    → **Städat 2026-07-04:** verifierade high-watermark=0 och inga consumers på
+      de 5 gamla (`energy-realtime`, `heatpump-realtime`, `heatpump-settings`,
+      `heatpump-telemetry`, `sensor-state`) och raderade dem med `rpk topic delete`.
+      Kvar nu: bara de 5 korrekta `homelab-*`.
 
 ## Fas 5 — Cutover + Pi:erna som agenter
 
-- [ ] **[Claude]** Skala ner cloudflared på GAMLA klustret först (annars
+- [x] **[Claude]** Skala ner cloudflared på GAMLA klustret först (annars
   round-robinar tunneln mellan klustren), verifiera sedan att
   `https://homelab.k12n.com` och `https://auth.k12n.com` svarar från nya.
-- [ ] **[Bo]** Peka om Shelly-sensorns MQTT-broker till ny IP; peka om
+  → **KLART 2026-07-04.** Bo pausade gamla klustrets Flux
+    (`flux suspend kustomization infrastructure-controllers`) och skalade ner dess
+    cloudflared till 0. Verifierat från nya sidan att tunneln nu bara servar nytt:
+    publikt `https://homelab.k12n.com/` 200, `/api/v1/energy/latest` 401 (auth),
+    `https://auth.k12n.com/api/health` 200 + OIDC-discovery 200 (riktiga https-
+    vägen), `https://grafana.k12n.com/api/health` `database:ok`. **Definitivt
+    bevis:** en unik probe `?p=cutover-verify-<n>` skickad till publika URL:en
+    dök upp i NYA klustrets Traefik-access-logg. Riktig produktionstrafik syns
+    också landa på nytt (`/api/v1/energy/hourly-total` 200 via homelab-api).
+    **OBS servern flyttades fysiskt + bootade om strax innan** — återhämtade sig
+    rent (transient DNS-deadlock fix#3 under boot, self-healade när pihole kom upp).
+  → (Tidigare readiness-not, nu uppfyllt:) Nya klustret var verifierat redo att
+    serva ensamt; cutovern var blockerad på Bo — claude-boxen har bara `homelab-new`-context,
+    ingen åtkomst till gamla klustret. Verifierat på nytt: Traefik 1/1 +
+    oauth2-proxy 2/2 + nya cloudflared 2/2 (4 tunnel-anslutningar sedan 14h,
+    dvs trafiken round-robinar redan nu mellan klustren). Via Traefik med
+    rätt Host/X-Forwarded-Proto: homelab.k12n.com→200, auth.k12n.com→200
+    (+`/api/health` OK), grafana.k12n.com→302/login, `/api/v1` utan token→401.
+    (`heatpump.k12n.com`→404 = repots nuvarande tillstånd, legacy-hostnamn utan
+    Traefik-route; inte en regression.) **Bo kör steg 1** mot GAMLA klustret:
+    `kubectl scale deploy/cloudflared -n cloudflare-tunnel --replicas=0`
+    (eller växla min context med `./claude-box.sh kube homelab` så gör jag det).
+- [x] **[Bo]** Peka om Shelly-sensorns MQTT-broker till ny IP; peka om
   Pi-hole-DNS-klienter enligt IP-planen från fas 0.
+  → **KLART 2026-07-04:** Shelly + heatpump/thermiq pekades om ~11:05, Tasmota-
+    pluggarna strax efter (Bo hade glömt dem först). Alla 4 MQTT-streams flödar nu
+    till nya klustret. `power_plugs`-avvikelsen från delta-analysen löste sig av
+    sig själv så fort pluggarna pekats om: live `tele/+/STATE`-telemetri skrev
+    över den inaktuella cachen (båda `OFF`, färsk `wifi_rssi`, updated <3 min) —
+    ingen manuell DB-skrivning behövdes.
+  → **Ny broker-endpoint: `192.168.50.212:1883`** (Mosquitto LoadBalancer =
+    m720q node-IP, verifierad 2026-07-04). Nya klustrets mqtt-kafka-bridge är
+    ansluten dit och prenumererar redan på `shellyhtg3-e4b32322a0f4/events/rpc`
+    (+ `saveeye/telemetry`, `tele/+/STATE`, `thermiq_heatpump/data`), alla 4
+    streams aktiva → data flödar så fort sensorn pekas om. Övriga MQTT-enheter
+    (heatpump/thermiq, Tasmota-plugs, saveeye) behöver också pekas om till samma
+    broker-IP.
+  → **Inflödet till GAMLA klustret stannade ~2026-07-04 11:05 UTC** (senaste
+    raden `energy_consumption` 11:05, `heatpump_status` 10:57, `now()` 11:54 =
+    ~50 min utan nya rader) → tolkat som att enheterna pekats om runt då.
+  → **Delta-dump räddad till S3 2026-07-04** (så data mellan fas-4-dumparna och
+    ompekningen inte tappas vid teardown). Bara säkerhetskopia — INGEN inläsning i
+    nya klustret ännu (Bo beslutar). Dumpad från gamla klustret via engångs-pod
+    (`amazon/aws-cli`, creds från `timescaledb-backup-aws`), upplagt i
+    `s3://k12n-homelab-db-backups/pre-migration-state/delta-20260704/`:
+    - timescaledb time > `2026-07-03 19:57:04` (fas-4-cutoff), rad-filtrerad
+      `\copy ... WITH CSV HEADER`: energy_consumption 54 482, heatpump_status
+      1 525, temperature_sensors 9, spot_prices 200 (day-ahead, redundant — nya
+      hämtar själv), apns_device_tokens 1 (oförändrad, full tabell).
+    - `homelab_settings_full.sql.gz` — full `pg_dump` (writes stannade ~00:30 vid
+      cutover; 3 nya outbox-rader i fönstret + all state).
+    - `MANIFEST.txt` med gränser, radantal och inläsningsinstruktion (dedup mot
+      nya klustrets egen data vid gränsen ~11:05 via `ON CONFLICT DO NOTHING`).
+  → **Delta INLÄST i nya klustret 2026-07-04** (Bo gav klartecken). Filerna hämtade
+    från S3 (`delta-20260704/`), verifierade (md5 + radantal) och lastade via temp-
+    tabeller i `timescaledb`-poden. **Dedup:** de tre MQTT-hypertabellerna saknar
+    unik constraint, så `ON CONFLICT` funkar inte där — deduppade i stället på
+    `time` med `INSERT ... SELECT ... WHERE NOT EXISTS (same time)` (dry-run med
+    ROLLBACK först för att bekräfta överlappet). Resultat:
+    - **energy_consumption**: +54 481 (1 rad hoppades — `19:57:04.825192`, låg i
+      både fas-4-restoren och deltat pga `time > '19:57:04'`-filtret utan sub-sek).
+      Gap:et 19:57→11:05 nu fyllt (största seam-gap 5m40s, ingen ~15h-lucka).
+    - **heatpump_status**: +1 525 (rent seam, delta slutar 10:57, live börjar 11:04).
+    - **temperature_sensors**: +9 (rent, 0 rader efter cutoff fanns).
+    - **spot_prices**: +0 (`ON CONFLICT (delivery_area,time) DO NOTHING` — alla 200
+      fanns redan, nya klustrets spotprice-api hämtar dem själv; redundant som väntat).
+    - **apns_device_tokens**: +0 (`ON CONFLICT (token)` — oförändrad, fanns redan).
+    - **homelab_settings**: INGEN inläsning behövdes. De 3 "nya" outbox-raderna
+      (1449-1451) är `plug_schedule`-events kl 23:00/23:30/00:30 som nya klustrets
+      EGEN outbox-processor redan genererat (samma scheman, samma timer) → identiska
+      logiska events, inga saknade affärshändelser. `settings`-raden på nya klustret
+      är nyare (`12:05`) OCH mer komplett (indoor_target_temp/mode/curve satta; deltat
+      hade dem NULL). **`power_plugs`-avvikelse (ej åtgärdad, flaggad till Bo):** nya
+      klustret visar båda pluggarna `ON` (inaktuellt, 20:03 igår), deltat `OFF`
+      (11:48 idag) — cachead device-state som self-healar när Tasmota-pluggarna
+      pekas om till nya brokern (kvar i steget nedan); fysisk plugg = sanning.
 - [ ] **[Claude]** Övervaka dataflödet ~1 dygn: Shelly → Mosquitto → Redpanda →
   TimescaleDB → homelab-api; kontrollera att grafer fylls på och att
   redpanda-sink/settings-consumern är friska.
+  → **Baslinje 2026-07-04 (~12:10 UTC), alla enheter ompekade:** energy 0,7s
+    bakom, heatpump 7s, temperature 1h45m (normalt — Shelly skickar vid ändring /
+    var 2:a timme). Alla 7 consumer-grupper **Stable** (energy-ws, homelab-settings,
+    homelab-settings-api, homelab-settings-outbox-processor, timescaledb-{energy,
+    heatpump,temperature}). Pluggarna rapporterar live (`power_plugs` färsk).
+    Övervakas till ~2026-07-05 eftermiddag.
+  → **In-cluster watch (överlever att skalet stängs):** CronJob `migration-watch`
+    i ns `timescaledb`, `*/30 * * * *`, `postgres:16` som frågar TimescaleDB och
+    loggar en rad `energy=.. heatpump=.. temperature=.. verdict=OK|WARN` (WARN om
+    energy >5min / heatpump >15min / temperature >150min bakom). Freshness i
+    TimescaleDB är tillräcklig proxy för hela kedjan device→MQTT→redpanda→sink.
+    **Applicerad live (imperativt, EJ GitOps)** — tillfällig; manifest i scratchpad.
+    Granska: `kubectl get cronjob -n timescaledb migration-watch` +
+    `kubectl logs -n timescaledb -l app=migration-watch --tail=50 --prune=false`
+    (eller `job/migration-watch-<n>`). **MÅSTE tas bort efter fönstret:**
+    `kubectl delete cronjob migration-watch -n timescaledb`.
+  → **Resultat efter ~29h övervakning (2026-07-05 ~18:30 UTC):** energy och
+    heatpump **konstant gröna** hela fönstret (energy ~0,2s bakom, heatpump ~9s;
+    långt under trösklarna). Alla 7 consumer-grupper Stable. Pluggarna live. Enda
+    WARN på varje tick var **temperatur** — och det var ett verkligt fel, inte en
+    tröskeljustering:
+    - **Shelly H&T tystnade vid cutover.** Sista temp-raden `2026-07-04 10:29:51`
+      (= ompekningstidpunkten), `homelab-temperature-indoor` high-watermark 0, noll
+      rader sedan dess. Energy/heatpump/plugs opåverkade.
+    - **Rotorsak: MQTT-auth, inte broker-IP.** Mosquitto-loggen visade `Client
+      shellyhtg3-e4b32322a0f4 disconnected, not authorised` vid varje wake (~var
+      1–2h). Enheten NÅR alltså nya brokern (`192.168.50.212:1883`) men avvisas på
+      credential. Broker-sidan var oförändrad (passwordfilen är samma sealed secret
+      + samma migrerade nyckel; thermiq/saveeye/tasmota autentiserar fint mot den).
+      Klassisk Shelly Gen3-fälla: MQTT-lösenordsfältet nollställdes när Bo ändrade
+      broker-IP vid ompekningen → tomt/fel lösenord skickades.
+    - **Åtgärd (Bo, 2026-07-05):** hittade original-lösenordet och skrev in det på
+      enheten igen (användare `shelly`). **Verifiering pending device-wake** —
+      Shelly hade inte vaknat sedan fixen när detta skrevs; `migration-watch` flippar
+      temp-verdict till OK automatiskt när första raden landar. Bekräfta med topic-
+      watermark >0 + färsk `temperature_sensors`-rad.
 - [ ] **[Bo]** Ominstallera Pi:erna EN i taget med Ubuntu Server 24.04 (arm64):
   flasha SD/SSD, hostname p0/p1, OpenSSH på, lägg in claude-box-pubnyckeln
   (samma kommando som fas 1).
