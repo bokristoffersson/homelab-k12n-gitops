@@ -222,7 +222,7 @@ impl PlugsRepository {
             FROM power_plugs p
             WHERE p.desired_status IS NOT NULL
               AND p.desired_status IS DISTINCT FROM p.status
-              AND p.desired_updated_at < NOW() - make_interval(secs => $1::double precision)
+              AND p.desired_updated_at < NOW() - ($1 * INTERVAL '1 second')
               AND NOT EXISTS (
                   SELECT 1 FROM outbox o
                   WHERE o.aggregate_type = 'power_plug'
@@ -233,7 +233,7 @@ impl PlugsRepository {
                   SELECT 1 FROM outbox o
                   WHERE o.aggregate_type = 'power_plug'
                     AND o.aggregate_id = p.plug_id
-                    AND o.created_at > NOW() - make_interval(secs => $2::double precision)
+                    AND o.created_at > NOW() - ($2 * INTERVAL '1 second')
               )
             ORDER BY p.plug_id
             "#,
