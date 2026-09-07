@@ -156,7 +156,7 @@ pub async fn fail_unconfirmed_plug_commands(
             error_message = 'no device state confirmation after ' || retry_count || ' republish attempt(s)'
         WHERE aggregate_type = 'power_plug'
           AND status = 'published'
-          AND published_at < NOW() - make_interval(secs => $1::double precision)
+          AND published_at < NOW() - ($1 * INTERVAL '1 second')
           AND retry_count >= max_retries
         "#,
     )
@@ -180,7 +180,7 @@ pub async fn requeue_unconfirmed_plug_commands(
             error_message = 'no device state confirmation within timeout, republishing'
         WHERE aggregate_type = 'power_plug'
           AND status = 'published'
-          AND published_at < NOW() - make_interval(secs => $1::double precision)
+          AND published_at < NOW() - ($1 * INTERVAL '1 second')
           AND retry_count < max_retries
         "#,
     )

@@ -164,7 +164,7 @@ data:
         echo "SKIP: failed-command query failed" ;;
       *)
         if [ "$FAILED_CMDS" -gt 0 ]; then
-          evaluate outbox_failed FIRING "$FAILED_CMDS device command(s) failed in last 24h (outbox table in homelab-settings)" warning
+          evaluate outbox_failed FIRING "$FAILED_CMDS device command(s) failed in last 24h (outbox table in homelab-settings)" critical
         else
           echo "Device commands OK (no failed outbox rows in 24h)"
           evaluate outbox_failed OK
