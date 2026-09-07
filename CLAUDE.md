@@ -41,6 +41,9 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **minecraft**: itzg/minecraft-server in ns `minecraft`, pinned to `m720q` (Longhorn PVC), LAN-exposed via ServiceLB
 
 ### IoT Devices
+- Tasmota smart plugs (single-channel)
+  - Commands on `cmnd/{plug_id}/POWER`; state echoes on `stat/{plug_id}/POWER` (transitions only) and `tele/{plug_id}/STATE` (periodic, TelePeriod)
+  - The mqtt-kafka-bridge streams only match single-channel topics — a multi-channel device (`POWER1`/`POWER2`) needs new bridge topic filters
 - Shelly H&T Gen3 (temperature/humidity sensor)
   - MQTT topic: `shellyhtg3-e4b32322a0f4/events/rpc`
   - Wakes every 1 minute, sends on temp change ≥0.5°C or humidity ≥5%

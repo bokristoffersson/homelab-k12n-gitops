@@ -52,6 +52,11 @@ impl DesiredStateReconciler {
 
         let mut interval = interval(Duration::from_secs(self.config.interval_secs));
 
+        // Consume the immediate first tick: reconciling at startup, before the
+        // Kafka consumer has refreshed plug state, only produces noise. The
+        // grace period would prevent premature commands anyway.
+        interval.tick().await;
+
         loop {
             interval.tick().await;
 

@@ -121,8 +121,8 @@ impl PlugsRepository {
     }
 
     /// Update plug status within a transaction (for outbox pattern).
-    /// Also records the desired state so the reconciler can re-issue the
-    /// command if the device never converges.
+    /// Touches only the columns in PowerPlug; the desired-state bookkeeping
+    /// is a separate set_desired_in_tx call in the same transaction.
     pub async fn update_status_in_tx(
         tx: &mut Transaction<'_, Postgres>,
         plug_id: &str,
@@ -131,10 +131,7 @@ impl PlugsRepository {
         let plug = sqlx::query_as::<_, PowerPlug>(
             r#"
             UPDATE power_plugs
-            SET status = $2,
-                desired_status = $2,
-                desired_updated_at = NOW(),
-                updated_at = NOW()
+            SET status = $2, updated_at = NOW()
             WHERE plug_id = $1
             RETURNING plug_id, name, status, wifi_rssi, uptime_seconds, updated_at
             "#,
@@ -188,6 +185,12 @@ impl PlugsRepository {
     ///   A transition echo (stat/POWER fires only when the state actually
     ///   changed) means someone actuated the plug — Siri, button, HomeKit —
     ///   and that overrides even a failed command's intent.
+    ///
+    /// The 15-minute window comfortably covers the confirmation loop's whole
+    /// retry chain (initial publish + max_retries republishes at
+    /// CONFIRM_TIMEOUT_SECS = 90s, roughly 6 minutes worst case) and the
+    /// reconciler keeps it refreshed with its own attempts while a mismatch
+    /// persists. Revisit if those timings change.
     pub async fn adopt_external_state(
         &self,
         plug_id: &str,
@@ -564,5 +567,228 @@ impl SchedulesRepository {
             .await?;
 
         Ok(())
+    }
+}
+
+// DB-backed tests for the reconciler/adoption query logic. They run only when
+// TEST_DATABASE_URL points at a PostgreSQL instance (CI provides a service
+// container); without it the test skips so plain `cargo test` stays green.
+#[cfg(test)]
+mod db_tests {
+    use super::*;
+    use sqlx::postgres::PgPoolOptions;
+
+    async fn test_pool() -> Option<PgPool> {
+        let url = std::env::var("TEST_DATABASE_URL").ok()?;
+        PgPoolOptions::new()
+            .max_connections(2)
+            .connect(&url)
+            .await
+            .ok()
+    }
+
+    /// Minimal mirror of migrations 003/006/008 — only the columns the
+    /// queries under test touch
+    async fn setup_schema(pool: &PgPool) {
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS power_plugs (
+                plug_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                status BOOLEAN DEFAULT false,
+                wifi_rssi INTEGER,
+                uptime_seconds INTEGER,
+                desired_status BOOLEAN,
+                desired_updated_at TIMESTAMPTZ,
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            "#,
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS outbox (
+                id BIGSERIAL PRIMARY KEY,
+                aggregate_type VARCHAR(255) NOT NULL,
+                aggregate_id VARCHAR(255) NOT NULL,
+                event_type VARCHAR(255) NOT NULL,
+                payload JSONB NOT NULL,
+                status VARCHAR(50) NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                published_at TIMESTAMPTZ,
+                confirmed_at TIMESTAMPTZ,
+                error_message TEXT,
+                retry_count INT NOT NULL DEFAULT 0,
+                max_retries INT NOT NULL DEFAULT 3
+            )
+            "#,
+        )
+        .execute(pool)
+        .await
+        .unwrap();
+
+        sqlx::query("TRUNCATE power_plugs, outbox")
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+
+    async fn insert_plug(
+        pool: &PgPool,
+        plug_id: &str,
+        status: bool,
+        desired: Option<bool>,
+        desired_age_secs: i64,
+    ) {
+        sqlx::query(
+            r#"
+            INSERT INTO power_plugs
+                (plug_id, name, status, desired_status, desired_updated_at, updated_at)
+            VALUES ($1, $1, $2, $3, NOW() - ($4 * INTERVAL '1 second'), NOW())
+            "#,
+        )
+        .bind(plug_id)
+        .bind(status)
+        .bind(desired)
+        .bind(desired_age_secs)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn insert_command(
+        pool: &PgPool,
+        plug_id: &str,
+        action: &str,
+        outbox_status: &str,
+        age_secs: i64,
+    ) {
+        sqlx::query(
+            r#"
+            INSERT INTO outbox
+                (aggregate_type, aggregate_id, event_type, payload, status, created_at)
+            VALUES ('power_plug', $1, 'plug_toggle',
+                    jsonb_build_object('plug_id', $1, 'action', $2),
+                    $3, NOW() - ($4 * INTERVAL '1 second'))
+            "#,
+        )
+        .bind(plug_id)
+        .bind(action)
+        .bind(outbox_status)
+        .bind(age_secs)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn desired_of(pool: &PgPool, plug_id: &str) -> Option<bool> {
+        sqlx::query_scalar("SELECT desired_status FROM power_plugs WHERE plug_id = $1")
+            .bind(plug_id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    const GRACE: u64 = 120;
+    const BACKOFF: u64 = 300;
+
+    #[tokio::test]
+    async fn state_mismatch_and_adoption_query_logic() {
+        let Some(pool) = test_pool().await else {
+            eprintln!("TEST_DATABASE_URL not set, skipping DB tests");
+            return;
+        };
+        setup_schema(&pool).await;
+        let repo = PlugsRepository::new(pool.clone());
+
+        // Plain mismatch past the grace period, no commands -> reconciled
+        insert_plug(&pool, "p_mismatch", false, Some(true), 600).await;
+        // Mismatch but desired changed recently -> grace suppresses it
+        insert_plug(&pool, "p_grace", false, Some(true), 10).await;
+        // Mismatch with a command in flight -> suppressed
+        insert_plug(&pool, "p_inflight", false, Some(true), 600).await;
+        insert_command(&pool, "p_inflight", "ON", "published", 30).await;
+        // Mismatch with a fresh failed attempt -> backoff suppresses it
+        insert_plug(&pool, "p_backoff", false, Some(true), 600).await;
+        insert_command(&pool, "p_backoff", "ON", "failed", 60).await;
+        // Mismatch with an old failed attempt -> backoff has passed
+        insert_plug(&pool, "p_retry", false, Some(true), 600).await;
+        insert_command(&pool, "p_retry", "ON", "failed", 600).await;
+        // Fresh confirmed command must NOT suppress a new mismatch
+        insert_plug(&pool, "p_confirmed", false, Some(true), 600).await;
+        insert_command(&pool, "p_confirmed", "OFF", "confirmed", 60).await;
+        // No desired state recorded -> reconciler ignores the plug
+        insert_plug(&pool, "p_null", false, None, 600).await;
+        // Converged plug -> nothing to do
+        insert_plug(&pool, "p_ok", true, Some(true), 600).await;
+
+        let ids: Vec<String> = repo
+            .get_state_mismatches(GRACE, BACKOFF)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|(id, _)| id)
+            .collect();
+
+        assert!(ids.contains(&"p_mismatch".to_string()));
+        assert!(ids.contains(&"p_retry".to_string()));
+        assert!(
+            ids.contains(&"p_confirmed".to_string()),
+            "a fresh confirmed command must not suppress reconciliation"
+        );
+        assert!(!ids.contains(&"p_grace".to_string()));
+        assert!(!ids.contains(&"p_inflight".to_string()));
+        assert!(
+            !ids.contains(&"p_backoff".to_string()),
+            "a fresh failed attempt must back off reconciliation"
+        );
+        assert!(!ids.contains(&"p_null".to_string()));
+        assert!(!ids.contains(&"p_ok".to_string()));
+
+        // Adoption: periodic (tele) echo of the stuck state must NOT override
+        // a recent failed command - that would cancel reconciliation
+        insert_plug(&pool, "p_adopt_tele", true, Some(true), 600).await;
+        insert_command(&pool, "p_adopt_tele", "ON", "failed", 60).await;
+        assert!(!repo
+            .adopt_external_state("p_adopt_tele", false, false)
+            .await
+            .unwrap());
+        assert_eq!(desired_of(&pool, "p_adopt_tele").await, Some(true));
+
+        // ...but a transition (stat) echo means someone actuated the plug:
+        // the user's latest intent wins even over a failed command
+        insert_plug(&pool, "p_adopt_stat", true, Some(true), 600).await;
+        insert_command(&pool, "p_adopt_stat", "ON", "failed", 60).await;
+        assert!(repo
+            .adopt_external_state("p_adopt_stat", false, true)
+            .await
+            .unwrap());
+        assert_eq!(desired_of(&pool, "p_adopt_stat").await, Some(false));
+
+        // An in-flight command blocks adoption regardless of echo type
+        insert_plug(&pool, "p_adopt_inflight", true, Some(true), 600).await;
+        insert_command(&pool, "p_adopt_inflight", "ON", "published", 5).await;
+        assert!(!repo
+            .adopt_external_state("p_adopt_inflight", false, true)
+            .await
+            .unwrap());
+
+        // With no recent commands at all, even a tele echo adopts
+        insert_plug(&pool, "p_adopt_free", true, Some(true), 600).await;
+        assert!(repo
+            .adopt_external_state("p_adopt_free", false, false)
+            .await
+            .unwrap());
+        assert_eq!(desired_of(&pool, "p_adopt_free").await, Some(false));
+
+        // Echo matching desired is a no-op
+        insert_plug(&pool, "p_adopt_match", false, Some(true), 600).await;
+        assert!(!repo
+            .adopt_external_state("p_adopt_match", true, true)
+            .await
+            .unwrap());
     }
 }

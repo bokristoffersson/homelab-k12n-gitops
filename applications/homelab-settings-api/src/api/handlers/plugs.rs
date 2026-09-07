@@ -95,7 +95,16 @@ pub async fn toggle_plug(
     )
     .await?;
 
-    // 2. Insert outbox command (within same transaction)
+    // 2. Record desired state so the reconciler re-issues the command if the
+    //    device never converges (same pattern as the scheduler)
+    crate::repositories::plugs::PlugsRepository::set_desired_in_tx(
+        &mut tx,
+        &plug_id,
+        toggle.status,
+    )
+    .await?;
+
+    // 3. Insert outbox command (within same transaction)
     let outbox_entry = crate::repositories::outbox::OutboxRepository::insert_plug_command_in_tx(
         &mut tx,
         &plug_id,
@@ -103,7 +112,7 @@ pub async fn toggle_plug(
     )
     .await?;
 
-    // 3. Commit transaction (atomic: both succeed or both fail)
+    // 4. Commit transaction (atomic: all succeed or all fail)
     tx.commit().await?;
 
     // Return 202 Accepted (command is pending, not yet confirmed by device)

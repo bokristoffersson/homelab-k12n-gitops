@@ -145,10 +145,13 @@ async fn main() -> Result<()> {
 }
 
 fn env_u64(name: &str, default: u64) -> u64 {
-    std::env::var(name)
-        .ok()
-        .and_then(|v| v.parse().ok())
-        .unwrap_or(default)
+    match std::env::var(name) {
+        Ok(v) => v.parse().unwrap_or_else(|_| {
+            tracing::warn!("Invalid {}='{}', using default {}", name, v, default);
+            default
+        }),
+        Err(_) => default,
+    }
 }
 
 async fn shutdown_signal() {

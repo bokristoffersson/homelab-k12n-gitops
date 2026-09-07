@@ -22,6 +22,21 @@ jobs:
     runs-on: ubuntu-24.04-arm
     env:
       RUSTFLAGS: ""  # Override setup-rust-toolchain's -D warnings
+    # Throwaway PostgreSQL for the DB-backed query-logic tests in
+    # src/repositories/plugs.rs (they skip when TEST_DATABASE_URL is unset)
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: applications/homelab-settings-api
@@ -53,6 +68,8 @@ jobs:
 
       - name: Run tests
         run: cargo test --verbose
+        env:
+          TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/test
 
   docker-build:
     name: Build Docker Image (${{ matrix.platform }})
