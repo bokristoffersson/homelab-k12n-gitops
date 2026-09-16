@@ -6,6 +6,7 @@ resources:
   - helmrelease.yaml
   - slack-webhook-secret-sealed.yaml
   - healthchecks-ping-secret-sealed.yaml
+  - healthchecks-watchdog-secret-sealed.yaml
   - serviceaccount.yaml
   - monitoring-script-configmap.yaml
   - cronjob.yaml

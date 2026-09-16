@@ -77,6 +77,7 @@ spec:
         # no plaintext URL in git.
         secrets:
           - slack-webhook
+          - healthchecks-watchdog
         storage:
           volumeClaimTemplate:
             spec:
@@ -96,13 +97,26 @@ spec:
           repeat_interval: 4h
           receiver: slack
           routes:
-            # Watchdog (always-firing dead-man's switch) + InfoInhibitor are
-            # internal signals — never notify.
+            # Watchdog is always-firing by design: forward every repeat to
+            # healthchecks.io, which alerts externally when the pings STOP
+            # (Prometheus/Alertmanager down). Complements the health-check
+            # CronJob ping, which stays alive even when this stack is dead.
+            - receiver: healthchecks
+              matchers:
+                - alertname = "Watchdog"
+              group_wait: 0s
+              group_interval: 1m
+              repeat_interval: 5m
+            # InfoInhibitor is an internal signal — never notify.
             - receiver: "null"
               matchers:
-                - alertname =~ "Watchdog|InfoInhibitor"
+                - alertname = "InfoInhibitor"
         receivers:
           - name: "null"
+          - name: healthchecks
+            webhook_configs:
+              - url_file: /etc/alertmanager/secrets/healthchecks-watchdog/HEALTHCHECKS_WATCHDOG_URL
+                send_resolved: false
           - name: slack
             slack_configs:
               - api_url_file: /etc/alertmanager/secrets/slack-webhook/SLACK_WEBHOOK_URL
