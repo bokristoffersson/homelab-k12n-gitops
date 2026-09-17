@@ -1,5 +1,5 @@
 # Homelab GitOps Makefile
-# Convenience commands for local development and cluster management
+# Convenience commands for cluster management
 
 .PHONY: help
 help: ## Show this help message
@@ -8,66 +8,20 @@ help: ## Show this help message
 	@echo 'Available targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-##@ Local Development
-
-.PHONY: local-up
-local-up: ## Create local k3d cluster (no Flux)
-	./scripts/setup-local-cluster.sh
-
-.PHONY: local-down
-local-down: ## Delete local k3d cluster
-	k3d cluster delete homelab-local
-
-.PHONY: local-restart
-local-restart: local-down local-up ## Restart local cluster
-
-.PHONY: local-secrets
-local-secrets: ## Create local development secrets
-	./scripts/create-local-secrets.sh
-
-##@ Direct Development (kubectl apply)
-
-.PHONY: dev-apply-infra
-dev-apply-infra: ## Apply infrastructure directly (no Flux)
-	kubectl apply -k gitops/infrastructure/controllers-local
-
-.PHONY: dev-apply-apps
-dev-apply-apps: ## Apply all apps directly (no Flux)
-	kubectl apply -k gitops/apps/local/redpanda-v2
-	kubectl apply -k gitops/apps/local/monitoring
-
-.PHONY: dev-apply-redpanda
-dev-apply-redpanda: ## Apply just Redpanda directly
-	kubectl apply -k gitops/apps/local/redpanda-v2
-
-.PHONY: dev-apply-monitoring
-dev-apply-monitoring: ## Apply just monitoring directly
-	kubectl apply -k gitops/apps/local/monitoring
-
-.PHONY: dev-delete-redpanda
-dev-delete-redpanda: ## Delete Redpanda resources
-	kubectl delete -k gitops/apps/local/redpanda-v2
-
 .PHONY: dev-watch
 dev-watch: ## Watch all pods in all namespaces
 	kubectl get pods -A --watch
 
-##@ Production Flux Commands (not for local dev)
+##@ Flux Commands
 
 .PHONY: flux-check
-flux-check: ## Check Flux prerequisites and status (production)
-	@echo "⚠️  This is for production cluster only!"
+flux-check: ## Check Flux prerequisites and status
 	flux check
 
 .PHONY: flux-reconcile
-flux-reconcile: ## Reconcile Flux kustomizations (production)
-	@echo "⚠️  This is for production cluster only!"
-	@read -p "Are you sure you're on the production cluster? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		flux reconcile source git flux-system; \
-		flux reconcile kustomization flux-system; \
-	fi
+flux-reconcile: ## Reconcile Flux kustomizations
+	flux reconcile source git flux-system
+	flux reconcile kustomization flux-system
 
 .PHONY: flux-logs
 flux-logs: ## Watch Flux logs (production)
@@ -123,15 +77,7 @@ port-grafana: ## Port-forward Grafana (3000)
 	@echo "Opening Grafana at http://localhost:3000"
 	kubectl port-forward -n monitoring svc/grafana 3000:80
 
-##@ Redpanda (Simple - No Operator)
-
-.PHONY: redpanda-install
-redpanda-install: ## Install Redpanda (simple, no operator)
-	cd gitops/apps/local/redpanda-v2-simple && ./install.sh
-
-.PHONY: redpanda-topics
-redpanda-topics: ## Create Redpanda topics using rpk
-	cd gitops/apps/local/redpanda-v2-simple && ./create-topics.sh
+##@ Redpanda
 
 .PHONY: redpanda-list
 redpanda-list: ## List Redpanda topics
@@ -146,27 +92,7 @@ redpanda-consume: ## Consume from a topic (use TOPIC=name)
 	kubectl exec -it redpanda-v2-0 -n redpanda-v2 -- \
 		rpk topic consume $(TOPIC) --num 10
 
-.PHONY: redpanda-uninstall
-redpanda-uninstall: ## Uninstall Redpanda
-	helm uninstall redpanda-v2 -n redpanda-v2 || true
-
-##@ MQTT Generator
-
-.PHONY: mqtt-build
-mqtt-build: ## Build mqtt-generator Docker image
-	cd applications/mqtt-generator && docker build -t mqtt-generator:latest .
-
-.PHONY: mqtt-import
-mqtt-import: mqtt-build ## Build and import mqtt-generator to k3d
-	k3d image import mqtt-generator:latest --cluster homelab-local
-
-.PHONY: mqtt-deploy
-mqtt-deploy: ## Deploy mqtt-generator
-	kubectl apply -k gitops/apps/local/mqtt-generator
-
-.PHONY: mqtt-logs
-mqtt-logs: ## Watch mqtt-generator logs
-	kubectl logs -f deployment/mqtt-generator -n mqtt-generator
+##@ MQTT
 
 .PHONY: mqtt-subscribe
 mqtt-subscribe: ## Subscribe to MQTT topics (requires mosquitto_sub and port-forward)
@@ -189,37 +115,16 @@ validate: ## Validate Flux resources
 	flux check --pre
 	find gitops/infrastructure gitops/apps -name '*.yaml' -type f | xargs -I {} flux validate {}
 
-.PHONY: diff
-diff: ## Show diff between local and cluster (requires kubectl-diff)
-	@echo "Infrastructure diff:"
-	kubectl diff -k gitops/clusters/local/
-	@echo "\nApps diff:"
-	kubectl diff -k gitops/apps/local/
-
 ##@ Utilities
 
 .PHONY: clean
 clean: ## Clean up Docker resources
 	docker system prune -af --volumes
 
-.PHONY: context-local
-context-local: ## Switch kubectl context to local cluster
-	kubectl config use-context k3d-homelab-local
-
-.PHONY: context-prod
-context-prod: ## Switch kubectl context to production
-	@echo "WARNING: Switching to production cluster!"
-	@read -p "Are you sure? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		kubectl config use-context homelab; \
-	fi
-
 .PHONY: setup-tools
 setup-tools: ## Install required development tools (macOS only)
 	@if [ "$$(uname)" = "Darwin" ]; then \
-		brew install kubectl k3d fluxcd/tap/flux helm kubeconform; \
+		brew install kubectl fluxcd/tap/flux helm kubeconform; \
 	else \
 		echo "This target only works on macOS. Please install tools manually."; \
-		echo "See docs/LOCAL_DEVELOPMENT.md for instructions."; \
 	fi

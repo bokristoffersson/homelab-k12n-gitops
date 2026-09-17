@@ -218,13 +218,7 @@ Each application is a **bounded context**. Namespaces provide:
 
 ## Testing Strategy
 
-**Local Development**:
-```bash
-kubectl apply -k gitops/apps/local/redpanda-v2
-# Instant feedback, no Git needed
-```
-
-**Production Deployment**:
+**Deployment**:
 ```bash
 git commit -m "feat: update redpanda"
 git push

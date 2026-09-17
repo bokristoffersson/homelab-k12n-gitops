@@ -1,28 +1,8 @@
 # Homelab GitOps Setup with K3s and FluxCD
 
-## 🚀 Quick Start
-
-### Local Development
-
-Test changes safely on your machine before pushing to production. See the [Quick Start Guide](docs/QUICK_START.md)!
-
-```bash
-# Create local k3d cluster (no Flux, no git commits needed)
-./scripts/setup-local-cluster.sh
-
-# Apply your changes directly
-make dev-apply-redpanda
-
-# Access services
-make port-redpanda
-```
-
-**Safe**: Secrets never leave your machine. No risk of committing secrets to git.
-
 📖 **Documentation**:
-- [Local Development Guide](docs/LOCAL_DEVELOPMENT.md)
 - [Architecture & Principles](docs/ARCHITECTURE.md)
-- [Flux Setup (Production)](docs/FLUX_SETUP.md)
+- [Flux Setup](docs/FLUX_SETUP.md)
 - [Database Backup Setup](docs/BACKUP_SETUP.md)
 
 ---
