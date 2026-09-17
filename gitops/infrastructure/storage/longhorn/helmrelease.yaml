@@ -29,10 +29,17 @@ spec:
       # Disable automatic default disk creation
       defaultDataPath: ""
       upgradeChecker: false
-      # Single control-plane node during the M720q migration (Fas 0-4) can't
-      # hold 3 replicas - volumes would get stuck degraded. Raise back to a
-      # multi-node default once p0/p1 rejoin as agents in Fas 5.
-      defaultClassReplicaCount: 1
+
+    # Two Longhorn storage nodes (m720q + pi1; pi0 is excluded) — a 3-replica
+    # volume can never become healthy and sits permanently degraded. NOTE: this
+    # knob must live under `persistence.` (it renders the default StorageClass);
+    # the migration-era attempt to set it under `defaultSettings.` was silently
+    # ignored by the chart, so the class shipped with the chart default of 3.
+    # Applies to NEW volumes only; existing volumes keep their own
+    # spec.numberOfReplicas (gasa-postgres + minecraft were patched live to 2
+    # on 2026-09-17).
+    persistence:
+      defaultClassReplicaCount: 2
 
     longhornManager:
       priorityClass: system-cluster-critical
