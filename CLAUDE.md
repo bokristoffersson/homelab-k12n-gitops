@@ -534,6 +534,7 @@ docs/
 
 ## Recent Changes
 
+- Added Pi-hole metrics (pihole-exporter sidecar + PodMonitor via the mojo2600 chart) and a Grafana "Pi-hole" dashboard in the Homelab folder (2026-09-25)
 - Hardened gasa backup CronJob against dump retries leaving multiple files in the shared emptyDir (2026-08-21)
 - m720q BIOS updated M1UKT45A (2019) → M1UKT78A (2025-12) to address the intermittent POST fan fault; original fan kept to test the firmware-fix theory. Node was drained for the update 2026-08-14 and uncordoned 2026-08-21 (2026-08-21)
 - Added körschema module to gasa: 30-lesson driving curriculum, seed SQL generated from `docs/korschema-spec.md` (2026-08-06)
