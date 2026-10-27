@@ -30,9 +30,9 @@ CREATE TABLE IF NOT EXISTS outbox (
 );
 
 -- Indexes for efficient queries
-CREATE INDEX idx_outbox_status ON outbox(status) WHERE status IN ('pending', 'published');
-CREATE INDEX idx_outbox_created ON outbox(created_at);
-CREATE INDEX idx_outbox_aggregate ON outbox(aggregate_type, aggregate_id);
+CREATE INDEX IF NOT EXISTS idx_outbox_status ON outbox(status) WHERE status IN ('pending', 'published');
+CREATE INDEX IF NOT EXISTS idx_outbox_created ON outbox(created_at);
+CREATE INDEX IF NOT EXISTS idx_outbox_aggregate ON outbox(aggregate_type, aggregate_id);
 
 -- Comments for documentation
 COMMENT ON TABLE outbox IS 'Transactional outbox for heatpump setting commands. Commands are inserted atomically with settings updates, then processed asynchronously.';
