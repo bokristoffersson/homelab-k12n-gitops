@@ -143,7 +143,7 @@ Migrations are SQL files run by Kubernetes Jobs. Add a file under the app's
 | homelab-settings PostgreSQL | CronJob to S3, daily 02:15 |
 | gasa PostgreSQL | CronJob to S3, daily 02:45 |
 | Backstage PostgreSQL | CronJob to S3, daily 02:00 |
-| etcd | k3s scheduled snapshots, stored locally on `m720q` (S3 upload is supported by the Ansible template but not enabled) |
+| etcd | k3s snapshots daily 03:00 UTC, kept locally on `m720q` and uploaded to S3 (`etcd-snapshots/`, 14 retained). S3 config comes from the `k3s-etcd-snapshot-s3-config` SealedSecret. A restore also needs the server token (`/var/lib/rancher/k3s/server/token`), so keep a copy outside the cluster |
 
 ## Rebuilding from scratch
 
