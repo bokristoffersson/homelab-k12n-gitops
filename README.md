@@ -1,262 +1,167 @@
-# Homelab GitOps Setup with K3s and FluxCD
+# homelab-k12n-gitops
 
-📖 **Documentation**:
+GitOps repository for a home Kubernetes cluster: home automation (heat pump, smart plugs,
+HomeKit), energy and temperature telemetry, and a handful of self-hosted apps. Everything
+in the cluster is reconciled from this repo by FluxCD.
+
+Documentation:
 - [Architecture & Principles](docs/ARCHITECTURE.md)
-- [Flux Setup](docs/FLUX_SETUP.md)
+- [Authentication](docs/AUTHENTICATION.md)
+- [Data Flow](docs/data-flow.md) and [Kafka topics](docs/kafka-topics.md)
+- [Monitoring](docs/monitoring.md)
 - [Database Backup Setup](docs/BACKUP_SETUP.md)
+- [Flux Setup](docs/FLUX_SETUP.md)
+- [M720q migration runbook](docs/MIGRATION_M720Q.md)
+- [Ansible provisioning](ansible/README.md)
 
----
+## Cluster
 
-## 🏗️ Infrastructure Overview
+k3s with embedded etcd, provisioned by Ansible and hardened after the k3s CIS guide
+(secrets encryption, protect-kernel-defaults, audit log, Pod Security Admission
+`baseline`). All nodes run Ubuntu 26.04 LTS and use static IPs (no mDNS).
 
-- **Control Plane**: Raspberry Pi 4 (`p0.local`)
-- **Worker Node**: Raspberry Pi 5 with NVMe HAT
-- **GitOps**: FluxCD with GitHub App authentication
-- **Repository Structure**: Environment-based (homelab) with Kustomize overlays
+| Node    | IP             | Arch  | Role                  | Notes |
+|---------|----------------|-------|-----------------------|-------|
+| `m720q` | 192.168.50.212 | amd64 | control-plane + etcd  | Lenovo M720q, 1 TB NVMe; primary Longhorn storage node |
+| `pi0`   | 192.168.50.210 | arm64 | agent                 | Raspberry Pi 4 on SD card; compute only (no Longhorn). Homebridge pinned here for HomeKit |
+| `pi1`   | 192.168.50.211 | arm64 | agent                 | Raspberry Pi 5 with NVMe; second Longhorn storage node; runs Prometheus |
 
-## 🚀 Setup Steps Completed
+- **Storage**: Longhorn on `m720q` + `pi1`, default replica count 2.
+- **Multi-arch**: workloads can schedule on any node, so every image is built for both
+  `linux/amd64` and `linux/arm64`.
+- **Networking**: Traefik (Flux-managed, namespace `traefik`) is the only ingress
+  controller; k3s's bundled Traefik is disabled. Public traffic arrives via a Cloudflare
+  Tunnel (TLS terminates at Cloudflare; in-cluster traffic is HTTP). ServiceLB (klipper)
+  exposes LAN services: Mosquitto `:1883`, Pi-hole DNS `:53`, Minecraft `:25565`.
+- **Auth**: Authelia (OIDC, config-as-code, file user backend) at `auth.k12n.com`, with
+  oauth2-proxy as a Traefik ForwardAuth gateway.
 
-### 1. K3s Cluster Setup
+## Repository layout
 
 ```
-# On server node prepare data directory for k3s
-mkdir /mnt/data/k3s
-sudo chown root:root /mnt/data/k3s
-sudo chmod 755 /mnt/data/k3s
-```
-
-#### Control Plane (Raspberry Pi 5 with NVMe HAT)
-```bash
-# Install K3s on the control plane node, specify DNS name for Control plane for to use kubectl outside cluster
-curl -sfL https://get.k3s.io | sh -s - --data-dir /mnt/data/k3s --tls-san <CONTROL_PLANE_DNS_NAME>
-
-# FIxing Permission error see link: https://dev.to/olymahmud/resolving-the-k3s-config-file-permission-denied-error-27e5
-export KUBECONFIG=~/.kube/config
-mkdir -p ~/.kube
-sudo k3s kubectl config view --raw > "$KUBECONFIG"
-chmod 600 "$KUBECONFIG"
-nano ~/.profile
-# Add export KUBECONFIG=~/.kube/config
-ource ~/.profile
-
-# Get the node token for worker nodes
-sudo cat /mnt/data/k3s/server/node-token
-```
-
-```bash
-# On each agent node
-export K3S_NOE_NAME=agent001
-```
-
-#### Worker Node (Raspberry Pi 4)
-```bash
-# Join the worker node to the cluster
-curl -sfL https://get.k3s.io | K3S_URL=https://<CONTROL_PLANE_IP>:6443 K3S_TOKEN=<NODE_TOKEN> sh - 
-# NVMe mounted at /mnt/data
-```
-
-#### Verify Cluster
-```bash
-kubectl get nodes
-# Should show both Pi 5 (control-plane) and Pi 4 (agent001) as Ready
-```
-
-Add to ~/.profile
-```bash
-# Set alias
-alias k=kubectl
-```
-#### Setup kubectl on development computer
-```bash
-Copy ~/.kube/config from control-node to development computer.
-```
-
-### 2. GitOps Repository Structure
-
-Created a GitHub repository with the following structure:
-```
-homelab-k12n-gitops/
-├── clusters/
-│   ├── homelab/
-│   │   ├── infrastructure.yaml   # Points to infrastructure configs
-│   │   └── apps.yaml            # Points to test app configs
+gitops/
+├── clusters/homelab/        # Flux entrypoint: infrastructure.yaml + apps.yaml (Kustomizations)
 ├── infrastructure/
-│   ├── sources/                # Git repos, Helm repos
-│   ├── crds/                   # Custom Resource Definitions
-│   ├── controllers/            # Controllers/Operators
-│   └── configs/                # ConfigMaps, policies, etc.
+│   ├── sources/             # HelmRepositories
+│   ├── crds/                # Vendored CRDs (Traefik, cert-manager, CSI VolumeSnapshot)
+│   ├── storage/             # Longhorn
+│   ├── controllers/         # cert-manager, sealed-secrets, Traefik, cloudflared
+│   └── actions-runner/      # Self-hosted GitHub Actions runners (ARC)
 └── apps/
-    ├── base/                   # Base Kustomize configurations
-    ├── homelab/                # Homelab environment overlays
-
-### 3. GitHub App Setup
-
-#### Create GitHub App
-1. Navigate to GitHub Settings → Developer settings → GitHub Apps
-2. Create new GitHub App with:
-   - **App name**: `homelab-k12n-gitops`
-   - **Repository permissions**:
-     - Contents: Read
-     - Metadata: Read
-     - Pull requests: Read and write
-   - **Webhook**: Disabled
-
-#### Install GitHub App
-1. Install the app on your GitOps repository
-2. Note the **App ID** (numeric, e.g., `123456`)
-3. Note the **Installation ID** (from URL after installation)
-4. Generate and download private key (.pem file)
+    ├── base/                # Per-app base manifests
+    └── homelab/             # Homelab overlays (one Flux Kustomization each)
+applications/                # Source code for the in-house services (Rust, React)
+ansible/                     # Node provisioning and k3s hardening
+docs/                        # Architecture, runbooks, ADRs (also served as Backstage TechDocs)
 ```
 
-### 4. Flux Installation and Bootstrap
+Flux reconciles `gitops/clusters/homelab` from `main`. Infrastructure comes first
+(`sources`, `crds`, `storage` → `controllers`); apps declare `dependsOn` among
+themselves (for example `mqtt-kafka-bridge` waits for `mosquitto` and `redpanda-v2`).
 
-#### Install Prerequisites on Control Plane
+## Workloads
+
+**Data pipeline**
+
+```
+IoT device → Mosquitto (MQTT) → mqtt-kafka-bridge → Redpanda → TimescaleDB sink → TimescaleDB
+                                                                                   ↓
+                                                                     homelab-api → heatpump-web
+```
+
+| Component | Description |
+|---|---|
+| `mosquitto` | MQTT broker for Tasmota plugs, the Shelly H&T sensor and the ThermIQ heat pump module |
+| `mqtt-kafka-bridge` | Redpanda Connect: MQTT → Redpanda |
+| `redpanda-v2` | Single-node Redpanda; topics managed by an `rpk` Job |
+| `timescaledb` | Telemetry database, plus the Redpanda Connect sink that writes into it |
+
+**Applications** (source in `applications/`)
+
+| App | Description |
+|---|---|
+| `homelab-api` | Rust/Axum, read-only REST API over TimescaleDB |
+| `heatpump-web` | React/TypeScript SPA at `homelab.k12n.com` |
+| `homelab-settings` | Rust settings API + outbox processor + PostgreSQL; drives heat pump and plug commands over MQTT, with scheduling and desired-state reconcile |
+| `energy-ws` | WebSocket stream of real-time energy data from Redpanda |
+| `spotprice` | Electricity spot price API |
+| `homelab-chat-api` | LLM-backed chat agent (SSE) with tools over the homelab APIs |
+| `gasa` | Driving-practice booking app at `gasa.k12n.com` (API + web + PostgreSQL) |
+| `backstage` | Developer portal and TechDocs at `homelab.k12n.com/admin/backstage` |
+
+**Platform and home services**
+
+| Service | Description |
+|---|---|
+| `authelia`, `oauth2-proxy` | Identity provider and auth gateway |
+| `homebridge` | HomeKit bridge for the plugs and the heat pump (publishes straight to MQTT) |
+| `pihole` | LAN DNS at `pihole.k12n.com`, with metrics exporter |
+| `minecraft` | Minecraft server, pinned to `m720q` |
+| `prometheus`, `loki`, `alloy`, `grafana` | kube-prometheus-stack, Loki + Alloy for logs, Grafana at `grafana.k12n.com` |
+
+Alerting reaches Slack two ways: Alertmanager, and the `monitoring-health-check` CronJob
+(data freshness, consumer lag, failed device commands). A healthchecks.io dead man's switch
+covers both.
+
+## CI/CD
+
+- Each service in `applications/` has a GitHub Actions workflow that runs tests and then
+  builds a multi-arch image (native `ubuntu-24.04` and `ubuntu-24.04-arm` runners) and
+  pushes it to GHCR.
+- Every PR gets an AI architectural review against [CLAUDE.md](CLAUDE.md)
+  (`.github/workflows/arch-review.yml`, see [docs/ARCH_REVIEW.md](docs/ARCH_REVIEW.md)).
+- Work goes on feature branches with PRs. Flux deploys what lands on `main`.
+- Kubernetes does not pick up a new image or ConfigMap on its own, so a deployment needs
+  `kubectl rollout restart` after its image is rebuilt.
+
+## Secrets
+
+Secrets are committed only as Bitnami SealedSecrets (`*-sealed.yaml`). `kubeseal`
+fetches the controller certificate through the Kubernetes API, so sealing works from any
+machine with cluster access:
+
 ```bash
-# Install Helm
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-# Install Flux CLI
-curl -s https://fluxcd.io/install.sh | sudo bash
+kubectl create secret generic <name> -n <namespace> \
+  --from-literal=KEY=value --dry-run=client -o yaml | \
+kubeseal --namespace <namespace> \
+  --controller-name sealed-secrets --controller-namespace kube-system \
+  --format=yaml > <name>-sealed.yaml
 ```
 
-#### Install Flux Operator
+## Database migrations
+
+Migrations are SQL files run by Kubernetes Jobs. Add a file under the app's
+`migrations/` directory and list it in that app's `kustomization.yaml`
+`configMapGenerator`. Never run them by hand with `kubectl exec`. See
+[CLAUDE.md](CLAUDE.md) for the full workflow.
+
+## Backups
+
+| What | How |
+|---|---|
+| TimescaleDB | `pg_dump` CronJob to S3, daily 02:00 |
+| homelab-settings PostgreSQL | CronJob to S3, daily 02:15 |
+| gasa PostgreSQL | CronJob to S3, daily 02:45 |
+| Backstage PostgreSQL | CronJob to S3, daily 02:00 |
+| etcd | k3s scheduled snapshots, stored locally on `m720q` (S3 upload is supported by the Ansible template but not enabled) |
+
+## Rebuilding from scratch
+
+1. Provision the nodes with Ansible: `ansible-playbook site.yml` (see
+   [ansible/README.md](ansible/README.md)).
+2. Install the Flux Operator and create the GitHub App secret, then apply
+   [flux.yaml](flux.yaml). It syncs `gitops/clusters/homelab` from `main`
+   ([docs/FLUX_SETUP.md](docs/FLUX_SETUP.md)).
+3. Sealed secrets only decrypt with the original controller key, so restore it or reseal
+   every secret.
+4. [docs/MIGRATION_M720Q.md](docs/MIGRATION_M720Q.md) records the pitfalls hit during
+   the last rebuild.
+
+## Common commands
+
 ```bash
-helm install flux-operator oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator \
-  --namespace flux-system \
-  --create-namespace
+flux get kustomizations                                   # sync status
+flux reconcile kustomization <name> --with-source         # pull and apply now
+kubectl rollout restart deployment/<app> -n <namespace>   # pick up a new image/ConfigMap
+make help                                                 # port-forwards, Redpanda/MQTT helpers
 ```
-
-#### Create GitHub App Secret
-```bash
-flux create secret githubapp flux-system \
-  --app-id=YOUR_APP_ID \
-  --app-installation-id=YOUR_INSTALLATION_ID \
-  --app-private-key=./path/to/private-key.pem
-```
-
-#### Bootstrap Flux with FluxInstance
-[Bootstrap Flux with github app](https://fluxcd.io/blog/2025/04/flux-operator-github-app-bootstrap/)
-
-```yaml
-apiVersion: fluxcd.controlplane.io/v1
-kind: FluxInstance
-metadata:
-  name: flux
-  namespace: flux-system
-spec:
-  distribution:
-    version: "2.x"
-    registry: "ghcr.io/fluxcd"
-  components:
-    - source-controller
-    - kustomize-controller
-    - helm-controller
-    - notification-controller
-    - image-reflector-controller
-    - image-automation-controller
-  cluster:
-    type: kubernetes
-    multitenant: false
-    networkPolicy: true
-    domain: "cluster.local"
-  sync:
-    kind: GitRepository
-    provider: github
-    url: "https://github.com/YOUR_USERNAME/YOUR_REPO.git"
-    ref: "refs/heads/main"
-    path: "clusters/test"
-    pullSecret: "flux-system"
-```
-
-```
-kubectl apply -f flux.yaml    # file above
-```
-
-### 5. Sealing secrets
-
-[Install kubeseal](https://github.com/bitnami-labs/sealed-secrets?tab=readme-ov-file#linux)
-```
-KUBESEAL_VERSION='0.32.2'
-curl -OL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION:?}/kubeseal-${KUBESEAL_VERSION:?}-linux-amd64.tar.gz"
-tar -xvzf kubeseal-${KUBESEAL_VERSION:?}-linux-amd64.tar.gz kubeseal
-sudo install -m 755 kubeseal /usr/local/bin/kubeseal
-```
-
-### 5. Test Application Deployment
-
-#### Created Simple Whoami Test App
-
-**Base Configuration** (`apps/base/whoami/`):
-- `deployment.yaml`: 2 replicas of traefik/whoami
-- `service.yaml`: ClusterIP service
-- `kustomization.yaml`: Base Kustomize config
-
-**Homelab Overlay** (`apps/homelab/whoami/`):
-- `kustomization.yaml`: Reduces replicas to 1, adds homelab- prefix
-
-#### Verification
-```bash
-# Check deployment
-kubectl get deployment homelab-whoami -n default
-
-# Test the application
-kubectl port-forward service/homelab-whoami 8080:80 -n default
-curl http://localhost:8080
-```
-
-## ✅ Success Verification
-
-### Flux Health Check
-```bash
-# Overall Flux status
-flux check
-flux get all
-
-# Check specific resources
-kubectl get fluxinstance -n flux-system
-kubectl get gitrepository -n flux-system
-kubectl get kustomization -n flux-system
-```
-
-### Application Status
-```bash
-# Check whoami deployment
-kubectl get all -l app=whoami -n default
-
-# View application response
-kubectl port-forward service/homelab-whoami 8080:80 -n default
-
-# And in another terminal
-curl http://localhost:8080
-```
-
-## 🔧 Key Benefits Achieved
-
-1. **Declarative Infrastructure**: All cluster state managed through Git
-2. **Secure Authentication**: GitHub App eliminates user-tied credentials
-3. **Environment Separation**: Clean test/prod separation with overlays
-4. **Automated Deployments**: Changes in Git automatically sync to cluster
-5. **Scalable Architecture**: Easy to add more applications and environments
-
-## 📚 Key Components
-
-- **K3s**: Lightweight Kubernetes distribution perfect for homelab
-- **FluxCD**: GitOps operator for continuous deployment
-- **Kustomize**: Configuration management with base + overlays
-- **GitHub Apps**: Secure, organization-level Git authentication
-- **Helm**: Package manager for Kubernetes applications
-
-## 🚀 Next Steps
-
-- [ ] Add monitoring stack (Prometheus/Grafana)
-- [ ] Set up production environment
-- [ ] Add SSL/TLS with cert-manager
-- [ ] Implement image automation
-- [ ] Add more applications to the stack
-
-## 🎉 Result
-
-Successfully deployed a production-ready GitOps workflow on a Raspberry Pi homelab cluster! The whoami application serves as proof that the entire pipeline (Git → Flux → Kubernetes → Application) is working correctly.
-
----
-*Setup completed on a Raspberry Pi 4 + Pi 5 homelab cluster with GitOps automation via FluxCD* 🏠⚙️
