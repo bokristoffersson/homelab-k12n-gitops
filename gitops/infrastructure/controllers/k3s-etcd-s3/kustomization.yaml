@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # S3 target for k3s's scheduled etcd snapshots, referenced by
+  # etcd-s3-config-secret in the k3s server config (ansible/roles/k3s-server).
+  # Same bucket and IAM key as the pg_dump backups, folder etcd-snapshots/.
+  - k3s-etcd-snapshot-s3-config-sealed.yaml

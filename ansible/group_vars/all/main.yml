@@ -5,6 +5,9 @@
 k3s_version: "v1.36.2+k3s1"   # stable channel as of 2026-07-03
 k3s_api_ip: "192.168.50.212"  # m720q
 k3s_api_port: 6443
+# Upload etcd snapshots to S3 (in addition to local). Needs the
+# k3s-etcd-snapshot-s3-config SealedSecret in kube-system (synced by Flux).
+etcd_s3_enabled: true
 
 # --- LAN ---
 lan_cidr: "192.168.50.0/24"
