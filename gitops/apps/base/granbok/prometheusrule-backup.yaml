@@ -9,7 +9,8 @@ spec:
     - name: granbok-backup
       rules:
         - alert: GranbokBackupFailed
-          expr: max(kube_job_status_failed{namespace="granbok", job_name=~"granbok-backup-.*"}) > 0
+          # Job condition Failed = all retries (backoffLimit) used up
+          expr: max(kube_job_failed{namespace="granbok", job_name=~"granbok-backup-.*", condition="true"}) > 0
           labels:
             severity: critical
           annotations:

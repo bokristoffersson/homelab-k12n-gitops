@@ -80,7 +80,7 @@ IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → Timesca
 - **TimescaleDB**: Daily backup at 2 AM to S3
 - **homelab-settings PostgreSQL** and **Backstage PostgreSQL**: have their own backup CronJobs to S3
 - **gasa PostgreSQL**: daily backup at 2:45 AM to S3 (two-container CronJob: postgres dump init container + aws-cli upload sharing an emptyDir)
-- **granbok**: daily at 03:30 UTC to its own bucket `s3://k12n-granbok-backups/granbok/` (versioning + object lock, Governance 8 years; backup key cannot delete). `db/<ts>/granbok.dump` (pg_dump custom) + `completed-at`, and `documents/` (content-addressed sync). Alerts: `GranbokBackupFailed`, `GranbokBackupStale` (>36h)
+- **granbok**: daily at 03:30 UTC to its own bucket `s3://k12n-granbok-backups/granbok/` (versioning + object lock, Governance 8 years; backup key cannot delete). `db/<ts>/granbok.dump` (pg_dump custom) + `completed-at`, and `documents/` (content-addressed sync). Alerts: `GranbokBackupFailed`, `GranbokBackupStale` (>36h), `GranbokBackupNeverSucceeded`
 - Authelia has no external identity database to back up — its users live in a sealed-secret file backend (in Git) and session/storage state is local
 - Backups use pg_dump + gzip compression
 - Stored in separate S3 prefixes

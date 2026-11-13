@@ -132,5 +132,10 @@ spec:
                 - name: backup
                   mountPath: /backup
           volumes:
+            # Stages the dump plus a full copy of the documents on m720q's disk.
+            # Sized to the object-data PVC (20Gi) + dump headroom: raise it
+            # when that PVC is expanded. Exceeding it evicts the pod, the job
+            # fails and GranbokBackupFailed fires.
             - name: backup
-              emptyDir: {}
+              emptyDir:
+                sizeLimit: 25Gi

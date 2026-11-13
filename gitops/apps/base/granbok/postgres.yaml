@@ -18,6 +18,12 @@ spec:
       # Pin to the primary Longhorn storage node so the volume replica is local
       nodeSelector:
         kubernetes.io/hostname: m720q
+      # The alpine image's postgres user is uid/gid 70 (999 is the Debian image)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
       containers:
         - name: postgres
           # Major version upgrades only when the owner asks for it
@@ -54,6 +60,10 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
             # postgres 18 images keep PGDATA under /var/lib/postgresql/18/docker
             - name: data

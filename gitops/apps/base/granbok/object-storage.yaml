@@ -1,5 +1,8 @@
 # RustFS: S3-compatible store for receipts and other documents (object lock,
-# path-style). Not MinIO. The archive requirement is carried by the nightly
+# path-style). Not MinIO. Image: rustfs/rustfs on Docker Hub, published by the
+# RustFS project (github.com/rustfs/rustfs) and named in granbok's
+# deploy/HOMELAB.md; 1.0.4 is multi-arch (amd64 + arm64, verified 2026-11-13).
+# Runs as uid/gid 10001 (the image's rustfs user). The archive requirement is carried by the nightly
 # backup to AWS, not by this store's object lock.
 apiVersion: apps/v1
 kind: Deployment
