@@ -113,6 +113,8 @@ spec:
         - name: config
           configMap:
             name: granbok-gateway
+        # On first deploy the pod waits in ContainerCreating (no crash loop)
+        # until cert-manager has issued granbok-tls, then starts on its own.
         - name: tls
           secret:
             secretName: granbok-tls
