@@ -1,0 +1,88 @@
+# RustFS: S3-compatible store for receipts and other documents (object lock,
+# path-style). Not MinIO. The archive requirement is carried by the nightly
+# backup to AWS, not by this store's object lock.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: object-storage
+  namespace: granbok
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: object-storage
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: object-storage
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: m720q
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: rustfs
+          image: rustfs/rustfs:1.0.4
+          env:
+            - name: RUSTFS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: object-storage-credentials
+                  key: ACCESS_KEY
+            - name: RUSTFS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: object-storage-credentials
+                  key: SECRET_KEY
+          ports:
+            - containerPort: 9000
+              name: s3
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: logs
+              mountPath: /logs
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: object-data
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: object-storage
+  namespace: granbok
+spec:
+  selector:
+    app: object-storage
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000

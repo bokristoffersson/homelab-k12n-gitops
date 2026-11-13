@@ -1,0 +1,33 @@
+# Alerts for the nightly granbok backup, routed to Slack by Alertmanager.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: granbok-backup
+  namespace: granbok
+spec:
+  groups:
+    - name: granbok-backup
+      rules:
+        - alert: GranbokBackupFailed
+          expr: max(kube_job_status_failed{namespace="granbok", job_name=~"granbok-backup-.*"}) > 0
+          labels:
+            severity: critical
+          annotations:
+            summary: "granbok backup job failed"
+            description: "A granbok-backup job failed. Check its logs; delete the failed job once a later run has succeeded to clear this alert."
+        - alert: GranbokBackupStale
+          expr: time() - max(kube_cronjob_status_last_successful_time{namespace="granbok", cronjob="granbok-backup"}) > 36 * 3600
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "granbok backup is older than 36 hours"
+            description: "The last successful granbok backup finished {{ $value | humanizeDuration }} ago."
+        - alert: GranbokBackupNeverSucceeded
+          expr: absent(kube_cronjob_status_last_successful_time{namespace="granbok", cronjob="granbok-backup"})
+          for: 36h
+          labels:
+            severity: critical
+          annotations:
+            summary: "granbok backup has no successful run on record"
+            description: "kube-state-metrics reports no successful granbok-backup run for 36 hours."

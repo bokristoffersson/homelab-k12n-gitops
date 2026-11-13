@@ -32,6 +32,11 @@ spec:
       port: 53
       externalTrafficPolicy: Local
 
+    # LAN-only names: resolved here and nowhere public
+    dnsmasq:
+      customDnsEntries:
+        - address=/granbok.k12n.com/192.168.50.212  # granbok gateway (ServiceLB on m720q)
+
     # DHCP disabled (router handles DHCP)
     serviceDhcp:
       enabled: false

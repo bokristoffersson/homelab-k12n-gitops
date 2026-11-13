@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: ghcr-pull
+  namespace: granbok
+spec:
+  encryptedData:
+    .dockerconfigjson: AgBFfhvNee9nmv7KpUCFKLtLjisqLfyaxxjwRLqb6ZKDFIxMxUV9QyhUN8YzEZrTprptbIOhF2uoXEMe8WadtRZ2/BZ9vnb3BiUbeclrK/WtYhq/SKqabOAZ6k4jufI/UnmwwMSbVq313KdHlDZYEKWWkrsg8pLBbgpFhfsoOA1p55Nq32ij290OFrJfIRiuEmGFCtshfjiif/rD1p6EKD7Oh6sA5JUoiYhaa11i5OyOo1RTwS2CpMAJdtGpGnNsZghK5tCDSw6n/3WDghnbZPeYqed5lsui6co2zoDLlfR5yRpTrAhGbDDgXftDDqpUK0ro8emQjM0mkUs4Jfzr2Z/MY3aDiMr+R12rSqUbNVpI3+bl5VNfr0l58rnkCTEZEQ4wzhWPaqq3wOj06Nfq2faDYp1VsJuA+d1g+VlaaZqv2RsAxU8kg7ggiT+vnEHrNN856Q/cvLiTUBNkANS0JQQDD/k9YF/kE9qPgD3pay1l/b/bU27cl0dSt2IJGPm3IXfQzlR8V1wZDJQjou7tVTp+AGosKiQPQln0fpZI16CyZJw855CAV675frMmCBHJe2DSPEjEvcXLJHox/kvO/jGqekM6UuJOuOurjYhfdxFFaAkSp2Zqf6egF1UFNQ7LaWd5YfPnNK5H6nVGzVVbwS3iXfFDdG0BjDAVavbBQFPxuJQsXTSODvG6WdyI5UtkZvdyu0wJvllr1GPxl8eO+bll5u10Cli2Du/Kvju6Ps9wgwLtD4P/ZXCVj/2QLvU9mAY+aMXLUcYqiABvGu20TN+jLfiDopJv2bXWaTJZ6EQG8fHL/ZmnvWO1rTCwDlLrd2s7e9ataSgz1qCtrO20ji15n2LzMtUR5FohERJIogbPJW/vFGGbH5J0Agimo+3xMesEbfv0syBjf5duV+4WtbFvNW4ac5oCnwsmUstU8RhzNm+R7p4cpU3PeZUS0O/x4nDU
+  template:
+    metadata:
+      name: ghcr-pull
+      namespace: granbok
+    type: kubernetes.io/dockerconfigjson
