@@ -20,6 +20,9 @@ spec:
       labels:
         app: granbok-agent
     spec:
+      # Co-located with the core and its backends (pi0 runs off an SD card)
+      nodeSelector:
+        kubernetes.io/hostname: m720q
       imagePullSecrets:
         - name: ghcr-pull
       securityContext:

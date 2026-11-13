@@ -1,7 +1,10 @@
 # LAN-only way in to the web UI: https://granbok.k12n.com resolves to m720q
 # via Pi-hole only (no public DNS record, no Cloudflare tunnel hostname, no
-# Traefik route). Terminates TLS with a Let's Encrypt certificate (DNS-01) and
-# keeps /api/ inside the cluster: those paths are only for the agent.
+# Traefik route). Terminates TLS with a Let's Encrypt certificate (DNS-01).
+# /api/ is used only by the agent, which calls granbok-core:8080 directly
+# in-cluster; this gateway returns 404 for it so LAN browsers cannot reach it.
+# That is the only boundary: in-cluster access to the core is limited by the
+# NetworkPolicies (agent + gateway), not by path.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
