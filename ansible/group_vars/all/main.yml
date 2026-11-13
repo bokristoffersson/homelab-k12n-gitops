@@ -27,8 +27,9 @@ servicelb_lan_ports:
   - { port: 53, proto: tcp }     # pihole DNS
   - { port: 53, proto: udp }     # pihole DNS
   - { port: 25565, proto: tcp }  # minecraft (Java) — LAN play via ServiceLB
+  - { port: 443, proto: tcp }    # granbok web (LAN-only nginx gateway via ServiceLB; not traefik)
   # - { port: 80, proto: tcp }   # traefik http
-  # - { port: 443, proto: tcp }  # traefik https
+  # (443/tcp is taken by the granbok gateway above)
 
 # HomeKit / Homebridge (hostNetwork, pinned to pi0). HAP + mDNS can't go through
 # an L7 gateway, so the bridge sits on the LAN and these are opened from the LAN.

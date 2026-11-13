@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: granbok
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    # Bookkeeping that must be kept for seven years: never let a Flux prune
+    # (e.g. after the manifests are removed from Git) delete the namespace.
+    kustomize.toolkit.fluxcd.io/prune: disabled

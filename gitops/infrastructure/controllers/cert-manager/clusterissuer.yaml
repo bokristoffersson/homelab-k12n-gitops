@@ -14,10 +14,12 @@ spec:
             apiTokenSecretRef:
               name: cloudflare-api-token
               key: api-token
+        # dnsZones matches the zone and every name under it (dnsNames would
+        # only match the literal strings, so no subdomain certificate could
+        # ever be solved)
         selector:
-          dnsNames:
-            - "*.k12n.com"  # Replace with your domain
-            - "k12n.com"    # Replace with your domain
+          dnsZones:
+            - "k12n.com"
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
@@ -35,7 +37,9 @@ spec:
             apiTokenSecretRef:
               name: cloudflare-api-token
               key: api-token
+        # dnsZones matches the zone and every name under it (dnsNames would
+        # only match the literal strings, so no subdomain certificate could
+        # ever be solved)
         selector:
-          dnsNames:
-            - "*.k12n.com"  # Replace with your domain
-            - "k12n.com"    # Replace with your domain
+          dnsZones:
+            - "k12n.com"

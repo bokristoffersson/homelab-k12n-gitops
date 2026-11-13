@@ -1,0 +1,139 @@
+# LAN-only way in to the web UI: https://granbok.k12n.com resolves to m720q
+# via Pi-hole only (no public DNS record, no Cloudflare tunnel hostname, no
+# Traefik route). Terminates TLS with a Let's Encrypt certificate (DNS-01).
+# /api/ is used only by the agent, which calls granbok-core:8080 directly
+# in-cluster; this gateway returns 404 for it so LAN browsers cannot reach it.
+# That is the only boundary: in-cluster access to the core is limited by the
+# NetworkPolicies (agent + gateway), not by path.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: granbok-tls
+  namespace: granbok
+spec:
+  secretName: granbok-tls
+  dnsNames:
+    - granbok.k12n.com
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: granbok-gateway
+  namespace: granbok
+data:
+  default.conf: |
+    server {
+        listen 8443 ssl;
+        http2 on;
+        server_name granbok.k12n.com;
+
+        ssl_certificate     /etc/nginx/tls/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+
+        add_header Strict-Transport-Security "max-age=31536000" always;
+
+        # Uploads of up to 30 MB
+        client_max_body_size 31m;
+
+        location ~ ^/api(/|$) {
+            return 404;
+        }
+
+        location / {
+            proxy_pass http://granbok-core:8080;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Port 443;
+            proxy_read_timeout 120s;
+        }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: granbok-gateway
+  namespace: granbok
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: granbok-gateway
+  template:
+    metadata:
+      labels:
+        app: granbok-gateway
+      annotations:
+        # Reload when the nginx config changes (bump on edit)
+        granbok/config-rev: "1"
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: m720q
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+      containers:
+        - name: nginx
+          image: nginxinc/nginx-unprivileged:1.29.3-alpine
+          ports:
+            - containerPort: 8443
+              name: https
+          readinessProbe:
+            tcpSocket:
+              port: 8443
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 200m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+            - name: tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: granbok-gateway
+        # On first deploy the pod waits in ContainerCreating (no crash loop)
+        # until cert-manager has issued granbok-tls, then starts on its own.
+        - name: tls
+          secret:
+            secretName: granbok-tls
+        - name: tmp
+          emptyDir: {}
+---
+# ServiceLB exposes 443 on the node LAN IPs; ufw only admits the LAN CIDR
+# (ansible group_vars servicelb_lan_ports). The router must not forward 443.
+apiVersion: v1
+kind: Service
+metadata:
+  name: granbok-gateway
+  namespace: granbok
+spec:
+  type: LoadBalancer
+  selector:
+    app: granbok-gateway
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443
+      protocol: TCP

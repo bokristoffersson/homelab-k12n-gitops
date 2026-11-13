@@ -39,6 +39,7 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
 - **gasa-api / gasa-web**: driving-practice booking app at `https://gasa.k12n.com` (Rust/Axum + React) with dedicated PostgreSQL in ns `gasa`. Auth differs from the other apps: the whole subdomain sits behind oauth2-proxy ForwardAuth and the API trusts only `X-Auth-Request-*` headers (no JWT validation); admin = email allowlist in `gitops/apps/base/gasa/configs/gasa-api-config.yaml`. Migrations live in `gitops/apps/base/gasa/migrations/`.
 - **minecraft**: itzg/minecraft-server in ns `minecraft`, pinned to `m720q` (Longhorn PVC), LAN-exposed via ServiceLB
+- **granbok**: bookkeeping for Bo's company (private repo `bokristoffersson/granbok`; requirements in its `deploy/HOMELAB.md`). ns `granbok`: core + Slack agent (exactly 1 replica each, Recreate), own PostgreSQL 18 and RustFS object store on `longhorn-retain` PVCs pinned to `m720q`. **LAN-only**: `https://granbok.k12n.com` resolves via Pi-hole to an nginx gateway (ServiceLB 443, ufw LAN-only) that blocks `/api/`; no tunnel hostname, no Traefik route. Legal 7-year retention: **never delete the namespace or its PVCs, never edit the DB/object store directly** (namespace + PVCs carry Flux `prune: disabled`).
 
 ### IoT Devices
 - Tasmota smart plugs (single-channel)
@@ -79,6 +80,7 @@ IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → Timesca
 - **TimescaleDB**: Daily backup at 2 AM to S3
 - **homelab-settings PostgreSQL** and **Backstage PostgreSQL**: have their own backup CronJobs to S3
 - **gasa PostgreSQL**: daily backup at 2:45 AM to S3 (two-container CronJob: postgres dump init container + aws-cli upload sharing an emptyDir)
+- **granbok**: daily at 03:30 UTC to its own bucket `s3://k12n-granbok-backups/granbok/` (versioning + object lock, Governance 8 years; backup key cannot delete). `db/<ts>/granbok.dump` (pg_dump custom) + `completed-at`, and `documents/` (content-addressed sync). Alerts: `GranbokBackupFailed`, `GranbokBackupStale` (>36h), `GranbokBackupNeverSucceeded`
 - Authelia has no external identity database to back up — its users live in a sealed-secret file backend (in Git) and session/storage state is local
 - Backups use pg_dump + gzip compression
 - Stored in separate S3 prefixes
@@ -534,6 +536,7 @@ docs/
 
 ## Recent Changes
 
+- Deployed granbok 0.4.0 (bookkeeping, LAN-only) with nightly object-locked backup to AWS; added `longhorn-retain` StorageClass; ClusterIssuers now select by `dnsZones: k12n.com` (2026-11-13)
 - Added Pi-hole metrics (pihole-exporter sidecar + PodMonitor via the mojo2600 chart) and a Grafana "Pi-hole" dashboard in the Homelab folder (2026-09-25)
 - Hardened gasa backup CronJob against dump retries leaving multiple files in the shared emptyDir (2026-08-21)
 - m720q BIOS updated M1UKT45A (2019) → M1UKT78A (2025-12) to address the intermittent POST fan fault; original fan kept to test the firmware-fix theory. Node was drained for the update 2026-08-14 and uncordoned 2026-08-21 (2026-08-21)

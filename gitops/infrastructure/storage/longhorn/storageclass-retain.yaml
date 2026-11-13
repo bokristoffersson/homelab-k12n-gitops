@@ -1,0 +1,17 @@
+# Longhorn with reclaimPolicy Retain: the PersistentVolume (and its data) is
+# kept even if its claim is deleted. Used for data that must outlive any
+# manifest mistake, e.g. granbok's bookkeeping (7-year retention).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-retain
+provisioner: driver.longhorn.io
+reclaimPolicy: Retain
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "2"
+  staleReplicaTimeout: "30"
+  fsType: ext4
+  dataLocality: disabled
+  dataEngine: v1
