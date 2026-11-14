@@ -32,10 +32,14 @@ spec:
       port: 53
       externalTrafficPolicy: Local
 
-    # LAN-only names: resolved here and nowhere public
+    # LAN-only names: resolved here and nowhere public. address= alone only
+    # answers A; AAAA and HTTPS queries would still be forwarded and return the
+    # public *.k12n.com Cloudflare wildcard, which browsers prefer (IPv6 / ECH
+    # hints) and which serves an empty 404. local= answers those with NODATA.
     dnsmasq:
       customDnsEntries:
         - address=/granbok.k12n.com/192.168.50.212  # granbok gateway (ServiceLB on m720q)
+        - local=/granbok.k12n.com/
 
     # DHCP disabled (router handles DHCP)
     serviceDhcp:
