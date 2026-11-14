@@ -1,4 +1,4 @@
-# Default deny all ingress; then: agent + gateway -> core, ServiceLB -> gateway,
+# Default deny all ingress; then: agent + gateway -> core, LAN -> gateway,
 # core + backup -> postgres and object storage. Egress is not restricted.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -45,15 +45,12 @@ spec:
   policyTypes:
     - Ingress
   ingress:
-    # klipper-lb (ServiceLB) masquerades LAN traffic to its svclb pod IP
+    # LAN clients only. ServiceLB does not masquerade to the svclb pod IP: the
+    # policy sees the client's LAN address (verified 2026-11-13; a svclb pod
+    # selector rejected every LAN client with "connection refused").
     - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-          podSelector:
-            matchLabels:
-              svccontroller.k3s.cattle.io/svcname: granbok-gateway
-              svccontroller.k3s.cattle.io/svcnamespace: granbok
+        - ipBlock:
+            cidr: 192.168.50.0/24
       ports:
         - port: 8443
           protocol: TCP
