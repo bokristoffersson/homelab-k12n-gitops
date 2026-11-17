@@ -1,0 +1,7 @@
+# actionlint 1.7.12 predates GitHub's self-repository syntax (`uses: $/...`,
+# July 2026) and rejects it for reusable workflow calls. zizmor requires it.
+# Remove this once actionlint understands the syntax.
+paths:
+  .github/workflows/**/*.yml:
+    ignore:
+      - 'reusable workflow call "\$/.+" at "uses" is not following the format'

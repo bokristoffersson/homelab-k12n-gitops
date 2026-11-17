@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Parse broker address (format: "host:port")
     let parts: Vec<&str> = config.mqtt_broker.split(':').collect();
     let host = parts
-        .get(0)
+        .first()
         .unwrap_or(&"mosquitto.mosquitto.svc.cluster.local")
         .to_string();
     let port = parts.get(1).and_then(|p| p.parse().ok()).unwrap_or(1883);
