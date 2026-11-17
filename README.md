@@ -45,8 +45,7 @@ gitops/
 │   ├── sources/             # HelmRepositories
 │   ├── crds/                # Vendored CRDs (Traefik, cert-manager, CSI VolumeSnapshot)
 │   ├── storage/             # Longhorn
-│   ├── controllers/         # cert-manager, sealed-secrets, Traefik, cloudflared
-│   └── actions-runner/      # Self-hosted GitHub Actions runners (ARC)
+│   └── controllers/         # cert-manager, sealed-secrets, Traefik, cloudflared
 └── apps/
     └── <app>/               # One kustomize directory per app (one Flux Kustomization each)
 applications/                # Source code for the in-house services (Rust, React)
