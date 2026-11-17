@@ -143,7 +143,7 @@ Your production cluster should reference:
 ```
 clusters/homelab/
 ├── infrastructure.yaml  # Points to gitops/infrastructure/controllers
-└── apps.yaml           # Points to gitops/apps/homelab
+└── apps.yaml           # One Flux Kustomization per directory in gitops/apps/
 ```
 
 These use **sealed secrets** (not plain secrets like localhost).

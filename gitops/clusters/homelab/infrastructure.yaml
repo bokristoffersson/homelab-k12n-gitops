@@ -55,20 +55,3 @@ spec:
     - name: infrastructure-storage
   wait: true
   timeout: 10m
----
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: actions-runner
-  namespace: flux-system
-spec:
-  interval: 10m
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  path: "./gitops/infrastructure/actions-runner"
-  prune: true
-  dependsOn:
-    - name: infrastructure-controllers
-    - name: infrastructure-sources
----

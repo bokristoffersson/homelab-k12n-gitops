@@ -1,0 +1,95 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: pihole
+  namespace: pihole
+spec:
+  interval: 5m
+  install:
+    timeout: 15m
+  upgrade:
+    timeout: 15m
+    remediation:
+      remediateLastFailure: true
+  chart:
+    spec:
+      chart: pihole
+      version: "2.35.*"
+      sourceRef:
+        kind: HelmRepository
+        name: mojo2600
+        namespace: flux-system
+  values:
+    image:
+      tag: "2025.11.1"
+
+    replicaCount: 1
+
+    # DNS Service - LoadBalancer
+    serviceDns:
+      mixedService: true
+      type: LoadBalancer
+      port: 53
+      externalTrafficPolicy: Local
+
+    # LAN-only names: resolved here and nowhere public. address= alone only
+    # answers A; AAAA and HTTPS queries would still be forwarded and return the
+    # public *.k12n.com Cloudflare wildcard, which browsers prefer (IPv6 / ECH
+    # hints) and which serves an empty 404. local= answers those with NODATA.
+    dnsmasq:
+      customDnsEntries:
+        - address=/granbok.k12n.com/192.168.50.212  # granbok gateway (ServiceLB on m720q)
+        - local=/granbok.k12n.com/
+
+    # DHCP disabled (router handles DHCP)
+    serviceDhcp:
+      enabled: false
+
+    # Web Service - ClusterIP (Traefik handles ingress)
+    serviceWeb:
+      type: ClusterIP
+      http:
+        enabled: true
+        port: 80
+      https:
+        enabled: false
+
+    # Admin password from sealed secret
+    admin:
+      enabled: true
+      existingSecret: pihole-admin
+      passwordKey: password
+
+    # Persistence with Longhorn
+    persistentVolumeClaim:
+      enabled: true
+      storageClassName: longhorn
+      size: "1Gi"
+
+    # Resources for Raspberry Pi
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+
+    # Prometheus metrics: pihole-exporter sidecar (talks to the Pi-hole v6 API
+    # on the pod IP using the admin password from the sealed secret) plus a
+    # PodMonitor picked up by kube-prometheus-stack. Feeds the Grafana
+    # "Pi-hole" dashboard (gitops/apps/grafana/dashboards/pihole.json).
+    monitoring:
+      podMonitor:
+        enabled: true
+      sidecar:
+        enabled: true
+        image:
+          repository: ekofr/pihole-exporter
+          tag: v1.2.0
+        resources:
+          limits:
+            memory: "64Mi"
+          requests:
+            cpu: "10m"
+            memory: "32Mi"

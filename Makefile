@@ -75,7 +75,7 @@ port-prometheus: ## Port-forward Prometheus (9090)
 .PHONY: port-grafana
 port-grafana: ## Port-forward Grafana (3000)
 	@echo "Opening Grafana at http://localhost:3000"
-	kubectl port-forward -n monitoring svc/grafana 3000:80
+	kubectl port-forward -n grafana svc/grafana 3000:80
 
 ##@ Redpanda
 

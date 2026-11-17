@@ -1,5 +1,5 @@
 # Local development configuration. The production config is provided via a
-# ConfigMap (gitops/apps/base/gasa/configs/gasa-api-config.yaml).
+# ConfigMap (gitops/apps/gasa/configs/gasa-api-config.yaml).
 database:
   url: "postgresql://postgres:postgres@localhost:5432/gasa"
   max_connections: 5
