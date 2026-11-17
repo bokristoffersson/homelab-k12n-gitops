@@ -24,5 +24,4 @@ rand = "0.8"
 
 [dev-dependencies]
 pretty_assertions = "1.4"
-tokio-test = "0.4"
 axum-test = "18.0"

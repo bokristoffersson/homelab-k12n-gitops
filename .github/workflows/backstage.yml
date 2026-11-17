@@ -12,26 +12,36 @@ on:
       - 'applications/backstage/**'
       - '.github/workflows/backstage.yml'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: bokristoffersson/backstage
+  IMAGE: ghcr.io/bokristoffersson/backstage
 
 jobs:
   test:
     name: Test
     runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: applications/backstage
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: "22"
+          package-manager-cache: false
 
       - name: Enable Corepack
         run: corepack enable
@@ -46,8 +56,9 @@ jobs:
         run: yarn build:backend
 
   docker-build:
-    name: Build Docker Image (${{ matrix.platform }})
+    name: Build Docker Image (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
     needs: [test]
     if: |
       github.event_name == 'push' &&
@@ -57,26 +68,28 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: linux/amd64
+          - arch: amd64
             runner: ubuntu-24.04
-          - platform: linux/arm64
+          - arch: arm64
             runner: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
-      id-token: write
     defaults:
       run:
         working-directory: applications/backstage
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '22'
+          node-version: "22"
+          package-manager-cache: false
 
       - name: Enable Corepack
         run: corepack enable
@@ -91,48 +104,44 @@ jobs:
         run: yarn build:backend --config ../../app-config.yaml --config ../../app-config.production.yaml
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare platform tag
-        run: echo "PLATFORM_TAG=${PLATFORM//\//-}" >> "$GITHUB_ENV"
-        env:
-          PLATFORM: ${{ matrix.platform }}
-
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.IMAGE }}
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: applications/backstage
           file: applications/backstage/packages/backend/Dockerfile
-          platforms: ${{ matrix.platform }}
+          platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
-          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=${{ env.PLATFORM_TAG }}
-          cache-to: type=gha,mode=max,scope=${{ env.PLATFORM_TAG }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=backstage-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=backstage-${{ matrix.arch }}
 
       - name: Export digest
         run: |
           mkdir -p /tmp/digests
-          digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: digests-${{ env.PLATFORM_TAG }}
+          name: digests-backstage-${{ matrix.arch }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -140,34 +149,34 @@ jobs:
   docker-merge:
     name: Merge Multi-Arch Manifest
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     needs: docker-build
     permissions:
       contents: read
       packages: write
-      id-token: write
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: /tmp/digests
-          pattern: digests-*
+          pattern: digests-backstage-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.IMAGE }}
           tags: |
             type=sha,prefix=
             type=raw,value=main
@@ -175,13 +184,17 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@sha256:%s ' *)
+          tags=()
+          while IFS= read -r tag; do
+            tags+=(-t "$tag")
+          done < <(jq -r '.tags[]' <<<"$DOCKER_METADATA_OUTPUT_JSON")
+          sources=()
+          for digest in *; do
+            sources+=("${IMAGE}@sha256:${digest}")
+          done
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
         env:
           DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
 
       - name: Verify push
-        run: |
-          echo "🔍 Verifying manifest was pushed..."
-          docker buildx imagetools inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main"
+        run: docker buildx imagetools inspect "${IMAGE}:main"
