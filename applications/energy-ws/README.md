@@ -179,10 +179,10 @@ docker push ghcr.io/bokristoffersson/energy-ws:latest
 
 ## Deployment
 
-See `/gitops/apps/base/energy-ws/` for Kubernetes manifests.
+See `/gitops/apps/energy-ws/` for Kubernetes manifests.
 
 ```bash
-kubectl apply -k gitops/apps/base/energy-ws/
+kubectl apply -k gitops/apps/energy-ws/
 flux reconcile kustomization energy-ws --with-source
 ```
 

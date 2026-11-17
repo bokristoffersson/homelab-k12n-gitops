@@ -8,7 +8,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/monitoring
+  path: ./gitops/apps/monitoring
   prune: true
   wait: true
 
@@ -23,7 +23,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/loki
+  path: ./gitops/apps/loki
   prune: true
   wait: true
   # Needs the monitoring namespace (created by the prometheus kustomization).
@@ -40,7 +40,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/alloy
+  path: ./gitops/apps/alloy
   prune: true
   wait: true
   # Ships logs to Loki, so wait for Loki to be up first.
@@ -58,7 +58,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/grafana
+  path: ./gitops/apps/grafana
   prune: true
   wait: true
 
@@ -73,7 +73,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/authelia
+  path: ./gitops/apps/authelia
   prune: true
   wait: true
   timeout: 10m
@@ -88,7 +88,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/backstage
+  path: ./gitops/apps/backstage
   prune: true
   wait: true
   timeout: 10m
@@ -105,7 +105,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/mosquitto
+  path: ./gitops/apps/mosquitto
   prune: true
   wait: true
 ---
@@ -119,7 +119,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/redpanda-v2
+  path: ./gitops/apps/redpanda-v2
   prune: true
   wait: true
   timeout: 15m
@@ -136,7 +136,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/heatpump-web
+  path: ./gitops/apps/heatpump-web
   prune: true
   wait: true
 ---
@@ -150,7 +150,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/mqtt-kafka-bridge
+  path: ./gitops/apps/mqtt-kafka-bridge
   prune: true
   wait: true
   dependsOn:
@@ -167,7 +167,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/timescaledb
+  path: ./gitops/apps/timescaledb
   prune: true
   wait: true
   dependsOn:
@@ -183,7 +183,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/homelab-settings
+  path: ./gitops/apps/homelab-settings
   prune: true
   wait: true
   dependsOn:
@@ -200,7 +200,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/energy-ws
+  path: ./gitops/apps/energy-ws
   prune: true
   wait: true
   dependsOn:
@@ -216,7 +216,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/homelab-api
+  path: ./gitops/apps/homelab-api
   prune: true
   wait: true
   dependsOn:
@@ -232,7 +232,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/homelab-chat-api
+  path: ./gitops/apps/homelab-chat-api
   prune: true
   wait: true
   dependsOn:
@@ -250,7 +250,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/oauth2-proxy
+  path: ./gitops/apps/oauth2-proxy
   prune: true
   wait: true
   timeout: 5m
@@ -268,7 +268,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/pihole
+  path: ./gitops/apps/pihole
   prune: true
   wait: true
 ---
@@ -282,7 +282,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/traefik-middlewares
+  path: ./gitops/apps/traefik-middlewares
   prune: true
   wait: true
   dependsOn:
@@ -299,7 +299,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/homebridge
+  path: ./gitops/apps/homebridge
   prune: true
   wait: true
   dependsOn:
@@ -315,7 +315,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/traefik-routes
+  path: ./gitops/apps/traefik-routes
   prune: true
   wait: true
   dependsOn:
@@ -337,7 +337,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/spotprice
+  path: ./gitops/apps/spotprice
   prune: true
   wait: true
   dependsOn:
@@ -353,7 +353,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/minecraft
+  path: ./gitops/apps/minecraft
   prune: true
   wait: true
   dependsOn:
@@ -369,7 +369,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/gasa
+  path: ./gitops/apps/gasa
   prune: true
   wait: true
   dependsOn:
@@ -385,7 +385,7 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
-  path: ./gitops/apps/homelab/granbok
+  path: ./gitops/apps/granbok
   # The namespace and the PVCs carry kustomize.toolkit.fluxcd.io/prune: disabled
   prune: true
   wait: true

@@ -136,7 +136,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: mosquitto
-    backstage.io/techdocs-ref: dir:./gitops/apps/base/mosquitto
+    backstage.io/techdocs-ref: dir:./gitops/apps/mosquitto
 spec:
   type: service
   lifecycle: production
@@ -153,7 +153,7 @@ metadata:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: redpanda-connect
     backstage.io/kubernetes-namespace: timescaledb
-    backstage.io/techdocs-ref: dir:./gitops/apps/base/timescaledb/docs
+    backstage.io/techdocs-ref: dir:./gitops/apps/timescaledb/docs
     kafka.apache.org/consumer-groups: redpanda-v2/timescaledb-energy,redpanda-v2/timescaledb-heatpump,redpanda-v2/timescaledb-temperature
 spec:
   type: service
@@ -174,7 +174,7 @@ metadata:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: redpanda-connect
     backstage.io/kubernetes-namespace: homelab-settings
-    backstage.io/techdocs-ref: dir:./gitops/apps/base/homelab-settings/docs
+    backstage.io/techdocs-ref: dir:./gitops/apps/homelab-settings/docs
     kafka.apache.org/consumer-groups: redpanda-v2/homelab-settings
 spec:
   type: service
@@ -193,7 +193,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: grafana
-    backstage.io/techdocs-ref: dir:./gitops/apps/base/grafana
+    backstage.io/techdocs-ref: dir:./gitops/apps/grafana
 spec:
   type: website
   lifecycle: production
@@ -209,7 +209,7 @@ metadata:
   annotations:
     github.com/project-slug: bokristoffersson/homelab-k12n-gitops
     backstage.io/kubernetes-id: timescaledb
-    backstage.io/techdocs-ref: dir:./gitops/apps/base/timescaledb
+    backstage.io/techdocs-ref: dir:./gitops/apps/timescaledb
     kafka.apache.org/consumer-groups: redpanda-v2/timescaledb-energy,redpanda-v2/timescaledb-heatpump,redpanda-v2/timescaledb-temperature
 spec:
   type: database

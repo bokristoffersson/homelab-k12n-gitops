@@ -253,4 +253,4 @@ let cors = CorsLayer::new()
 
 - [Architecture](architecture.md) - System design and patterns
 - [API Reference](api.md) - Complete endpoint documentation
-- [TimescaleDB Docs](../../gitops/apps/base/timescaledb) - Database schema
+- [TimescaleDB Docs](../../gitops/apps/timescaledb) - Database schema

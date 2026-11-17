@@ -37,7 +37,7 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **energy-ws**: Rust/Axum WebSocket server streaming real-time energy data from Redpanda
 - **redpanda-sink**: Kafka consumer writing telemetry to TimescaleDB
 - **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
-- **gasa-api / gasa-web**: driving-practice booking app at `https://gasa.k12n.com` (Rust/Axum + React) with dedicated PostgreSQL in ns `gasa`. Auth differs from the other apps: the whole subdomain sits behind oauth2-proxy ForwardAuth and the API trusts only `X-Auth-Request-*` headers (no JWT validation); admin = email allowlist in `gitops/apps/base/gasa/configs/gasa-api-config.yaml`. Migrations live in `gitops/apps/base/gasa/migrations/`.
+- **gasa-api / gasa-web**: driving-practice booking app at `https://gasa.k12n.com` (Rust/Axum + React) with dedicated PostgreSQL in ns `gasa`. Auth differs from the other apps: the whole subdomain sits behind oauth2-proxy ForwardAuth and the API trusts only `X-Auth-Request-*` headers (no JWT validation); admin = email allowlist in `gitops/apps/gasa/configs/gasa-api-config.yaml`. Migrations live in `gitops/apps/gasa/migrations/`.
 - **minecraft**: itzg/minecraft-server in ns `minecraft`, pinned to `m720q` (Longhorn PVC), LAN-exposed via ServiceLB
 - **granbok**: bookkeeping for Bo's company (private repo `bokristoffersson/granbok`; requirements in its `deploy/HOMELAB.md`). ns `granbok`: core + Slack agent (exactly 1 replica each, Recreate), own PostgreSQL 18 and RustFS object store on `longhorn-retain` PVCs pinned to `m720q`. **LAN-only**: `https://granbok.k12n.com` resolves via Pi-hole to an nginx gateway (ServiceLB 443, ufw LAN-only) that blocks `/api/`; no tunnel hostname, no Traefik route. Legal 7-year retention: **never delete the namespace or its PVCs, never edit the DB/object store directly** (namespace + PVCs carry Flux `prune: disabled`).
 
@@ -56,7 +56,7 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 1. Frontend (heatpump-web) uses OIDC authorization code flow with Authelia (`https://auth.k12n.com`)
 2. The SPA authenticates via an oauth2-proxy session cookie, which forwards the Authelia access token to the backend APIs
 3. Backends validate access tokens JWKS-first against Authelia, with introspection fallback for opaque tokens; authorization is scope-based (e.g. `read:energy`, `read:temperature`, `write:settings`)
-4. Authelia is config-as-code only (no admin UI) — all clients, scopes, and access control live in `gitops/apps/base/authelia/`
+4. Authelia is config-as-code only (no admin UI) — all clients, scopes, and access control live in `gitops/apps/authelia/`
 
 See `docs/AUTHENTICATION.md` for complete details.
 
@@ -174,9 +174,9 @@ to cache it locally for offline sealing if needed.
 **CRITICAL**: Database migrations are managed through GitOps using Kubernetes Jobs. **NEVER** run migrations manually using `kubectl exec`.
 
 **Migration Locations**:
-- **TimescaleDB**: `gitops/apps/base/timescaledb/migrations/`
-- **Homelab Settings (PostgreSQL)**: `gitops/apps/base/homelab-settings/migrations/`
-- **Authelia**: no database migrations — identity/config is config-as-code in `gitops/apps/base/authelia/`
+- **TimescaleDB**: `gitops/apps/timescaledb/migrations/`
+- **Homelab Settings (PostgreSQL)**: `gitops/apps/homelab-settings/migrations/`
+- **Authelia**: no database migrations — identity/config is config-as-code in `gitops/apps/authelia/`
 
 **Migration Workflow**:
 1. **Create migration file** in the appropriate directory:
@@ -196,8 +196,8 @@ to cache it locally for offline sealing if needed.
    ```
 
 2. **Update kustomization.yaml** to include the new migration file:
-   - **TimescaleDB**: Edit `gitops/apps/base/timescaledb/kustomization.yaml`
-   - **Homelab Settings**: Edit `gitops/apps/base/homelab-settings/kustomization.yaml`
+   - **TimescaleDB**: Edit `gitops/apps/timescaledb/kustomization.yaml`
+   - **Homelab Settings**: Edit `gitops/apps/homelab-settings/kustomization.yaml`
 
    Add the new migration file to the `configMapGenerator` section:
    ```yaml
@@ -244,7 +244,7 @@ kubectl exec -n timescaledb pod -- psql -U postgres -d telemetry -c "ALTER TABLE
 **DO THIS INSTEAD**:
 ```bash
 # ✅ CORRECT - GitOps migration workflow
-1. Create migration file in gitops/apps/base/timescaledb/migrations/
+1. Create migration file in gitops/apps/timescaledb/migrations/
 2. Commit to feature branch
 3. Create PR and wait for AI review
 4. User merges PR
@@ -519,9 +519,8 @@ gh run watch
 
 ```
 gitops/
-├── apps/
-│   ├── base/           # Base kustomize configurations
-│   └── homelab/        # Homelab-specific overlays
+├── clusters/homelab/   # Flux entrypoint: one Flux Kustomization per app
+├── apps/<app>/         # One plain kustomize directory per app (no base/overlay split)
 └── infrastructure/
     └── controllers/    # Infrastructure controllers (Flux, Traefik, etc.)
 
@@ -560,7 +559,7 @@ docs/
 - Don't commit `node_modules/` (already in .gitignore)
 - Cloudflare Tunnel handles TLS termination
 - Internal cluster traffic uses HTTP
-- **CORS Configuration**: Traefik CORS middleware (`gitops/apps/base/traefik-middlewares/cors.yaml`) allows:
+- **CORS Configuration**: Traefik CORS middleware (`gitops/apps/traefik-middlewares/cors.yaml`) allows:
   - `https://homelab.k12n.com`
   - `http://localhost:5173`
   - `http://localhost:8080`

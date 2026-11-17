@@ -53,7 +53,7 @@ The repository is organized into clear domains, each with distinct responsibilit
 
 **Invariants**:
 - One cluster = one set of Kustomizations
-- Cluster configs reference base + overlays
+- Each app is one plain kustomize directory; the cluster config points at it directly
 - No cross-cluster dependencies
 
 ## Domain Events & Reconciliation
@@ -188,8 +188,8 @@ Each application is a **bounded context**. Namespaces provide:
 ❌ **Monolithic Configs**: One giant YAML
 ✅ **Modular, composable manifests**
 
-❌ **Environment Duplication**: Copy/paste configs
-✅ **Base + overlays pattern**
+❌ **Speculative environments**: base/overlay layers for clusters that do not exist
+✅ **One directory per app**, applied as-is to the single cluster
 
 ## Failure Modes & Recovery
 
@@ -247,10 +247,9 @@ flux logs --follow       # Watch reconciliation
 ## Evolution & Extensions
 
 **Adding a New App**:
-1. Create `gitops/apps/base/myapp/`
-2. Create `gitops/apps/homelab/myapp/kustomization.yaml`
-3. Add to `gitops/clusters/homelab/apps.yaml`
-4. Commit, push, done
+1. Create `gitops/apps/myapp/` with a `kustomization.yaml`
+2. Add a Flux Kustomization for it to `gitops/clusters/homelab/apps.yaml`
+3. Commit, push, done
 
 **Adding a New Environment**:
 1. Create `gitops/clusters/staging/`
