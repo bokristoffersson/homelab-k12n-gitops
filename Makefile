@@ -103,17 +103,12 @@ mqtt-subscribe: ## Subscribe to MQTT topics (requires mosquitto_sub and port-for
 ##@ Development Helpers
 
 .PHONY: lint
-lint: ## Lint Kubernetes manifests (requires kubeconform)
-	@if command -v kubeconform >/dev/null 2>&1; then \
-		find gitops -name '*.yaml' -type f | xargs kubeconform -summary; \
-	else \
-		echo "kubeconform not installed. Install with: brew install kubeconform"; \
-	fi
+lint: ## Render and schema-validate everything Flux reconciles
+	scripts/validate-gitops.sh
 
-.PHONY: validate
-validate: ## Validate Flux resources
-	flux check --pre
-	find gitops/infrastructure gitops/apps -name '*.yaml' -type f | xargs -I {} flux validate {}
+.PHONY: hooks
+hooks: ## Run all prek hooks on the files changed since origin/main
+	prek run --from-ref origin/main --to-ref HEAD
 
 ##@ Utilities
 
@@ -124,7 +119,8 @@ clean: ## Clean up Docker resources
 .PHONY: setup-tools
 setup-tools: ## Install required development tools (macOS only)
 	@if [ "$$(uname)" = "Darwin" ]; then \
-		brew install kubectl fluxcd/tap/flux helm kubeconform; \
+		brew install kubectl fluxcd/tap/flux helm kubeconform prek; \
+		prek install; \
 	else \
 		echo "This target only works on macOS. Please install tools manually."; \
 	fi
