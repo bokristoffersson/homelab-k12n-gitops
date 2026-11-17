@@ -7,7 +7,7 @@ Heatpump Web is deployed to Kubernetes via GitOps with Flux CD.
 ### Manifest Structure
 
 ```
-gitops/apps/base/heatpump-web/
+gitops/apps/heatpump-web/
 ├── namespace.yaml
 ├── deployment.yaml
 ├── service.yaml

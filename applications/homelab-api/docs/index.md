@@ -48,5 +48,5 @@ All endpoints require valid JWT token in `Authorization: Bearer <token>` header.
 ## Related Components
 
 - **Frontend**: [heatpump-web](../heatpump-web) - React SPA consuming this API
-- **Database**: [timescaledb](../../gitops/apps/base/timescaledb) - Time-series data store
-- **Data Pipeline**: [mqtt-kafka-bridge](../mqtt-kafka-bridge) → [redpanda-sink](../../gitops/apps/base/timescaledb)
+- **Database**: [timescaledb](../../gitops/apps/timescaledb) - Time-series data store
+- **Data Pipeline**: [mqtt-kafka-bridge](../mqtt-kafka-bridge) → [redpanda-sink](../../gitops/apps/timescaledb)

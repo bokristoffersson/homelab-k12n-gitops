@@ -8,5 +8,7 @@ resources:
   - cloudflare-api-token-secret-sealed.yaml
   - deployment.yaml
 
-commonLabels:
-  app: cloudflare-tunnel
+labels:
+  - pairs:
+      app: cloudflare-tunnel
+    includeSelectors: true

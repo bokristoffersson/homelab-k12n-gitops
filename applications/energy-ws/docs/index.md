@@ -137,4 +137,4 @@ ws.onclose = () => {
 - **Frontend**: Dashboard consuming WebSocket stream
 - **Data source**: [mqtt-kafka-bridge](../mqtt-kafka-bridge) publishes to Redpanda
 - **Message broker**: Redpanda cluster
-- **Persistence**: [redpanda-sink](../../gitops/apps/base/timescaledb) writes to TimescaleDB
+- **Persistence**: [redpanda-sink](../../gitops/apps/timescaledb) writes to TimescaleDB

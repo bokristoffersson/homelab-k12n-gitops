@@ -214,7 +214,7 @@ kubeseal \
   --namespace timescaledb \
   --controller-name sealed-secrets \
   --controller-namespace kube-system \
-  --format=yaml > gitops/apps/base/timescaledb/backup-aws-credentials-sealed.yaml
+  --format=yaml > gitops/apps/timescaledb/backup-aws-credentials-sealed.yaml
 ```
 
 ### For Heatpump-Settings PostgreSQL
@@ -233,7 +233,7 @@ kubeseal \
   --namespace heatpump-settings \
   --controller-name sealed-secrets \
   --controller-namespace kube-system \
-  --format=yaml > gitops/apps/base/heatpump-settings/backup-aws-credentials-sealed.yaml
+  --format=yaml > gitops/apps/heatpump-settings/backup-aws-credentials-sealed.yaml
 ```
 
 ## Step 5: Deploy to Cluster
@@ -242,7 +242,7 @@ The backup CronJobs are already configured in the GitOps repository. Once you've
 
 ```bash
 # Commit the sealed secrets
-git add gitops/apps/base/*/backup-aws-credentials-sealed.yaml
+git add gitops/apps/*/backup-aws-credentials-sealed.yaml
 git commit -m "feat: add S3 backup credentials"
 git push
 

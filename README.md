@@ -47,8 +47,7 @@ gitops/
 │   ├── storage/             # Longhorn
 │   └── controllers/         # cert-manager, sealed-secrets, Traefik, cloudflared
 └── apps/
-    ├── base/                # Per-app base manifests
-    └── homelab/             # Homelab overlays (one Flux Kustomization each)
+    └── <app>/               # One kustomize directory per app (one Flux Kustomization each)
 applications/                # Source code for the in-house services (Rust, React)
 ansible/                     # Node provisioning and k3s hardening
 docs/                        # Architecture, runbooks, ADRs (also served as Backstage TechDocs)

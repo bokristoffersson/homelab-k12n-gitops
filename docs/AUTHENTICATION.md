@@ -6,9 +6,9 @@
 > replaced Authentik. The migration removed all Authentik resources (namespace, PostgreSQL, blueprints,
 > traefikoidc routes).
 >
-> **Current Authelia architecture (source of truth: `gitops/apps/base/authelia/`):**
+> **Current Authelia architecture (source of truth: `gitops/apps/authelia/`):**
 > - **Config-as-code only** — no admin UI. All OIDC clients, scopes, claims, token lifetimes, and access
->   control are declared in `gitops/apps/base/authelia/configuration.yaml` and deployed via FluxCD.
+>   control are declared in `gitops/apps/authelia/configuration.yaml` and deployed via FluxCD.
 > - **Users**: file-based backend (argon2-hashed, sealed secret) with local session/storage — there is no
 >   identity PostgreSQL.
 > - **Tokens**: opaque access tokens by default; JWT (RFC 9068) only for clients that need JWKS validation
@@ -517,9 +517,9 @@ Routes on `api.k12n.com` support both authentication methods using priority-base
 All secrets are encrypted using **SealedSecrets** (Bitnami) with cluster-specific sealing keys.
 
 **Sealed Secret Locations**:
-- `gitops/apps/base/authentik/authentik-secret-sealed.yaml`
-- `gitops/apps/base/authentik/postgres-secret-sealed.yaml`
-- `gitops/apps/base/traefik-middlewares/traefikoidc-secrets-sealed.yaml`
+- `gitops/apps/authentik/authentik-secret-sealed.yaml`
+- `gitops/apps/authentik/postgres-secret-sealed.yaml`
+- `gitops/apps/traefik-middlewares/traefikoidc-secrets-sealed.yaml`
 
 **Critical Secrets**:
 - `AUTHENTIK_SECRET_KEY` - Signs Authentik sessions and tokens
@@ -710,12 +710,12 @@ kubectl delete job authentik-blueprint-apply -n authentik
 
 | Component | Location |
 |-----------|----------|
-| Authentik Base | `gitops/apps/base/authentik/` |
-| Authentik Blueprints | `gitops/apps/base/authentik/blueprint-*.yaml` |
-| traefikoidc Middleware | `gitops/apps/base/traefik-middlewares/traefikoidc.yaml` |
-| traefikoidc Secrets | `gitops/apps/base/traefik-middlewares/traefikoidc-secrets-sealed.yaml` |
-| Traefik Middlewares | `gitops/apps/base/traefik-middlewares/` |
-| Traefik Routes | `gitops/apps/base/traefik-routes/` |
+| Authentik Base | `gitops/apps/authentik/` |
+| Authentik Blueprints | `gitops/apps/authentik/blueprint-*.yaml` |
+| traefikoidc Middleware | `gitops/apps/traefik-middlewares/traefikoidc.yaml` |
+| traefikoidc Secrets | `gitops/apps/traefik-middlewares/traefikoidc-secrets-sealed.yaml` |
+| Traefik Middlewares | `gitops/apps/traefik-middlewares/` |
+| Traefik Routes | `gitops/apps/traefik-routes/` |
 | Traefik Controller | `gitops/infrastructure/controllers/traefik/` |
 | Sealed Secrets Controller | `gitops/infrastructure/controllers/sealed-secrets/` |
 
@@ -758,7 +758,7 @@ The authentication system has been migrated from oauth2-proxy to the native trae
 #### Deprecated Resources
 
 The following resources are deprecated and will be removed after validation:
-- `gitops/apps/base/oauth2-proxy/` directory
+- `gitops/apps/oauth2-proxy/` directory
 - OAuth2 callback routes (`/oauth2/*`) in route files
 - `oauth2-proxy-auth` middleware references
 
