@@ -1,0 +1,67 @@
+name: Rust test (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: Directory name under applications/
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    # Throwaway PostgreSQL for DB-backed tests. Tests that need it read
+    # TEST_DATABASE_URL (homelab-settings-api); the rest ignore it.
+    services:
+      postgres:
+        image: postgres:16.16@sha256:dd2bf3ce2dc83a81674cf7f217fcfd8a5009a4b325dda5b843bfee82a06cff6f
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: applications/${{ inputs.app }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30 # v2.0.1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+          cache-workspaces: applications/${{ inputs.app }}
+
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-audit@0.22.2
+
+      - name: Check for vulnerabilities (cargo audit)
+        run: cargo audit
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Run clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test
+        env:
+          TEST_DATABASE_URL: postgres://postgres:test@localhost:5432/test
