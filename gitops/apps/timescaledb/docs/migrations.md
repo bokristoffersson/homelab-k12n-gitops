@@ -1,123 +1,71 @@
 # Database Migrations
 
-## Overview
+Schema changes are SQL files applied by a Kubernetes Job that Flux manages. They are
+never run by hand with `kubectl exec`.
 
-Database schema changes are managed through Kubernetes Jobs that run migration SQL scripts.
+## How it works
 
-## Migration Structure
+- The files live in `gitops/apps/timescaledb/migrations/`, numbered `001_`, `002_`, …
+- The app's `kustomization.yaml` packs them into the `timescaledb-migrations` ConfigMap.
+- The `timescaledb-migration` Job mounts the ConfigMap and runs `run_migrations.sh`,
+  which applies each file in order.
+- Every migration records itself in `schema_migrations (version, name, applied_at)` and
+  is written to be safe to run again.
 
-Migrations are located in `gitops/apps/timescaledb/migrations/`:
+## Adding a migration
 
-```
-migrations/
-├── README.md
-├── 001_initial_schema.sql
-├── 002_add_indexes.sql
-└── 003_continuous_aggregates.sql
-```
+1. Create the file, for example `migrations/008_add_something.sql`:
 
-## Running Migrations
-
-Migrations are executed automatically via Kubernetes Job:
-
-```bash
-kubectl get jobs -n timescaledb
-kubectl logs -n timescaledb job/timescaledb-migration
-```
-
-## Creating a New Migration
-
-1. **Create migration file**: `migrations/00X_description.sql`
-
-2. **Write idempotent SQL**:
    ```sql
-   -- migrations/004_add_humidity.sql
+   -- Migration: 008_add_something
+   -- Description: What this migration does
 
-   -- Add column if it doesn't exist
-   DO $$
-   BEGIN
-       IF NOT EXISTS (
-           SELECT 1 FROM information_schema.columns
-           WHERE table_name='temperature_readings'
-           AND column_name='humidity'
-       ) THEN
-           ALTER TABLE temperature_readings
-           ADD COLUMN humidity DOUBLE PRECISION;
-       END IF;
-   END $$;
+   \c telemetry
+
+   ALTER TABLE temperature_sensors ADD COLUMN IF NOT EXISTS dew_point DOUBLE PRECISION;
+
+   INSERT INTO schema_migrations (version, name)
+   VALUES (8, 'add_something')
+   ON CONFLICT (version) DO NOTHING;
    ```
 
-3. **Update ConfigMap**: Add migration to the ConfigMap in `migration-job.yaml`
+2. List it in `gitops/apps/timescaledb/kustomization.yaml` under the
+   `timescaledb-migrations` `configMapGenerator`. Without this step Flux never ships the
+   file and the migration does not run.
 
-4. **Apply and run**:
+3. Open a PR and merge it. Flux updates the ConfigMap.
+
+4. Delete the Job so Flux recreates it with the new files:
+
    ```bash
-   kubectl apply -f gitops/apps/timescaledb/migration-job.yaml
-   kubectl create job --from=cronjob/timescaledb-migration migration-manual -n timescaledb
+   kubectl delete job -n timescaledb timescaledb-migration
    ```
 
-## Best Practices
+5. Check the result:
 
-### Always Use Idempotent Operations
-
-- Use `IF NOT EXISTS` for CREATE statements
-- Use `IF EXISTS` for DROP statements
-- Check for existence before ALTER
-
-### Test Migrations Locally
-
-```bash
-# Connect to TimescaleDB pod
-kubectl exec -it -n timescaledb deployment/timescaledb -- psql -U postgres
-
-# Test migration SQL
-\i /path/to/migration.sql
-```
-
-### Backup Before Major Changes
-
-```bash
-# Trigger manual backup
-kubectl create job --from=cronjob/timescaledb-backup backup-manual -n timescaledb
-```
-
-## Rollback
-
-If a migration fails:
-
-1. **Check logs**:
    ```bash
    kubectl logs -n timescaledb job/timescaledb-migration
    ```
 
-2. **Restore from backup** if needed:
-   ```bash
-   # Download latest backup from S3
-   # Restore to database
-   ```
+## Writing safe migrations
 
-3. **Fix migration** and re-run
+- Use `IF NOT EXISTS` / `IF EXISTS` so a rerun is harmless.
+- End with the `schema_migrations` insert and `ON CONFLICT DO NOTHING`.
+- Changing a continuous aggregate means dropping and recreating it; refresh it
+  afterwards:
 
-## Schema Versioning
+  ```sql
+  CALL refresh_continuous_aggregate('energy_hourly', NULL, NULL);
+  ```
 
-Track applied migrations in a dedicated table:
+- If the sink writes to the table, update its mapping in `configs/` in the same PR. See
+  [Redpanda Sink](redpanda-sink.md).
 
-```sql
-CREATE TABLE IF NOT EXISTS schema_migrations (
-    version INTEGER PRIMARY KEY,
-    description TEXT,
-    applied_at TIMESTAMPTZ DEFAULT NOW()
-);
+## If a migration fails
 
--- After each migration
-INSERT INTO schema_migrations (version, description)
-VALUES (4, 'Add humidity column');
-```
+1. Read the Job log to find the failing statement.
+2. Fix the file in a new PR. Do not edit the database by hand.
+3. Delete the Job again so it reruns.
 
-## Continuous Aggregate Refresh
-
-When modifying continuous aggregates:
-
-```sql
--- Refresh after schema change
-CALL refresh_continuous_aggregate('energy_hourly', NULL, NULL);
-```
+For a migration that destroyed data, restore from the nightly backup
+([BACKUP_SETUP.md](https://github.com/bokristoffersson/homelab-k12n-gitops/blob/main/docs/BACKUP_SETUP.md)).

@@ -18,18 +18,18 @@ View bridge logs:
 kubectl logs -n mqtt-kafka-bridge deployment/mqtt-kafka-bridge -f
 ```
 
-### Health Checks
+### Health
 
-The bridge exposes health endpoints:
+Redpanda Connect serves `/ping` and `/ready` on port 4195; the Deployment's probes use
+them. Prometheus-format metrics are at `/metrics` on the same port:
 
-- `/health`: Overall health status
-- `/metrics`: Prometheus metrics
+```bash
+kubectl port-forward -n mqtt-kafka-bridge deployment/mqtt-kafka-bridge 4195:4195
+curl -s localhost:4195/metrics | grep -E "input_received|output_sent|error"
+```
 
-### Key Metrics
-
-- `mqtt_messages_received_total`: Total MQTT messages received
-- `kafka_messages_published_total`: Total Kafka messages published
-- `bridge_errors_total`: Total errors encountered
+The `monitoring-health-check` CronJob alerts in Slack when the bridge logs lost MQTT
+connections.
 
 ## Troubleshooting
 
@@ -57,17 +57,20 @@ The bridge exposes health endpoints:
    kubectl logs -n mqtt-kafka-bridge deployment/mqtt-kafka-bridge | grep "Kafka"
    ```
 
-### High Lag or Message Loss
+### Messages missing downstream
 
-1. Check consumer group lag:
-   ```bash
-   kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe mqtt-bridge
-   ```
+The bridge is a producer, so it has no consumer group and no lag of its own.
 
-2. Scale up if needed:
+1. Confirm the device is publishing (see the first section).
+2. Confirm messages reach the topic:
    ```bash
-   kubectl scale -n mqtt-kafka-bridge deployment/mqtt-kafka-bridge --replicas=2
+   kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
+     rpk topic consume homelab-energy-realtime --num 1
    ```
+3. If they do, the problem is in the consumer. Check its lag instead.
+
+Run one replica only. Two replicas would each forward every MQTT message, and every
+reading would be stored twice.
 
 ## Maintenance
 

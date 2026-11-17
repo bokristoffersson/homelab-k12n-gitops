@@ -1,102 +1,94 @@
 # Database Schema
 
-## Energy Readings
+The schema is defined by the SQL files in `gitops/apps/timescaledb/migrations/`. This
+page summarises it; the migrations are the source of truth.
 
-Stores real-time energy consumption data from smart meters.
+## Tables
 
-```sql
-CREATE TABLE energy_readings (
-    timestamp TIMESTAMPTZ NOT NULL,
-    device_id VARCHAR(50),
-    total_energy_kwh DOUBLE PRECISION,
-    power_kw DOUBLE PRECISION,
-    voltage DOUBLE PRECISION,
-    current DOUBLE PRECISION
-);
+All three telemetry tables are hypertables partitioned on `time`, with a 90-day
+retention policy.
 
-SELECT create_hypertable('energy_readings', 'timestamp');
-```
+### `energy_consumption`
 
-### Indexes
+One row per reading from the energy meter.
 
-```sql
-CREATE INDEX idx_energy_device_time ON energy_readings (device_id, timestamp DESC);
-```
+| Column | Meaning |
+|---|---|
+| `time` | Reading timestamp |
+| `device_serial`, `meter_type` | Meter identity |
+| `active_power_total`, `active_power_l1..l3` | Current power draw, total and per phase |
+| `active_production_total` | Current production |
+| `active_energy_total`, `active_energy_production` | Cumulative meter counters |
+| `voltage_l1..l3`, `current_l1..l3`, `power_factor` | Electrical measurements per phase |
+| `wifi_rssi` | Meter signal strength |
 
-## Heatpump Status
+Index: `(device_serial, time DESC)`.
 
-Stores heat pump telemetry and status information.
+### `heatpump_status`
 
-```sql
-CREATE TABLE heatpump_status (
-    timestamp TIMESTAMPTZ NOT NULL,
-    device_id VARCHAR(50),
-    mode VARCHAR(20),
-    target_temp DOUBLE PRECISION,
-    actual_temp DOUBLE PRECISION,
-    compressor_running BOOLEAN,
-    power_consumption_kw DOUBLE PRECISION
-);
+One row per reading from the ThermIQ heat pump module.
 
-SELECT create_hypertable('heatpump_status', 'timestamp');
-```
+| Column | Meaning |
+|---|---|
+| `time`, `device_id` | Reading timestamp and device |
+| `outdoor_temp`, `indoor_temp` | Temperatures seen by the heat pump |
+| `supplyline_temp`, `returnline_temp`, `hotwater_temp` | Heating circuit and hot water |
+| `brine_in_temp`, `brine_out_temp` | Brine circuit |
+| `flowlinepump_speed` | Circulation pump speed |
+| `runtime_compressor`, `runtime_hotwater`, `runtime_3kw`, `runtime_6kw` | Cumulative runtimes |
+| `compressor_on`, `brinepump_on`, `flowlinepump_on`, `hotwater_production`, `aux_heater_3kw_on`, `aux_heater_6kw_on` | Component states |
 
-## Temperature Readings
+Migration 004 adds the integral value. Index: `(device_id, time DESC)`.
 
-Stores temperature sensor data from various rooms.
+### `temperature_sensors`
 
-```sql
-CREATE TABLE temperature_readings (
-    timestamp TIMESTAMPTZ NOT NULL,
-    sensor_id VARCHAR(50),
-    room VARCHAR(50),
-    temperature DOUBLE PRECISION,
-    humidity DOUBLE PRECISION
-);
+One row per reading from a temperature sensor.
 
-SELECT create_hypertable('temperature_readings', 'timestamp');
-```
+| Column | Meaning |
+|---|---|
+| `time`, `device_id`, `mac_address`, `location` | Reading timestamp and sensor identity |
+| `temperature_c`, `temperature_f`, `humidity` | The measurements |
+| `battery_voltage`, `battery_percent`, `external_power` | Power state |
+| `wifi_rssi`, `uptime`, `ram_free` | Device health |
+| `wind_speed_ms`, `pressure_hpa` | For outdoor sensors |
 
-## Continuous Aggregates
+Indexes: `(device_id, time DESC)` and `(location, time DESC)`.
 
-### Hourly Energy Consumption
+### `spot_prices`
 
-```sql
-CREATE MATERIALIZED VIEW energy_hourly
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', timestamp) AS hour_start,
-    device_id,
-    AVG(power_kw) AS avg_power_kw,
-    SUM(total_energy_kwh) AS total_energy_kwh
-FROM energy_readings
-GROUP BY hour_start, device_id;
-```
+Electricity spot prices, written by spotprice-api. Hypertable with 30-day retention.
+The same migration (007) creates `apns_device_tokens` for the app's push notifications.
 
-### Daily Heatpump Statistics
+### `schema_migrations`
 
-```sql
-CREATE MATERIALIZED VIEW heatpump_daily
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 day', timestamp) AS day_start,
-    device_id,
-    AVG(actual_temp) AS avg_temp,
-    SUM(power_consumption_kw) AS total_consumption,
-    COUNT(*) FILTER (WHERE compressor_running) AS compressor_runtime_count
-FROM heatpump_status
-GROUP BY day_start, device_id;
-```
+`(version, name, applied_at)`. One row per applied migration.
 
-## Data Retention Policies
+## Views and aggregates
+
+| Name | Kind | Contents |
+|---|---|---|
+| `energy` | View | `energy_consumption` with the column names the API uses (`ts`, `consumption_total_w`, …) |
+| `energy_hourly` | Continuous aggregate | Energy used per hour, total and per phase |
+| `energy_daily_summary` | Continuous aggregate | Energy used per day |
+| `energy_monthly_summary`, `energy_yearly_summary` | Views | Built on the daily aggregate |
+
+Continuous aggregates refresh on a schedule set in their migration, so the most recent
+bucket can lag the raw data.
+
+## Example queries
 
 ```sql
--- Keep raw energy data for 90 days
-SELECT add_retention_policy('energy_readings', INTERVAL '90 days');
+-- Latest energy reading
+SELECT * FROM energy ORDER BY ts DESC LIMIT 1;
 
--- Keep raw heatpump data for 90 days
-SELECT add_retention_policy('heatpump_status', INTERVAL '90 days');
+-- Energy per hour for the last day
+SELECT hour_start, total_energy_kwh
+FROM energy_hourly
+WHERE hour_start > NOW() - INTERVAL '24 hours'
+ORDER BY hour_start;
 
--- Keep hourly aggregates for 2 years
-SELECT add_retention_policy('energy_hourly', INTERVAL '2 years');
+-- Latest reading per temperature sensor
+SELECT DISTINCT ON (device_id) device_id, location, time, temperature_c, humidity
+FROM temperature_sensors
+ORDER BY device_id, time DESC;
 ```

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Rust 1.83+ (`rustup install stable`)
+- Rust, current stable (`rustup update stable`)
 - PostgreSQL/TimescaleDB instance
 - kubectl access to cluster (for testing)
 
@@ -49,7 +49,7 @@ Server starts on `http://localhost:8080`.
 ### Testing Endpoints
 
 ```bash
-# Get JWT token from Authentik first, then:
+# Get JWT token from Authelia first, then:
 export TOKEN="your-jwt-token"
 
 # Test energy endpoint
@@ -229,7 +229,7 @@ kubectl port-forward -n timescaledb svc/timescaledb-primary 5432:5432
 
 1. Check JWKS_URL is accessible
 2. Verify token hasn't expired
-3. Ensure token was issued by Authentik
+3. Ensure token was issued by Authelia
 
 ### CORS Errors in Browser
 

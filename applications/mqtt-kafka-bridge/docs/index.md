@@ -1,39 +1,27 @@
 # MQTT-Kafka Bridge
 
-## Overview
-
-The MQTT-Kafka Bridge is a critical component in the homelab data pipeline that connects MQTT IoT devices to the Kafka streaming platform.
-
-## Purpose
-
-- **Subscribes** to MQTT topics from IoT devices (heat pumps, energy meters, temperature sensors)
-- **Transforms** MQTT messages into Kafka messages
-- **Publishes** to Redpanda (Kafka) topics for downstream processing
-
-## Architecture
+The bridge moves device messages from Mosquitto into Redpanda. It is a
+[Redpanda Connect](https://docs.redpanda.com/redpanda-connect/) Deployment in the
+`mqtt-kafka-bridge` namespace; there is no application code, only pipeline
+configuration.
 
 ```
-IoT Devices → Mosquitto MQTT Broker → MQTT-Kafka Bridge → Redpanda (Kafka)
+Devices ──► Mosquitto ──► mqtt-kafka-bridge ──► Redpanda
 ```
 
-## Key Features
+Each pipeline subscribes to MQTT topics, reshapes the device's payload into a common
+message format, and produces it to one Redpanda topic. Everything downstream (the
+TimescaleDB sink, energy-ws, homelab-settings) reads from Redpanda.
 
-- **Topic Mapping**: Maps MQTT topics to Kafka topics
-- **Message Transformation**: Converts MQTT payloads to structured Kafka messages
-- **Reliability**: Ensures messages are not lost during the bridge process
-- **Monitoring**: Exposes metrics for observability
+- [Configuration](configuration.md): the pipelines and the message format
+- [Operations](operations.md): checking, restarting and troubleshooting
 
-## Data Flow
+## Related components
 
-1. IoT devices publish data to Mosquitto MQTT broker
-2. MQTT-Kafka Bridge subscribes to configured MQTT topics
-3. Messages are transformed and enriched with metadata
-4. Transformed messages are published to Redpanda Kafka topics
-5. Downstream consumers (TimescaleDB sink, WebSocket server, etc.) process the data
-
-## Related Components
-
-- **Mosquitto**: MQTT broker receiving IoT device data
-- **Redpanda**: Kafka-compatible streaming platform
-- **TimescaleDB Sink**: Consumes Kafka data and stores in database
-- **Energy WebSocket**: Streams real-time data to web clients
+| Component | Relation |
+|---|---|
+| Mosquitto | Source. The bridge logs in with the `mqtt-credentials` secret. |
+| Redpanda | Destination. Topics are created by the `rpk` Job in `redpanda-v2`. |
+| TimescaleDB sink | Consumes the telemetry topics and writes them to the database |
+| energy-ws | Consumes `homelab-energy-realtime` for live updates |
+| homelab-settings | Consumes heat pump and plug telemetry to track reported state |

@@ -1,123 +1,59 @@
-# Redpanda Connect Sink
+# Redpanda Sink
 
-## Overview
-
-The Redpanda Connect sink is responsible for consuming messages from Kafka topics and inserting them into TimescaleDB tables.
-
-## Architecture
+The sink is a Redpanda Connect Deployment (`redpanda-connect` in the `timescaledb`
+namespace) that reads telemetry topics and inserts rows into TimescaleDB. It replaced
+an earlier custom service called redpanda-sink; there is no application code to build.
 
 ```
-Kafka Topics → Redpanda Connect → TimescaleDB
+Redpanda topic ──► mapping ──► INSERT into table
 ```
 
-## Consumer Groups
+## Pipelines
 
-The sink operates three consumer groups:
+One pipeline per file in `gitops/apps/timescaledb/configs/`:
 
-### timescaledb-energy
+| File | Topic | Consumer group | Table |
+|---|---|---|---|
+| `energy.yaml` | `homelab-energy-realtime` | `timescaledb-energy` | `energy_consumption` |
+| `heatpump.yaml` | `homelab-heatpump-telemetry` | `timescaledb-heatpump` | `heatpump_status` |
+| `temperature.yaml` | `homelab-temperature-indoor`, `homelab-temperature-outdoor` | `timescaledb-temperature` | `temperature_sensors` |
 
-- **Topic**: `homelab.energy`
-- **Table**: `energy_readings`
-- **Throughput**: ~1-10 msgs/sec
-- **Lag Target**: < 100 messages
+Each pipeline has three parts: a `kafka` input, a `mapping` processor that turns the
+message's `ts`, `tags` and `fields` into table columns, and a `sql_insert` output.
+Database credentials come from the `timescaledb-credentials` secret.
 
-### timescaledb-heatpump
+## Changing a pipeline
 
-- **Topic**: `homelab.heatpump`
-- **Table**: `heatpump_status`
-- **Throughput**: ~0.5 msgs/sec
-- **Lag Target**: < 50 messages
+1. Edit the file under `configs/`.
+2. If the change needs a new column, add a migration first. See [Migrations](migrations.md).
+3. Merge the PR, then restart the sink so it loads the new ConfigMap:
 
-### timescaledb-temperature
+   ```bash
+   kubectl rollout restart deployment/redpanda-connect -n timescaledb
+   ```
 
-- **Topic**: `homelab.temperature`
-- **Table**: `temperature_readings`
-- **Throughput**: ~0.2 msgs/sec (per sensor)
-- **Lag Target**: < 20 messages
-
-## Configuration
-
-Redpanda Connect is configured via YAML pipelines:
-
-```yaml
-input:
-  kafka:
-    addresses: ["redpanda-v2.redpanda-v2.svc.cluster.local:9092"]
-    topics: ["homelab.energy"]
-    consumer_group: timescaledb-energy
-
-pipeline:
-  processors:
-    - mapping: |
-        root.timestamp = this.timestamp
-        root.device_id = this.device_id
-        root.total_energy_kwh = this.total_energy_kwh
-        root.power_kw = this.power_kw
-
-output:
-  sql_insert:
-    driver: postgres
-    dsn: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB}
-    table: energy_readings
-    columns: [timestamp, device_id, total_energy_kwh, power_kw]
-```
-
-## Monitoring
-
-### View Consumer Group Lag
+## Checking it
 
 ```bash
-kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
-  rpk group describe timescaledb-energy
+# Is it running, and what is it logging?
+kubectl get pods -n timescaledb
+kubectl logs -n timescaledb deployment/redpanda-connect --tail=50
+
+# Is it keeping up?
+kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe timescaledb-energy
 ```
 
-### Check Sink Logs
-
-```bash
-kubectl logs -n timescaledb deployment/redpanda-connect -f
-```
-
-### Metrics
-
-The sink exposes Prometheus metrics on port 4195:
-
-- `benthos_input_received_total`: Messages received from Kafka
-- `benthos_output_sent_total`: Messages written to TimescaleDB
-- `benthos_processor_error_total`: Processing errors
+The `monitoring-health-check` CronJob alerts in Slack when a table stops receiving rows
+or a consumer group falls more than 1000 messages behind.
 
 ## Troubleshooting
 
-### High Lag
+| Symptom | Check |
+|---|---|
+| Lag grows | Sink logs for insert errors; `kubectl top pod -n timescaledb` for a starved database |
+| Rows stop arriving but lag is zero | Nothing is being produced: check `mqtt-kafka-bridge` and the device |
+| Insert errors after a mapping change | A column name or type does not match the table |
+| Sink restarts in a loop | Database unreachable or wrong credentials |
 
-If consumer group lag is high:
-
-1. Check database write performance:
-   ```sql
-   SELECT * FROM pg_stat_activity WHERE state = 'active';
-   ```
-
-2. Increase parallelism in Redpanda Connect config
-
-3. Check for database locks or slow queries
-
-### Messages Not Appearing
-
-1. Verify Kafka topic has messages:
-   ```bash
-   kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
-     rpk topic consume homelab.energy --num 10
-   ```
-
-2. Check Redpanda Connect logs for errors
-
-3. Verify database credentials and connectivity
-
-## Scaling
-
-To handle increased load:
-
-```bash
-kubectl scale -n timescaledb deployment/redpanda-connect --replicas=2
-```
-
-**Note**: Ensure consumer group partitioning allows multiple consumers.
+Messages older than the topic's retention (1 to 24 hours) are gone, so a sink that is
+down longer than that leaves a gap.

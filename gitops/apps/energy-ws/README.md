@@ -56,7 +56,7 @@ kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe energy-ws
 
 Connect to: `ws://energy-ws.energy-ws.svc.cluster.local:8080/ws/energy?token=<JWT_TOKEN>`
 
-For external access via Cloudflare Tunnel: `wss://api.k12n.com/ws/energy?token=<JWT_TOKEN>`
+For external access via Cloudflare Tunnel: `wss://homelab.k12n.com/ws/energy?token=<JWT_TOKEN>`
 
 ### Client → Server Messages
 

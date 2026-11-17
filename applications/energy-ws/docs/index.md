@@ -9,8 +9,8 @@ Energy-ws is a Rust/Axum-based WebSocket server that streams real-time power con
 ## Key Features
 
 - **Real-time streaming**: Sub-second data delivery via WebSocket
-- **Kafka consumer**: Reads from `homelab.energy` topic in Redpanda
-- **JWT authentication**: Secure WebSocket connections via Authentik
+- **Kafka consumer**: Reads from `homelab-energy-realtime` topic in Redpanda
+- **JWT authentication**: Secure WebSocket connections via Authelia
 - **Multiple clients**: Broadcasts to all connected clients
 - **Auto-reconnect**: Handles connection drops gracefully
 - **Low overhead**: Efficient Rust/Axum implementation
@@ -21,7 +21,7 @@ Energy-ws is a Rust/Axum-based WebSocket server that streams real-time power con
 - **Framework**: Axum with tokio-tungstenite for WebSocket
 - **Message Broker**: Redpanda (Kafka-compatible)
 - **Consumer Library**: rdkafka
-- **Authentication**: JWT validation (Authentik JWKS)
+- **Authentication**: JWT validation (Authelia JWKS)
 - **Container**: Multi-stage Docker build with ARM64 support
 
 ## Architecture
@@ -40,7 +40,7 @@ Energy-ws is a Rust/Axum-based WebSocket server that streams real-time power con
          ▼
 ┌──────────────────┐     WebSocket     ┌──────────────────┐
 │ Redpanda         │◄──────────────────│  energy-ws       │
-│ homelab.energy   │                   │  (this service)  │
+│ homelab-energy-realtime   │                   │  (this service)  │
 └──────────────────┘                   └────────┬─────────┘
                                                 │ WS://
                                                 ▼
@@ -53,7 +53,7 @@ Energy-ws is a Rust/Axum-based WebSocket server that streams real-time power con
 ## Data Flow
 
 1. **Shelly EM** sends power readings to MQTT broker
-2. **mqtt-kafka-bridge** publishes to Redpanda topic `homelab.energy`
+2. **mqtt-kafka-bridge** publishes to Redpanda topic `homelab-energy-realtime`
 3. **energy-ws** consumes messages from Redpanda
 4. **energy-ws** broadcasts to all connected WebSocket clients
 5. **Dashboard** displays real-time power consumption
@@ -137,4 +137,4 @@ ws.onclose = () => {
 - **Frontend**: Dashboard consuming WebSocket stream
 - **Data source**: [mqtt-kafka-bridge](../mqtt-kafka-bridge) publishes to Redpanda
 - **Message broker**: Redpanda cluster
-- **Persistence**: [redpanda-sink](../../gitops/apps/timescaledb) writes to TimescaleDB
+- **Persistence**: [Redpanda Connect sink](../../gitops/apps/timescaledb) writes to TimescaleDB

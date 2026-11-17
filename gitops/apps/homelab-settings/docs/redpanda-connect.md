@@ -1,145 +1,46 @@
-# Redpanda Connect Processor
+# Redpanda Connect
 
-## Overview
+A small Redpanda Connect Deployment in the `homelab-settings` namespace keeps the
+`settings` table in step with what the heat pump actually reports.
 
-The Redpanda Connect instance for homelab-settings acts as a message processor and gateway between the Kafka streaming platform and the device control system.
-
-## Configuration
-
-### Input
-
-Consumes from the homelab settings topic:
-
-```yaml
-input:
-  kafka:
-    addresses: ["redpanda-v2.redpanda-v2.svc.cluster.local:9092"]
-    topics: ["homelab.heatpump.settings"]
-    consumer_group: homelab-settings
+```
+homelab-heatpump-telemetry ──► mapping ──► UPSERT into settings
 ```
 
-### Processing Pipeline
+It does not send commands. Commands go out through the outbox processor.
 
-```yaml
-pipeline:
-  processors:
-    # Validate settings
-    - mapping: |
-        root = this
-        root.validated_at = now()
+## Pipeline
 
-    # Check temperature range
-    - bloblang: |
-        if this.target_temp < 18 || this.target_temp > 28 {
-          throw("Temperature out of range: %v".format(this.target_temp))
-        }
+Defined in `gitops/apps/homelab-settings/configs/homelab-settings.yaml`.
 
-    # Add metadata
-    - mapping: |
-        root.processed_by = "redpanda-connect"
-        root.version = "1.0"
-```
+| Part | What it does |
+|---|---|
+| Input | Consumes `homelab-heatpump-telemetry` with consumer group `homelab-settings` |
+| Mapping | Picks the settings fields out of the telemetry: target temperature, mode, the heating curve values and heat stop |
+| Output | `INSERT … ON CONFLICT (device_id) DO UPDATE` into `settings`, and only when a value differs, so an unchanged reading does not touch the row |
 
-### Output
+The heat pump reports its full state every cycle, which is how a setting changed on
+the heat pump's own panel ends up in the database.
 
-Sends validated settings to the heat pump control endpoint:
+## Changing it
 
-```yaml
-output:
-  http_client:
-    url: http://heatpump-control:8080/api/settings
-    verb: POST
-    headers:
-      Content-Type: application/json
-```
-
-## Monitoring
-
-### Consumer Group Status
-
-Check processing lag:
+Edit the config file, merge the PR, then restart:
 
 ```bash
-kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
-  rpk group describe homelab-settings
+kubectl rollout restart deployment/redpanda-connect -n homelab-settings
 ```
 
-### Logs
+If a new field needs a column, add a migration in the same PR.
 
-View processing logs:
+## Checking it
 
 ```bash
-kubectl logs -n homelab-settings deployment/redpanda-connect -f
+kubectl logs -n homelab-settings deployment/redpanda-connect --tail=50
+kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe homelab-settings
 ```
 
-### Metrics
-
-Available on port 4195:
-
-- `benthos_input_received_total`: Settings requests received
-- `benthos_output_sent_total`: Settings applied successfully
-- `benthos_processor_error_total`: Validation failures
-
-## Error Handling
-
-### Invalid Settings
-
-If settings fail validation:
-
-1. Error is logged
-2. Message is moved to dead-letter queue (if configured)
-3. Notification sent to monitoring system
-
-### Connection Failures
-
-If heat pump control is unreachable:
-
-1. Retry with exponential backoff
-2. After max retries, move to DLQ
-3. Alert sent to operations
-
-## Troubleshooting
-
-### Settings Not Being Applied
-
-1. Check consumer group lag:
-   ```bash
-   kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe heatpump-settings
-   ```
-
-2. Verify device control is accessible:
-   ```bash
-   kubectl exec -n homelab-settings deployment/redpanda-connect -- \
-     curl http://device-control:8080/health
-   ```
-
-3. Check for validation errors in logs:
-   ```bash
-   kubectl logs -n homelab-settings deployment/redpanda-connect | grep ERROR
-   ```
-
-### High Processing Latency
-
-1. Check Redpanda Connect resource usage:
-   ```bash
-   kubectl top pod -n homelab-settings
-   ```
-
-2. Scale if needed:
-   ```bash
-   kubectl scale -n homelab-settings deployment/redpanda-connect --replicas=2
-   ```
-
-## Deployment
-
-The service is deployed in the `homelab-settings` namespace:
-
-```bash
-kubectl get all -n homelab-settings
-```
-
-### Restart
-
-```bash
-kubectl rollout restart -n homelab-settings deployment/redpanda-connect
-```
+| Symptom | Check |
+|---|---|
+| Settings in the UI do not follow the heat pump | Lag on the `homelab-settings` group, then the logs for SQL errors |
+| SQL errors after a config change | A column in the query does not exist: the migration has not run |
+| No messages at all | The heat pump module is not publishing: check `mqtt-kafka-bridge` |

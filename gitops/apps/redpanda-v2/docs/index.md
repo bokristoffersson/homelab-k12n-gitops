@@ -7,7 +7,7 @@ Redpanda is a Kafka-compatible streaming platform deployed in the `redpanda-v2` 
 ```
 IoT Devices → MQTT (Mosquitto) → Redpanda → Consumers
                                      ↓
-                              TimescaleDB (via redpanda-sink)
+                              TimescaleDB (via Redpanda Connect)
                                      ↓
                               homelab-api (REST)
 ```
@@ -68,5 +68,5 @@ Grafana dashboards are available for monitoring cluster health, throughput, and 
 ## Related Components
 
 - **mqtt-kafka-bridge**: Redpanda Connect pipeline from MQTT to Redpanda
-- **redpanda-sink**: Consumer writing telemetry to TimescaleDB
+- **Redpanda Connect sink** (ns `timescaledb`): writes telemetry to TimescaleDB
 - **homelab-settings-api**: Consumer managing homelab settings

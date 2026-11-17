@@ -39,15 +39,17 @@ server:
   max_connections: 1000
 
 auth:
-  jwt_secret: "$(JWT_SECRET)"  # From environment
+  issuers:
+    - name: authelia
+      issuer: "https://auth.k12n.com"
+      jwks_url: "https://auth.k12n.com/jwks.json"
 ```
 
 ## Local Development
 
 ### Prerequisites
 
-- Rust 1.75+
-- Docker (for Redpanda)
+- Rust (current stable)
 - kubectl access to cluster (for port-forwarding)
 
 ### Running Locally
@@ -57,25 +59,20 @@ auth:
    kubectl port-forward -n redpanda-v2 svc/redpanda-v2 9092:9092
    ```
 
-2. **Set JWT secret:**
-   ```bash
-   export JWT_SECRET=$(kubectl get secret auth-secret -n redpanda-sink -o jsonpath='{.data.JWT_SECRET}' | base64 -d)
-   ```
-
-3. **Copy example config:**
+2. **Copy example config:**
    ```bash
    cp config/config.example.yaml config/config.yaml
    # Edit brokers to "localhost:9092" for local development
    ```
 
-4. **Run the service:**
+3. **Run the service:**
    ```bash
    cargo run
    ```
 
-5. **Test connection:**
+4. **Test connection:**
    ```bash
-   # Get a JWT token from your auth service
+   # An Authelia access token issued as a JWT (clients oauth2-proxy or homelab-macos)
    TOKEN="your-jwt-token"
 
    # Connect with wscat
@@ -94,28 +91,12 @@ cargo test --lib
 cargo test --test integration_test
 ```
 
-### End-to-End Tests (requires Docker)
-```bash
-# Start Redpanda
-docker run -d --name redpanda-test -p 9092:9092 \
-  docker.redpanda.com/redpandadata/redpanda:v24.2.19 \
-  redpanda start --mode dev-container
-
-# Run tests
-export REDPANDA_BROKERS=localhost:9092
-export JWT_SECRET=test-secret
-cargo test --test end_to_end_test -- --ignored
-
-# Cleanup
-docker rm -f redpanda-test
-```
-
 ## WebSocket Protocol
 
 ### Connection
 
 ```
-wss://api.k12n.com/ws/energy?token=<JWT_TOKEN>
+wss://homelab.k12n.com/ws/energy?token=<JWT_TOKEN>
 ```
 
 ### Client → Server Messages
@@ -170,21 +151,16 @@ wss://api.k12n.com/ws/energy?token=<JWT_TOKEN>
 }
 ```
 
-## Building Docker Image
+## Build and deploy
+
+`.github/workflows/energy-ws.yml` tests every PR and, on `main`, builds a multi-arch
+image and pushes it to GHCR as `:main`. Pick up a new image with:
 
 ```bash
-docker build -t ghcr.io/bokristoffersson/energy-ws:latest .
-docker push ghcr.io/bokristoffersson/energy-ws:latest
+kubectl rollout restart deployment/energy-ws -n energy-ws
 ```
 
-## Deployment
-
-See `/gitops/apps/energy-ws/` for Kubernetes manifests.
-
-```bash
-kubectl apply -k gitops/apps/energy-ws/
-flux reconcile kustomization energy-ws --with-source
-```
+The manifests are in `gitops/apps/energy-ws/` and are applied by Flux.
 
 ## Monitoring
 

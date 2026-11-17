@@ -9,7 +9,7 @@ Heatpump Web is a React-based single-page application (SPA) that provides:
 - **Live Power Monitoring**: Real-time energy consumption display via WebSocket
 - **Heat Pump Status**: Current operating parameters and temperatures
 - **Historical Data**: Energy consumption and temperature trends over 24 hours
-- **OAuth2 Authentication**: Integrated with Authentik for secure access
+- **OAuth2 Authentication**: Integrated with Authelia for secure access
 
 ## Features
 
@@ -26,7 +26,7 @@ Heatpump Web is a React-based single-page application (SPA) that provides:
 - **Frontend**: React 18, TypeScript, Vite
 - **Charts**: Recharts
 - **State Management**: React Query (TanStack Query)
-- **Authentication**: OAuth2/OIDC (Authentik)
+- **Authentication**: OAuth2/OIDC (Authelia)
 - **WebSocket**: Native WebSocket API with JWT authentication
 - **Deployment**: Nginx, Docker, Kubernetes
 

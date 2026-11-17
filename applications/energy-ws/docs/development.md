@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Rust 1.83+ (`rustup install stable`)
+- Rust, current stable (`rustup update stable`)
 - Access to Redpanda cluster
 - kubectl access to cluster
 
@@ -14,7 +14,7 @@ Create `.env` file:
 
 ```bash
 KAFKA_BROKERS=localhost:9092
-KAFKA_TOPIC=homelab.energy
+KAFKA_TOPIC=homelab-energy-realtime
 KAFKA_GROUP_ID=energy-ws-dev
 JWKS_URL=https://auth.k12n.com/application/o/energy-ws/jwks/
 RUST_LOG=info
@@ -75,7 +75,7 @@ kubectl port-forward -n redpanda-v2 svc/redpanda-0 9092:9092
 # Optional: Watch Kafka topic
 kafka-console-consumer \
   --bootstrap-server localhost:9092 \
-  --topic homelab.energy \
+  --topic homelab-energy-realtime \
   --from-beginning
 ```
 
@@ -98,7 +98,7 @@ wscat -c "ws://localhost:3000/ws?token=dev"
 echo '{"timestamp":"2026-01-08T19:30:00Z","power_w":2450.5}' | \
   kafka-console-producer \
     --bootstrap-server localhost:9092 \
-    --topic homelab.energy
+    --topic homelab-energy-realtime
 ```
 
 ## Code Quality
