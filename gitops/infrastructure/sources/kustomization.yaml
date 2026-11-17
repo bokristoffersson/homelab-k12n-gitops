@@ -8,5 +8,4 @@ resources:
   - longhorn.yaml
   - postgres-operator.yaml
   - redpanda.yaml
-  - actions-runner-controller.yaml
   - pihole.yaml
