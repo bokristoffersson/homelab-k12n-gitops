@@ -7,5 +7,4 @@ resources:
   - prometheus-community.yaml
   - longhorn.yaml
   - redpanda.yaml
-  - actions-runner-controller.yaml
   - pihole.yaml

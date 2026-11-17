@@ -45,8 +45,7 @@ gitops/
 │   ├── sources/             # HelmRepositories
 │   ├── crds/                # Vendored CRDs (Traefik, cert-manager, CSI VolumeSnapshot)
 │   ├── storage/             # Longhorn
-│   ├── controllers/         # cert-manager, sealed-secrets, Traefik, cloudflared
-│   └── actions-runner/      # Self-hosted GitHub Actions runners (ARC)
+│   └── controllers/         # cert-manager, sealed-secrets, Traefik, cloudflared
 └── apps/
     ├── base/                # Per-app base manifests
     └── homelab/             # Homelab overlays (one Flux Kustomization each)
