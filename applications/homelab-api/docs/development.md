@@ -111,10 +111,11 @@ Subsequent builds: ~5 minutes (only recompiles changed code)
 
 GitHub Actions workflow (`.github/workflows/homelab-api.yml`) automatically:
 
-1. Runs tests on self-hosted ARM64 runner
-2. Builds Docker image with BuildKit
-3. Pushes to ghcr.io
-4. FluxCD detects new image and deploys
+1. Runs tests on a GitHub-hosted ARM64 runner
+2. Builds a multi-arch Docker image with BuildKit
+3. Pushes to ghcr.io as `:main`
+
+Deploy the new image with `kubectl rollout restart deployment/homelab-api -n homelab-api`.
 
 ## Adding New Endpoints
 
