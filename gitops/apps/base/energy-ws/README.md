@@ -17,7 +17,7 @@ WebSocket Clients (authenticated with JWT)
 ## Features
 
 - **Real-time streaming**: WebSocket connections receive energy data as it arrives in Kafka
-- **JWT Authentication**: Same authentication as redpanda-sink REST API
+- **JWT Authentication**: Authelia access tokens validated via JWKS (RS256)
 - **Multi-platform**: Built for linux/amd64 and linux/arm64
 - **Low latency**: Direct Kafka → WebSocket path (no database)
 - **Scalable**: Supports multiple concurrent clients via broadcast channel
@@ -27,63 +27,17 @@ WebSocket Clients (authenticated with JWT)
 ### Prerequisites
 
 1. **Redpanda v2** must be running with `homelab-energy-realtime` topic
-2. **Sealed secrets controller** must be installed in the cluster
-3. **Docker image** must be available: `ghcr.io/bokristoffersson/energy-ws:main`
+2. **Docker image** must be available: `ghcr.io/bokristoffersson/energy-ws:main` (public, no pull secret)
 
-### Step 1: Create Sealed Secrets
+No secrets are needed: tokens are validated against Authelia's JWKS endpoint.
 
-SSH to your Kubernetes control node and run:
-
-```bash
-# Create auth-secret (JWT_SECRET)
-kubectl create secret generic auth-secret \
-  --namespace=energy-ws \
-  --from-literal=JWT_SECRET='0b14cc85ebe2f6177c5540dd806663ff9f9e9d087d80b290aeed98fd4689098a' \
-  --dry-run=client -o yaml | \
-kubeseal \
-  --namespace energy-ws \
-  --controller-name sealed-secrets \
-  --controller-namespace kube-system \
-  --format=yaml > gitops/apps/base/energy-ws/auth-secret-sealed.yaml
-
-# Create ghcr-secret (copy from existing namespace)
-kubectl get secret ghcr-secret -n redpanda-sink -o yaml | \
-  sed 's/namespace: redpanda-sink/namespace: energy-ws/' | \
-  kubectl apply -f -
-
-kubectl get secret ghcr-secret -n energy-ws -o yaml | \
-kubeseal \
-  --namespace energy-ws \
-  --controller-name sealed-secrets \
-  --controller-namespace kube-system \
-  --format=yaml > gitops/apps/base/energy-ws/ghcr-secret-sealed.yaml
-```
-
-### Step 2: Update Kustomization
-
-Uncomment the sealed secret resources in `kustomization.yaml`:
-
-```yaml
-resources:
-  - namespace.yaml
-  - configmap.yaml
-  - deployment.yaml
-  - service.yaml
-  - auth-secret-sealed.yaml
-  - ghcr-secret-sealed.yaml
-```
-
-### Step 3: Deploy
+### Deploy
 
 ```bash
-# Apply manifests
-kubectl apply -k gitops/apps/base/energy-ws/
-
-# OR use Flux to reconcile
 flux reconcile kustomization energy-ws --with-source
 ```
 
-### Step 4: Verify
+### Verify
 
 ```bash
 # Check pod status
@@ -184,9 +138,9 @@ wscat -c "ws://energy-ws.energy-ws.svc.cluster.local:8080/ws/energy?token=$TOKEN
 kubectl describe pod -n energy-ws -l app=energy-ws
 
 # Common issues:
-# 1. Missing sealed secrets (auth-secret or ghcr-secret)
-# 2. Image pull failures (check ghcr-secret)
-# 3. ConfigMap not found
+# 1. Image pull failures
+# 2. ConfigMap not found
+# 3. Authelia JWKS endpoint unreachable at startup
 ```
 
 ### No data received on WebSocket
@@ -202,16 +156,6 @@ kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe energy-ws
 kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk topic consume homelab-energy-realtime --num 1
 ```
 
-### Authentication failures
-
-```bash
-# Verify JWT_SECRET matches redpanda-sink
-kubectl get secret auth-secret -n energy-ws -o jsonpath='{.data.JWT_SECRET}' | base64 -d
-kubectl get secret auth-secret -n redpanda-sink -o jsonpath='{.data.JWT_SECRET}' | base64 -d
-
-# These should be identical for shared authentication
-```
-
 ## Resource Usage
 
 - **CPU**: 50m request, 500m limit
@@ -224,6 +168,6 @@ See `/applications/heatpump-web/src/services/websocket.ts` for WebSocket client 
 
 ## Related Services
 
-- **redpanda-sink**: REST API for historical energy data (shares JWT authentication)
+- **homelab-api**: REST API for historical energy data (same Authelia issuer)
 - **mqtt-input**: Publishes energy data to Redpanda topic
 - **heatpump-web**: React frontend that consumes WebSocket stream
