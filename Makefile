@@ -62,15 +62,10 @@ port-mosquitto: ## Port-forward Mosquitto MQTT (1883)
 	@echo "Port-forwarding Mosquitto MQTT at localhost:1883"
 	kubectl port-forward -n mosquitto svc/mosquitto 1883:1883
 
-.PHONY: port-traefik
-port-traefik: ## Port-forward Traefik dashboard (9000)
-	@echo "Opening Traefik dashboard at http://localhost:9000/dashboard/"
-	kubectl port-forward -n traefik svc/traefik 9000:9000
-
 .PHONY: port-prometheus
 port-prometheus: ## Port-forward Prometheus (9090)
 	@echo "Opening Prometheus at http://localhost:9090"
-	kubectl port-forward -n monitoring svc/prometheus-kube-prometheus-prometheus 9090:9090
+	kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090
 
 .PHONY: port-grafana
 port-grafana: ## Port-forward Grafana (3000)

@@ -1,151 +1,85 @@
 # AI Architectural Review
 
-## Overview
+Every pull request is reviewed by an AI agent against the rules in
+[CLAUDE.md](../CLAUDE.md). The review is a guardrail next to the automated checks
+(`Validate`, the app test workflows); it does not replace reading the diff.
 
-Every PR is automatically reviewed by an AI agent (Claude Sonnet 4.5) for compliance with architectural principles defined in CLAUDE.md.
+## How it works
 
-## What Gets Reviewed
+`.github/workflows/arch-review.yml` runs on every PR that is opened, updated or reopened.
+It calls `tools/arch-review/review_pr.py`, which:
 
-**Code changes (applications/*)**:
-- Database operations (read-only enforcement for homelab-api)
-- Authentication patterns (JWT validation)
-- Over-engineering detection (unnecessary abstractions, features not requested)
-- Security vulnerabilities (SQL injection, XSS, command injection)
+1. Diffs the PR's base and head commits. Each file's diff is capped at 50,000
+   characters.
+2. Sends the diffs, the PR title and description, and the full text of CLAUDE.md to
+   Claude. The model is set in the script (`model=` in `review_changes`).
+3. Posts one summary comment on the PR.
+4. Exits non-zero when the review recommends **REQUEST CHANGES**, which marks the
+   `architectural-review` check as failed.
 
-**Dockerfiles (applications/*/Dockerfile)**:
-- Multi-stage builds with dependency caching
-- Rust: Cargo.toml copied before src/, dummy lib.rs + main.rs for caching
-- Node.js: package.json copied before source code
-- Required build dependencies (cmake, libssl-dev for rdkafka)
+Each new push adds a new comment; older comments stay.
 
-**Tests (applications/*/tests/)**:
-- Coverage for critical paths (Kafka consumers, data writes, auth)
-- New features touching critical paths include tests
-- Test coverage appropriate for risk level
+## What it looks at
 
-**GitOps configs (gitops/**)**:
-- Proper namespace usage
-- Sealed secrets (not plain Secret manifests)
-- Resource limits and requests defined
-- FluxCD best practices
+| Area | Examples |
+|---|---|
+| Application code | homelab-api stays read-only, auth patterns, over-engineering, injection risks |
+| Dockerfiles | Multi-stage builds with dependency caching |
+| Tests | Coverage for critical paths: data writes, auth, message processing |
+| GitOps manifests | SealedSecrets instead of plain Secrets, resource limits, namespaces |
+| Migrations | File structure and the `schema_migrations` insert |
+| Workflow | Feature branches, commit message format |
 
-## Review Process
+The rules come from CLAUDE.md only. To change what the review enforces, change
+CLAUDE.md.
 
-1. **PR opened/updated** → Workflow triggered (`.github/workflows/arch-review.yml`)
-2. **Agent analyzes** changed files against CLAUDE.md principles
-3. **Agent posts** single summary comment with:
-   - ✅ Compliant aspects
-   - ❌ Violations (blocks merge)
-   - ⚠️ Warnings (advisory)
-4. **If violations found** → PR check fails (blocks merge)
-5. **Fix violations** → Push changes → Agent re-reviews automatically
-
-## Example Review Comment
+## Reading the comment
 
 ```markdown
 ## 🤖 AI Architectural Review
 
 ### ✅ Compliant
-- Dockerfile uses proper layered builds with dependency caching
-- JWT validation correctly implemented in auth middleware
+- Dockerfile uses layered builds with dependency caching
 
 ### ❌ Violations (BLOCKING)
 - **File**: `applications/homelab-api/src/handlers/energy.rs:145`
   **Violation**: Database INSERT operation detected
-  **Principle**: homelab-api must be read-only (CLAUDE.md: Rust/Backend section)
-  **Suggestion**: Move write operations to redpanda-sink service
+  **Principle**: homelab-api must be read-only
+  **Suggestion**: Write through the Redpanda Connect sink instead
 
 ### ⚠️ Warnings
-- Consider adding integration tests for new Kafka consumer logic
+- Consider adding integration tests for the new Kafka consumer logic
 
 ### 📊 Summary
-- **Total files changed**: 3
 - **Violations**: 1
 - **Warnings**: 1
 - **Recommendation**: REQUEST CHANGES
 ```
 
-## Cost
+Violations fail the check. Warnings are advice.
 
-- **Per PR**: ~$0.01-0.03 (depends on change size)
-- **Monthly estimate** (20 PRs): ~$0.50
-- **Model**: Claude Sonnet 4.5
+## Limits
 
-## Skipping Review for Specific PRs
+- The reviewer only sees the diff between the PR's base and head commits. If the branch
+  is behind `main`, changes that landed on `main` in the meantime show up as if the PR
+  reverted them. Update the branch and the next review is correct.
+- It can be wrong. It has, for example, miscounted the length of a checksum. Check a
+  blocking finding against the actual CI result before acting on it.
+- The failed check only blocks a merge if `architectural-review` is a required status
+  check in the branch protection settings.
 
-Add `[skip arch-review]` to PR title to bypass review (use sparingly for urgent hotfixes or documentation-only changes).
+## Skipping
 
-**Example**: `[skip arch-review] docs: update README`
+Put `[skip arch-review]` in the PR title. The workflow still runs but exits without
+calling the model.
 
-## Configuration
+## Setup
 
-**Required GitHub Secret**:
-- `ANTHROPIC_API_KEY` - Claude API key for reviews
+| Item | Value |
+|---|---|
+| Secret | `ANTHROPIC_API_KEY` in the repository secrets |
+| Permissions | `contents: read`, `pull-requests: write` |
+| Dependencies | `tools/arch-review/requirements.txt` |
 
-**Workflow triggers**:
-- Pull request opened
-- Pull request synchronized (new commits pushed)
-- Pull request reopened
-
-**Permissions**:
-- `contents: read` - Read repository files
-- `pull-requests: write` - Post review comments
-- `checks: write` - Set PR check status
-
-## Troubleshooting
-
-**Review not running?**
-- Check GitHub Actions tab for workflow errors
-- Verify `ANTHROPIC_API_KEY` is set in repository secrets
-- Ensure workflow file exists at `.github/workflows/arch-review.yml`
-
-**False positives?**
-- Agent provides detailed explanations for each violation
-- If incorrect, add `[skip arch-review]` to PR title and proceed manually
-- Consider updating CLAUDE.md if principle needs clarification
-
-**Review taking too long?**
-- Typical review: 10-20 seconds
-- Large PRs (50+ files): up to 60 seconds
-- If timeout occurs, check Anthropic API status
-
-## How It Works
-
-1. **Fetch changed files** - Git diff between base and head refs
-2. **Read principles** - Load CLAUDE.md architectural guidelines
-3. **Build context** - Combine file diffs + principles + PR metadata
-4. **AI analysis** - Send to Claude Sonnet 4.5 with structured prompt
-5. **Parse response** - Extract violations, warnings, compliant aspects
-6. **Post comment** - Single summary comment on PR
-7. **Set status** - Success (✅) or failure (❌) check status
-8. **Block/allow merge** - Exit code determines if PR can merge
-
-## Benefits
-
-- **Prevents architectural drift** - Catches violations before merge
-- **Educational** - Developers learn principles through review feedback
-- **Consistent** - Same standards applied to all PRs
-- **Low maintenance** - Update CLAUDE.md, no code changes needed
-- **Cost-effective** - ~$0.50/month for comprehensive reviews
-
-## Limitations
-
-- **Not a replacement for human review** - AI assists, doesn't replace code review
-- **Context limits** - Very large PRs (100+ files) may hit token limits
-- **Interpretation variance** - AI may occasionally miss edge cases
-- **Best for homelab scale** - Optimized for small team, moderate PR volume
-
-## Contributing
-
-To improve the AI review system:
-
-1. **Update principles** - Edit CLAUDE.md to add/clarify guidelines
-2. **Refine prompts** - Modify `tools/arch-review/review_pr.py` prompt section
-3. **Adjust sensitivity** - Update violation detection logic in script
-4. **Test changes** - Create test PR with `[skip arch-review]` to verify manually
-
-## Support
-
-- **Issues**: GitHub Issues on this repository
-- **Documentation**: See CLAUDE.md for architectural principles
-- **Logs**: Check GitHub Actions workflow logs for debugging
+If no comment appears, open the workflow run under the Actions tab; a missing or invalid
+API key is the usual cause.

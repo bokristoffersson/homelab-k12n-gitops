@@ -35,7 +35,7 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **heatpump-web**: React/TypeScript frontend SPA
 - **homelab-settings-api**: Rust/Axum API managing homelab settings including heatpump (Kafka consumer: `homelab-settings-api` group)
 - **energy-ws**: Rust/Axum WebSocket server streaming real-time energy data from Redpanda
-- **redpanda-sink**: Kafka consumer writing telemetry to TimescaleDB
+- **TimescaleDB sink**: Redpanda Connect deployment in ns `timescaledb` (`redpanda-connect`) that writes telemetry topics into TimescaleDB. Config in `gitops/apps/timescaledb/configs/`; there is no custom sink service
 - **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
 - **gasa-api / gasa-web**: driving-practice booking app at `https://gasa.k12n.com` (Rust/Axum + React) with dedicated PostgreSQL in ns `gasa`. Auth differs from the other apps: the whole subdomain sits behind oauth2-proxy ForwardAuth and the API trusts only `X-Auth-Request-*` headers (no JWT validation); admin = email allowlist in `gitops/apps/gasa/configs/gasa-api-config.yaml`. Migrations live in `gitops/apps/gasa/migrations/`.
 - **minecraft**: itzg/minecraft-server in ns `minecraft`, pinned to `m720q` (Longhorn PVC), LAN-exposed via ServiceLB
@@ -62,7 +62,7 @@ See `docs/AUTHENTICATION.md` for complete details.
 
 ### Data Pipeline
 ```
-IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → TimescaleDB (via redpanda-sink)
+IoT Device → MQTT (Mosquitto) → Redpanda (via mqtt-kafka-bridge) → TimescaleDB (via Redpanda Connect sink)
                                                                     ↓
                                                               homelab-api (REST)
                                                                     ↓
@@ -120,7 +120,7 @@ Detailed explanation...
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 
@@ -345,7 +345,7 @@ RUN npm run build
 - **NEVER** create database write operations (INSERT, UPDATE, DELETE)
 - **NEVER** add Redpanda/Kafka consumer logic
 - Purpose: Query and serve existing telemetry data only
-- Data writes are handled exclusively by redpanda-sink service
+- Data writes are handled exclusively by the Redpanda Connect sink in ns `timescaledb`
 
 **Code Guidelines**:
 - Run `cargo fmt` before committing
@@ -372,14 +372,14 @@ RUN npm run build
 #### What to Test
 
 **CRITICAL (must have tests)**:
-- **Data writes**: redpanda-sink's Kafka → TimescaleDB pipeline
+- **Data writes**: the Kafka → TimescaleDB sink pipeline
 - **Authentication**: JWT validation in all APIs
 - **Message processing**: Kafka consumer logic (deserialization, business rules)
 - **Database migrations**: Schema changes must be validated
 
 **IMPORTANT (should have tests)**:
 - **API contracts**: REST endpoints returning correct data shapes
-- **Settings mutations**: heatpump-settings-api state changes
+- **Settings mutations**: homelab-settings-api state changes
 - **Time-series queries**: TimescaleDB aggregations and date ranges
 
 **OPTIONAL (manual testing OK)**:
@@ -418,7 +418,7 @@ RUN npm run build
 
 **Purpose**: Automated guardrails for developers (including AI assistants) to ensure code quality and architectural compliance.
 
-All PRs are automatically reviewed by an AI agent (Claude Sonnet 4.5) that acts as a **senior architect**. The agent:
+All PRs are automatically reviewed by an AI agent (model set in `tools/arch-review/review_pr.py`) that acts as a **senior architect**. The agent:
 - **Reviews against CLAUDE.md rules** - Checks compliance with all architectural principles in this document
 - **Posts detailed feedback** - Summary comment with violations, suggestions, and rationale
 - **Blocks merge on violations** - Critical issues prevent PR merge until fixed
@@ -444,6 +444,15 @@ All PRs are automatically reviewed by an AI agent (Claude Sonnet 4.5) that acts 
 This ensures high code quality even when working with AI coding assistants. The AI agent acts as a **guardrail** to catch common mistakes and enforce best practices.
 
 See `docs/ARCH_REVIEW.md` for complete details.
+
+### CI Checks and Dependency Updates
+
+- **Manifests**: `scripts/validate-gitops.sh` renders every path Flux reconciles and validates it with kubeconform. Run it with `make lint`; it also runs as a prek hook and in the `Validate` workflow on every PR.
+- **Hooks**: `.pre-commit-config.yaml` (prek) runs gitleaks, actionlint, zizmor, shellcheck, shfmt and the Renovate config validator on changed files. `make hooks` runs them against `origin/main`.
+- **Rust services**: the shared test workflow (`.github/workflows/_rust-test.yml`) denies compiler and clippy warnings and unused dependencies, and runs `cargo audit`. Advisories that cannot be fixed are ignored with a reason in the app's `.cargo/audit.toml`.
+- **New app**: add a workflow that calls `_rust-test.yml` (Rust) and `_docker-multiarch.yml`, a directory `gitops/apps/<app>/` with a `kustomization.yaml`, and a Flux Kustomization in `gitops/clusters/homelab/apps.yaml`. There are no kustomize overlays.
+- **Workflows**: pin every action to a commit SHA, reference in-repo workflows as `uses: $/.github/workflows/...`, set `permissions` explicitly and `persist-credentials: false`.
+- **Renovate** (`renovate.json`) opens dependency PRs weekly. Do not hand-bump versions it tracks unless fixing an advisory.
 
 ## Common Commands
 
@@ -524,17 +533,15 @@ gitops/
 └── infrastructure/
     └── controllers/    # Infrastructure controllers (Flux, Traefik, etc.)
 
-applications/
-├── homelab-api/        # Rust backend
-├── heatpump-web/       # React frontend
-└── redpanda-sink/      # Kafka consumer
-
-docs/
-└── AUTHENTICATION.md   # Authentication architecture documentation
+applications/           # Source for the in-house services (Rust, React, Python)
+.github/workflows/      # One workflow per app; _rust-test.yml and _docker-multiarch.yml are shared
+scripts/                # validate-gitops.sh (manifest validation), rerun-postgres-migration.sh
+docs/                   # Architecture, authentication, backups, runbooks
 ```
 
 ## Recent Changes
 
+- Repo cleanup: flattened `gitops/apps` (no kustomize base/overlay), removed the unused ARC runners, heatpump-web-leptos, mqtt-generator and old plans/scripts; added manifest validation + prek hooks, shared CI workflows with strict lints, and Renovate (2026-11-17)
 - Deployed granbok 0.4.0 (bookkeeping, LAN-only) with nightly object-locked backup to AWS; added `longhorn-retain` StorageClass; ClusterIssuers now select by `dnsZones: k12n.com` (2026-11-13)
 - Added Pi-hole metrics (pihole-exporter sidecar + PodMonitor via the mojo2600 chart) and a Grafana "Pi-hole" dashboard in the Homelab folder (2026-09-25)
 - Hardened gasa backup CronJob against dump retries leaving multiple files in the shared emptyDir (2026-08-21)
