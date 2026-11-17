@@ -1,0 +1,72 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":dependencyDashboard"
+  ],
+  "timezone": "Europe/Stockholm",
+  "schedule": ["before 7am on monday"],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
+  "prConcurrentLimit": 8,
+  "labels": ["dependencies"],
+  "flux": {
+    "managerFilePatterns": ["/^gitops/.+\\.ya?ml$/"]
+  },
+  "kubernetes": {
+    "managerFilePatterns": ["/^gitops/.+\\.ya?ml$/"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 7am on monday"]
+  },
+  "packageRules": [
+    {
+      "description": "One PR per app for application dependencies, so one app's failing build does not block the others",
+      "matchFileNames": ["applications/**"],
+      "additionalBranchPrefix": "{{parentDir}}-",
+      "commitMessageSuffix": "({{parentDir}})"
+    },
+    {
+      "description": "Group non-major library updates per ecosystem",
+      "matchManagers": ["cargo", "npm", "pep621"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "non-major dependencies"
+    },
+    {
+      "description": "Group GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions"
+    },
+    {
+      "description": "Own images are deployed as :main and built in CI; nothing to look up",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["ghcr.io/bokristoffersson/**"],
+      "enabled": false
+    },
+    {
+      "description": "Database major versions need a dump and restore; never propose them",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres", "timescale/timescaledb"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Storage and time-series DB upgrades have manual steps; create the PR only after approval in the dependency dashboard",
+      "matchPackageNames": ["longhorn", "timescale/timescaledb"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "granbok holds legally retained bookkeeping data: patch updates only, and its database and object store are left alone",
+      "matchFileNames": ["gitops/**/granbok/**"],
+      "matchUpdateTypes": ["major", "minor"],
+      "enabled": false
+    },
+    {
+      "matchFileNames": ["gitops/**/granbok/**"],
+      "matchPackageNames": ["postgres", "rustfs/rustfs"],
+      "enabled": false
+    }
+  ]
+}
