@@ -61,7 +61,7 @@ if [ -f "Cargo.toml" ]; then
         AUDIT_EXIT=$?
         if grep -qi "vulnerability\|unsound\|yanked" /tmp/cargo-audit-output.txt; then
             echo -e "${RED}❌ Backend: Vulnerabilities found!${NC}"
-            echo "Run 'cargo audit fix' in applications/heatpump-settings-api/ to fix automatically (if available)"
+            echo "Run 'cargo audit fix' in applications/homelab-settings-api/ to fix automatically (if available)"
             EXIT_CODE=1
         else
             echo -e "${YELLOW}⚠️ Backend: cargo audit encountered an error${NC}"
