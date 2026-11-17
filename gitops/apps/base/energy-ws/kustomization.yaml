@@ -6,6 +6,3 @@ resources:
   - configmap.yaml
   - deployment.yaml
   - service.yaml
-  # TODO: Uncomment after creating sealed secrets on control node
-  # - auth-secret-sealed.yaml
-  # - ghcr-secret-sealed.yaml
