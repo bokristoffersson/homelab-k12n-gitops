@@ -1,206 +1,102 @@
 # Data Flow
 
-## End-to-End Data Pipeline
+How a reading gets from a device to a chart, and how a command gets back to a device.
 
-This document explains how data flows from IoT devices to visualization dashboards.
-
-## 1. Device Data Collection
-
-### MQTT Publishing
-
-IoT devices publish data to the Mosquitto MQTT broker:
+## Telemetry: device to dashboard
 
 ```
-Device → MQTT PUBLISH → mosquitto.mosquitto.svc:1883
+Device ─► Mosquitto ─► mqtt-kafka-bridge ─► Redpanda ─┬─► Redpanda Connect sink ─► TimescaleDB ─► homelab-api ─► heatpump-web
+ (MQTT)                (Redpanda Connect)             │
+                                                      ├─► energy-ws ─► WebSocket clients
+                                                      └─► homelab-settings (reported device state)
 ```
 
-**Example Energy Meter Data:**
-```json
-{
-  "topic": "homelab/energy/meter1",
-  "payload": {
-    "timestamp": "2026-01-03T16:00:00Z",
-    "total_energy_kwh": 12.45,
-    "power_kw": 3.2,
-    "voltage": 230,
-    "current": 13.9
-  }
-}
-```
+| Step | Component | What happens |
+|---|---|---|
+| 1 | Device | Publishes to Mosquitto (`mosquitto.mosquitto.svc:1883`; exposed on the LAN at port 1883) |
+| 2 | `mqtt-kafka-bridge` | Subscribes to the device topics, reshapes each payload and produces to a Redpanda topic |
+| 3 | Redpanda | Holds the message for its retention period so each consumer reads at its own pace |
+| 4 | Redpanda Connect sink (ns `timescaledb`) | Inserts rows into TimescaleDB |
+| 5 | `homelab-api` | Serves the stored data over REST. It only reads. |
+| 6 | `heatpump-web` | Fetches from the API and renders charts |
 
-## 2. MQTT to Kafka Bridge
+### Sources
 
-The MQTT-Kafka bridge subscribes to MQTT topics and publishes to Kafka:
+| Device | MQTT topic | Redpanda topic | TimescaleDB table |
+|---|---|---|---|
+| SaveEye energy meter | `saveeye/telemetry` | `homelab-energy-realtime` | `energy_consumption` |
+| ThermIQ heat pump module | `thermiq_heatpump/data` | `homelab-heatpump-telemetry` | `heatpump_status` |
+| Shelly H&T Gen3 | `shellyhtg3-e4b32322a0f4/events/rpc` | `homelab-temperature-indoor` | `temperature_sensors` |
+| Tasmota plugs | `tele/+/STATE`, `stat/+/POWER` | `homelab-plug-telemetry` | (state kept in homelab-settings) |
 
-```
-Mosquitto → MQTT Subscribe → MQTT-Kafka Bridge → Kafka Publish → Redpanda
-```
+See [kafka-topics.md](kafka-topics.md) for retention and consumer groups.
 
-**Topic Mapping:**
-- `homelab/energy/#` → `homelab.energy`
-- `homelab/heatpump/#` → `homelab.heatpump`
-- `homelab/temperature/#` → `homelab.temperature`
+Spot prices do not come through this pipeline: `spotprice-api` fetches them from Nord
+Pool once a day and writes `spot_prices` itself.
 
-**Enrichment:**
-- Add processing timestamp
-- Add source metadata
-- Validate payload structure
+### Storage
 
-## 3. Kafka Distribution
+Raw telemetry tables are hypertables with a 90-day retention policy (`spot_prices`: 30
+days). Continuous aggregates such as `energy_hourly` and `energy_daily_summary` are what
+the API serves for longer ranges. The schema lives in `gitops/apps/timescaledb/migrations/`.
 
-Redpanda distributes messages to multiple consumers:
+### Real-time path
 
-```
-Redpanda Topic
-    ├── Consumer Group: timescaledb-energy
-    ├── Consumer Group: energy-ws
-    └── Consumer Group: analytics (future)
-```
+`energy-ws` consumes `homelab-energy-realtime` directly and pushes each reading to
+connected WebSocket clients at `wss://homelab.k12n.com/ws/energy`, so the live power
+gauge does not wait for the database.
 
-**Benefits:**
-- Multiple consumers process same data independently
-- Each consumer tracks its own offset
-- No data duplication in storage
-
-## 4. Data Storage (TimescaleDB)
-
-Redpanda Connect sinks consume from Kafka and write to TimescaleDB:
+## Commands: dashboard to device
 
 ```
-Kafka → Redpanda Sink → TimescaleDB Table
+heatpump-web ─► homelab-settings-api ─► PostgreSQL (setting + outbox row, one transaction)
+                                              │
+                               outbox processor ─► Mosquitto ─► device
+                                              ▲                    │
+                                              └── confirmation ◄───┘  (telemetry echo via Redpanda)
 ```
 
-**Processing Steps:**
-1. Consume message from Kafka
-2. Parse and validate JSON
-3. Transform to table schema
-4. INSERT into hypertable
-5. Commit Kafka offset
+1. The API writes the new setting and an outbox row in one transaction.
+2. The outbox processor publishes the command to MQTT.
+3. A plug command counts as confirmed only when the plug echoes the matching state on
+   its telemetry topic. Unconfirmed commands are republished, then marked failed.
+4. A reconciler re-issues commands while a plug's desired and reported state disagree.
 
-**Example SQL Insert:**
-```sql
-INSERT INTO energy_readings (timestamp, device_id, total_energy_kwh, power_kw)
-VALUES ('2026-01-03T16:00:00Z', 'meter1', 12.45, 3.2);
+HomeKit commands from Homebridge skip steps 1 and 2 and go straight to Mosquitto. The
+state echo keeps the database consistent. The full rules are in "Write Paths to
+Devices" in [CLAUDE.md](../CLAUDE.md), and the design is recorded in
+[ADR-001](adr/001-transactional-outbox-for-heatpump-settings.md).
+
+## What happens when a part is down
+
+| Component down | Effect |
+|---|---|
+| A consumer (sink, energy-ws) | Messages wait in Redpanda. The consumer resumes from its committed offset, as long as it returns within the topic's retention. |
+| Redpanda | The bridge cannot produce; readings published meanwhile are lost. |
+| TimescaleDB | The sink stops and catches up afterwards, within retention. |
+| Mosquitto | Devices cannot publish, and commands stay queued in the outbox. |
+
+Redpanda runs as a single node with one replica per topic, so it is not highly
+available.
+
+## Following a reading through the pipeline
+
+```bash
+# 1. Is the device publishing? (run `make port-mosquitto` first; the broker requires
+#    a username and password)
+mosquitto_sub -h localhost -u <user> -P <password> -t 'saveeye/telemetry' -C 1
+
+# 2. Did it reach Redpanda?
+kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
+  rpk topic consume homelab-energy-realtime --num 1
+
+# 3. Is the sink keeping up?
+kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe timescaledb-energy
+
+# 4. Are the bridge and sink healthy?
+kubectl logs -n mqtt-kafka-bridge deployment/mqtt-kafka-bridge --tail=20
+kubectl logs -n timescaledb deployment/redpanda-connect --tail=20
 ```
 
-## 5. Real-Time Streaming (WebSocket)
-
-The Energy WebSocket server consumes from Kafka and streams to browsers:
-
-```
-Kafka → energy-ws Consumer → WebSocket → Browser
-```
-
-**Features:**
-- Real-time updates (< 1s latency)
-- Multiple concurrent clients
-- Message filtering by device
-- Automatic reconnection
-
-## 6. API Access
-
-Applications query historical data via Homelab API:
-
-```
-Browser → Homelab API → TimescaleDB → JSON Response
-```
-
-**Example API Request:**
-```
-GET /api/v1/energy/latest
-GET /api/v1/energy/hourly?start=2026-01-03T00:00:00Z&end=2026-01-03T23:59:59Z
-```
-
-## 7. Visualization
-
-### Grafana
-
-Grafana queries TimescaleDB directly for dashboards:
-
-```
-Grafana → PostgreSQL Query → TimescaleDB → Visualization
-```
-
-**Query Example:**
-```sql
-SELECT
-  time_bucket('1 hour', timestamp) AS hour,
-  AVG(power_kw) AS avg_power
-FROM energy_readings
-WHERE timestamp > NOW() - INTERVAL '24 hours'
-GROUP BY hour
-ORDER BY hour;
-```
-
-### Web Dashboards
-
-React applications fetch data from Homelab API:
-
-```
-Heatpump Web SPA → HTTP GET → Homelab API → JSON → Chart Rendering
-```
-
-## Data Latency
-
-| Stage | Latency | Description |
-|-------|---------|-------------|
-| Device → MQTT | < 100ms | IoT device publishes |
-| MQTT → Kafka | < 200ms | Bridge processing |
-| Kafka → TimescaleDB | < 500ms | Sink batch write |
-| Kafka → WebSocket | < 100ms | Real-time stream |
-| **Total (end-to-end)** | **< 1s** | Device to visualization |
-
-## Data Volume
-
-Approximate message rates:
-
-- **Energy Meters**: 1 msg/sec per meter (2 meters) = 2 msg/sec
-- **Heat Pump**: 1 msg/30sec = 0.03 msg/sec
-- **Temperature Sensors**: 1 msg/5min per sensor (5 sensors) = 0.017 msg/sec
-
-**Total**: ~2-3 messages/second, ~200K messages/day
-
-## Failure Handling
-
-### Message Loss Prevention
-
-1. **Kafka Replication**: 3 replicas per partition
-2. **Consumer Offsets**: Committed only after processing
-3. **Dead Letter Queues**: Failed messages retained
-4. **Database Transactions**: ACID compliance
-
-### Retry Logic
-
-```
-Kafka Message → Process → Success?
-                         ├─ Yes → Commit Offset
-                         └─ No → Retry (3x) → DLQ
-```
-
-## Monitoring Data Flow
-
-### Check End-to-End
-
-1. **Device Publishing**:
-   ```bash
-   mosquitto_sub -h mosquitto.mosquitto.svc -t "homelab/#"
-   ```
-
-2. **Kafka Topics**:
-   ```bash
-   rpk topic consume homelab.energy --num 10
-   ```
-
-3. **Consumer Lag**:
-   ```bash
-   rpk group describe timescaledb-energy
-   ```
-
-4. **Database Writes**:
-   ```sql
-   SELECT COUNT(*) FROM energy_readings WHERE timestamp > NOW() - INTERVAL '1 minute';
-   ```
-
-5. **WebSocket Streaming**:
-   - Open browser DevTools → Network → WS
-   - Watch messages flowing in real-time
+The `monitoring-health-check` CronJob runs these checks every 15 minutes and posts to
+Slack when data goes stale. See [monitoring.md](monitoring.md).

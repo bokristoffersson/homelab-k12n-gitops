@@ -1,432 +1,178 @@
-# Database Backup Setup Guide
+# Backups
 
-This guide covers setting up automated database backups to AWS S3 for both TimescaleDB and PostgreSQL databases.
+What is backed up, how to check and restore it, and how to add a backup for a new
+database.
 
-## Overview
+## What is backed up
 
-- **TimescaleDB**: Daily backups at 2:00 AM
-- **Heatpump Settings (PostgreSQL)**: Daily backups at 2:15 AM
-- **Storage**: AWS S3 with lifecycle policies
-- **Format**: Compressed SQL dumps (gzip)
-- **Retention**: Configurable via S3 lifecycle policies
+| Data | Namespace | CronJob | Schedule (UTC) | Format | AWS secret |
+|---|---|---|---|---|---|
+| TimescaleDB (`telemetry`) | `timescaledb` | `timescaledb-backup` | 02:00 | `pg_dump`, gzip | `timescaledb-backup-aws` |
+| Backstage PostgreSQL | `backstage` | `backstage-postgres-backup` | 02:00 | `pg_dumpall`, gzip | `backstage-backup-aws` |
+| homelab-settings PostgreSQL | `homelab-settings` | `postgres-backup` | 02:15 | `pg_dump`, gzip | `postgres-backup-aws` |
+| gasa PostgreSQL | `gasa` | `postgres-backup` | 02:45 | `pg_dump`, gzip | `postgres-backup-aws` |
+| granbok (database + documents) | `granbok` | `granbok-backup` | 03:30 | `pg_dump --format=custom` + document sync | `granbok-backup-aws` |
+| etcd | host (`m720q`) | k3s snapshot | 03:00 | etcd snapshot | `k3s-etcd-snapshot-s3-config` |
 
-## Prerequisites
+Not backed up, by design:
 
-- AWS account with S3 access
-- AWS CLI installed locally (for initial setup)
-- `kubectl` access to your cluster
-- `kubeseal` installed for creating sealed secrets
+- **Authelia** has no database. Its users are a SealedSecret in Git, and session state is
+  disposable.
+- **Prometheus, Loki and Redpanda** hold data that is either short-lived or already
+  persisted in TimescaleDB.
 
-## Step 1: Create AWS S3 Bucket
+### How the database jobs work
 
-### Using AWS Console
+Each job dumps the database, compresses it, uploads it to S3 and then lists the object
+to confirm it arrived. The job fails if the dump is empty. The file name carries a
+timestamp, for example `telemetry-20261117-020003.sql.gz`.
 
-1. Navigate to AWS S3 Console
-2. Click "Create bucket"
-3. Configure:
-   - **Bucket name**: `k12n-homelab-db-backups` (or your preferred name)
-   - **Region**: Choose your preferred region (e.g., `eu-north-1`)
-   - **Block Public Access**: Keep all boxes checked (block all public access)
-   - **Versioning**: Optional, recommended for safety
-   - **Encryption**: Enable server-side encryption (SSE-S3)
-4. Click "Create bucket"
+Bucket, prefix and region come from the job's AWS secret (`S3_BUCKET`, `S3_PREFIX`,
+`AWS_REGION`). The four application databases share the bucket `k12n-homelab-db-backups`
+in `eu-north-1`:
 
-### Using AWS CLI
+| Database | Prefix |
+|---|---|
+| TimescaleDB | `timescaledb-backups/` |
+| homelab-settings | `homelab-settings-postgres/` |
+| gasa | `gasa/` |
+| Backstage | `backstage-postgres-backups/` |
+
+### granbok
+
+granbok is bookkeeping data under a seven-year legal retention requirement, so it has
+its own bucket, `k12n-granbok-backups`, with versioning and object lock (Governance mode,
+8 years). The backup credentials can write, read and list, but cannot delete.
+
+```
+granbok/db/<UTC timestamp>/granbok.dump      # pg_dump, custom format
+granbok/db/<UTC timestamp>/completed-at      # written last; marks a complete backup
+granbok/documents/<company>/<sha256>         # content-addressed, never rewritten
+```
+
+Never restore into or edit the live granbok database or object store by hand. Follow
+the granbok repository's own instructions (`deploy/HOMELAB.md` lists its homelab
+requirements).
+
+### etcd
+
+k3s takes a snapshot daily, keeps it on `m720q` and uploads it to S3 under
+`etcd-snapshots/` (14 retained). Restoring also needs the server token from
+`/var/lib/rancher/k3s/server/token`; keep a copy outside the cluster.
+
+## Checking that backups run
 
 ```bash
-# Set your preferred region and bucket name
-export AWS_REGION="eu-north-1"
-export BUCKET_NAME="k12n-homelab-db-backups"
-
-# Create the bucket
-aws s3 mb s3://${BUCKET_NAME} --region ${AWS_REGION}
-
-# Enable versioning (optional but recommended)
-aws s3api put-bucket-versioning \
-  --bucket ${BUCKET_NAME} \
-  --versioning-configuration Status=Enabled
-
-# Enable encryption
-aws s3api put-bucket-encryption \
-  --bucket ${BUCKET_NAME} \
-  --server-side-encryption-configuration '{
-    "Rules": [{
-      "ApplyServerSideEncryptionByDefault": {
-        "SSEAlgorithm": "AES256"
-      },
-      "BucketKeyEnabled": true
-    }]
-  }'
+kubectl get cronjobs -A | grep backup          # last schedule and last success
+kubectl get jobs -n timescaledb                # recent runs
+kubectl logs -n timescaledb job/<job-name>     # output of one run
 ```
 
-## Step 2: Create IAM User and Policy
+Alerts exist for granbok only: `GranbokBackupFailed`, `GranbokBackupStale` (no success
+in 36 hours) and `GranbokBackupNeverSucceeded`. The other jobs have no alert; a failed
+run shows up as a failed Job.
 
-### Create IAM Policy
-
-Create a policy file `backup-policy.json`:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowBackupOperations",
-      "Effect": "Allow",
-      "Action": [
-        "s3:PutObject",
-        "s3:GetObject",
-        "s3:ListBucket",
-        "s3:DeleteObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::k12n-homelab-db-backups",
-        "arn:aws:s3:::k12n-homelab-db-backups/*"
-      ]
-    }
-  ]
-}
-```
-
-### Create IAM User
-
-Using AWS Console:
-1. Navigate to IAM → Users → Create user
-2. User name: `homelab-db-backup`
-3. Attach the policy created above
-4. Create access key for "Application running outside AWS"
-5. Save the Access Key ID and Secret Access Key
-
-Using AWS CLI:
+### Run a backup now
 
 ```bash
-# Create IAM user
-aws iam create-user --user-name homelab-db-backup
-
-# Create policy
-aws iam create-policy \
-  --policy-name homelab-db-backup-policy \
-  --policy-document file://backup-policy.json
-
-# Attach policy to user (replace ACCOUNT_ID with your AWS account ID)
-aws iam attach-user-policy \
-  --user-name homelab-db-backup \
-  --policy-arn arn:aws:iam::ACCOUNT_ID:policy/homelab-db-backup-policy
-
-# Create access key
-aws iam create-access-key --user-name homelab-db-backup
+kubectl create job backup-manual --from=cronjob/timescaledb-backup -n timescaledb
+kubectl logs -n timescaledb job/backup-manual --follow
+kubectl delete job backup-manual -n timescaledb
 ```
 
-Save the Access Key ID and Secret Access Key from the output.
+Use the namespace and CronJob name from the table for the other databases.
 
-## Step 3: Configure S3 Lifecycle Policy
+## Restoring
 
-Configure automatic deletion of old backups to manage costs.
+These steps cover TimescaleDB, homelab-settings, gasa and Backstage. A restore
+overwrites live data, so stop the services that write to the database first.
 
-### Example: Keep 30 Days of Backups
+1. Find and download the dump:
 
-Using AWS Console:
-1. Navigate to S3 → Your bucket → Management tab
-2. Create lifecycle rule:
-   - **Name**: `delete-old-backups`
-   - **Scope**: Apply to all objects
-   - **Lifecycle rule actions**:
-     - ✅ Expire current versions of objects
-   - **Days after object creation**: 30
-3. Save
+   ```bash
+   aws s3 ls s3://k12n-homelab-db-backups/<prefix>/
+   aws s3 cp s3://k12n-homelab-db-backups/<prefix>/<file>.sql.gz .
+   gunzip <file>.sql.gz
+   ```
 
-Using AWS CLI:
+2. Forward the database port:
 
-Create `lifecycle-policy.json`:
+   | Database | Command |
+   |---|---|
+   | TimescaleDB | `kubectl port-forward -n timescaledb svc/timescaledb 5432:5432` |
+   | homelab-settings | `kubectl port-forward -n homelab-settings svc/postgres 5432:5432` |
+   | gasa | `kubectl port-forward -n gasa svc/postgres 5432:5432` |
+   | Backstage | `kubectl port-forward -n backstage svc/backstage-postgres 5432:5432` |
 
-```json
-{
-  "Rules": [
-    {
-      "Id": "DeleteOldBackups",
-      "Status": "Enabled",
-      "Expiration": {
-        "Days": 30
-      },
-      "Filter": {}
-    }
-  ]
-}
-```
+3. Load the dump from another terminal. The user and password are in the database's
+   credentials secret in the same namespace.
 
-Apply it:
+   ```bash
+   psql -h localhost -U <user> -d <database> < <file>.sql
+   ```
 
-```bash
-aws s3api put-bucket-lifecycle-configuration \
-  --bucket k12n-homelab-db-backups \
-  --lifecycle-configuration file://lifecycle-policy.json
-```
+   The Backstage dump is a `pg_dumpall` of every database and role; load it with
+   `-d postgres`.
 
-### Alternative: Transition to Cheaper Storage
+4. Restart the services that use the database.
 
-For longer retention with cost optimization:
+## Adding a backup for a new database
 
-```json
-{
-  "Rules": [
-    {
-      "Id": "TransitionAndDelete",
-      "Status": "Enabled",
-      "Transitions": [
-        {
-          "Days": 30,
-          "StorageClass": "STANDARD_IA"
-        },
-        {
-          "Days": 90,
-          "StorageClass": "GLACIER_IR"
-        }
-      ],
-      "Expiration": {
-        "Days": 365
-      },
-      "Filter": {}
-    }
-  ]
-}
-```
+1. **Pick a prefix** in `k12n-homelab-db-backups`, or create a bucket with versioning
+   and default encryption enabled.
 
-This policy:
-- Keeps daily backups in S3 Standard for 30 days
-- Moves to S3 Infrequent Access (cheaper) after 30 days
-- Moves to Glacier Instant Retrieval after 90 days
-- Deletes after 1 year
+2. **Create an IAM user** whose policy is limited to that bucket:
 
-## Step 4: Create Kubernetes Sealed Secrets
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
+         "Resource": [
+           "arn:aws:s3:::k12n-homelab-db-backups",
+           "arn:aws:s3:::k12n-homelab-db-backups/*"
+         ]
+       }
+     ]
+   }
+   ```
 
-### For TimescaleDB
+   The job never deletes. Let an S3 lifecycle rule expire old dumps instead of granting
+   `s3:DeleteObject`.
 
-```bash
-# Replace with your actual AWS credentials
-kubectl create secret generic timescaledb-backup-aws \
-  --namespace=timescaledb \
-  --from-literal=AWS_ACCESS_KEY_ID='YOUR_ACCESS_KEY_ID' \
-  --from-literal=AWS_SECRET_ACCESS_KEY='YOUR_SECRET_ACCESS_KEY' \
-  --from-literal=AWS_REGION='eu-north-1' \
-  --from-literal=S3_BUCKET='k12n-homelab-db-backups' \
-  --from-literal=S3_PREFIX='timescaledb-backups' \
-  --dry-run=client -o yaml | \
-kubeseal \
-  --namespace timescaledb \
-  --controller-name sealed-secrets \
-  --controller-namespace kube-system \
-  --format=yaml > gitops/apps/timescaledb/backup-aws-credentials-sealed.yaml
-```
+3. **Seal the credentials** into the app's directory:
 
-### For Heatpump-Settings PostgreSQL
+   ```bash
+   kubectl create secret generic postgres-backup-aws \
+     --namespace=<namespace> \
+     --from-literal=AWS_ACCESS_KEY_ID='...' \
+     --from-literal=AWS_SECRET_ACCESS_KEY='...' \
+     --from-literal=AWS_REGION='eu-north-1' \
+     --from-literal=S3_BUCKET='k12n-homelab-db-backups' \
+     --from-literal=S3_PREFIX='<app>-backups' \
+     --dry-run=client -o yaml | \
+   kubeseal \
+     --namespace <namespace> \
+     --controller-name sealed-secrets \
+     --controller-namespace kube-system \
+     --format=yaml > gitops/apps/<app>/backup-aws-credentials-sealed.yaml
+   ```
 
-```bash
-# Replace with your actual AWS credentials
-kubectl create secret generic postgres-backup-aws \
-  --namespace=heatpump-settings \
-  --from-literal=AWS_ACCESS_KEY_ID='YOUR_ACCESS_KEY_ID' \
-  --from-literal=AWS_SECRET_ACCESS_KEY='YOUR_SECRET_ACCESS_KEY' \
-  --from-literal=AWS_REGION='eu-north-1' \
-  --from-literal=S3_BUCKET='k12n-homelab-db-backups' \
-  --from-literal=S3_PREFIX='heatpump-settings-backups' \
-  --dry-run=client -o yaml | \
-kubeseal \
-  --namespace heatpump-settings \
-  --controller-name sealed-secrets \
-  --controller-namespace kube-system \
-  --format=yaml > gitops/apps/heatpump-settings/backup-aws-credentials-sealed.yaml
-```
+4. **Add the CronJob.** Copy `gitops/apps/gasa/backup-cronjob.yaml`: it dumps in a
+   `postgres` init container and uploads from an `amazon/aws-cli` container through a
+   shared `emptyDir`, so neither image needs extra packages. Pick a schedule that does
+   not collide with the ones above.
 
-## Step 5: Deploy to Cluster
-
-The backup CronJobs are already configured in the GitOps repository. Once you've created the sealed secrets:
-
-```bash
-# Commit the sealed secrets
-git add gitops/apps/*/backup-aws-credentials-sealed.yaml
-git commit -m "feat: add S3 backup credentials"
-git push
-
-# Force Flux to reconcile
-flux reconcile kustomization timescaledb --with-source
-flux reconcile kustomization heatpump-settings --with-source
-```
-
-## Step 6: Test Backups
-
-### Manual Test Run
-
-```bash
-# Trigger TimescaleDB backup manually
-kubectl create job timescaledb-backup-test \
-  --from=cronjob/timescaledb-backup \
-  -n timescaledb
-
-# Trigger heatpump-settings backup manually
-kubectl create job postgres-backup-test \
-  --from=cronjob/postgres-backup \
-  -n heatpump-settings
-
-# Watch the backup progress
-kubectl logs -n timescaledb -l job-name=timescaledb-backup-test --follow
-kubectl logs -n heatpump-settings -l job-name=postgres-backup-test --follow
-```
-
-### Verify in S3
-
-```bash
-# List TimescaleDB backups
-aws s3 ls s3://k12n-homelab-db-backups/timescaledb-backups/
-
-# List heatpump-settings backups
-aws s3 ls s3://k12n-homelab-db-backups/heatpump-settings-backups/
-```
-
-### Clean Up Test Jobs
-
-```bash
-kubectl delete job timescaledb-backup-test -n timescaledb
-kubectl delete job postgres-backup-test -n heatpump-settings
-```
-
-## Backup Schedule
-
-| Database | CronJob Name | Schedule | Namespace |
-|----------|-------------|----------|-----------|
-| TimescaleDB (telemetry) | `timescaledb-backup` | `0 2 * * *` (2:00 AM daily) | `timescaledb` |
-| PostgreSQL (heatpump_settings) | `postgres-backup` | `15 2 * * *` (2:15 AM daily) | `heatpump-settings` |
-
-## Monitoring Backups
-
-### Check CronJob Status
-
-```bash
-# View all backup CronJobs
-kubectl get cronjob -A | grep backup
-
-# Check last run
-kubectl get jobs -n timescaledb -l app=timescaledb-backup
-kubectl get jobs -n heatpump-settings -l app=postgres-backup
-
-# View recent logs
-kubectl logs -n timescaledb -l app=timescaledb-backup --tail=50
-```
-
-### Setup Alerts (Optional)
-
-Consider setting up alerts for:
-- Failed backup jobs (exit code != 0)
-- Missing backups (no new files in S3 after 25 hours)
-- S3 upload failures
-
-You can use:
-- Kubernetes events monitoring
-- AWS CloudWatch alarms on S3 PUT operations
-- Prometheus/Alertmanager rules
-
-## Restore Process
-
-### Download Backup from S3
-
-```bash
-# List available backups
-aws s3 ls s3://k12n-homelab-db-backups/timescaledb-backups/
-
-# Download a specific backup
-aws s3 cp \
-  s3://k12n-homelab-db-backups/timescaledb-backups/telemetry-20251226-110323.sql.gz \
-  ./telemetry-backup.sql.gz
-```
-
-### Restore to Database
-
-For TimescaleDB:
-
-```bash
-# Extract backup
-gunzip telemetry-backup.sql.gz
-
-# Port-forward to database
-kubectl port-forward -n timescaledb svc/timescaledb 5432:5432
-
-# Restore (in another terminal)
-# WARNING: This will overwrite existing data
-psql -h localhost -U postgres -d telemetry < telemetry-backup.sql
-```
-
-For heatpump-settings:
-
-```bash
-# Extract backup
-gunzip heatpump_settings-backup.sql.gz
-
-# Port-forward to database
-kubectl port-forward -n heatpump-settings svc/postgres 5432:5432
-
-# Restore (in another terminal)
-psql -h localhost -U postgres -d heatpump_settings < heatpump_settings-backup.sql
-```
+5. **List both files** in the app's `kustomization.yaml`, open a PR, and after the merge
+   run the job once by hand to confirm the upload.
 
 ## Troubleshooting
 
-### Backup Job Fails
-
-Check the logs:
-```bash
-kubectl logs -n timescaledb -l app=timescaledb-backup --tail=100
-```
-
-Common issues:
-- AWS credentials invalid: Check sealed secret and IAM user
-- S3 bucket doesn't exist: Verify bucket name and region
-- Network issues: Check cluster internet connectivity
-- Database connection failed: Verify database service name and port
-
-### AWS CLI Installation in Pod Fails
-
-The backup job installs AWS CLI at runtime. If this fails:
-- Check container image supports `apt-get` (postgres:16)
-- Verify internet connectivity from pods
-- Consider pre-building a custom image with AWS CLI
-
-### Backup Size Too Large
-
-If backups are getting large:
-- Consider using `pg_dump --no-owner --no-acl` flags
-- Use `--compress=9` for better compression
-- Implement incremental backups (requires WAL archiving)
-- Review data retention in database (e.g., TimescaleDB retention policies)
-
-## Security Best Practices
-
-1. **Rotate IAM credentials regularly** (every 90 days)
-2. **Use IAM user specifically for backups** (principle of least privilege)
-3. **Enable S3 bucket versioning** for protection against accidental deletes
-4. **Enable S3 server-side encryption**
-5. **Monitor S3 access logs** for suspicious activity
-6. **Never commit unsealed secrets** to Git
-7. **Test restore process periodically** (quarterly recommended)
-
-## Cost Optimization
-
-Estimated costs (eu-north-1, as of 2024):
-
-- **S3 Standard**: ~$0.023/GB/month
-- **S3 IA**: ~$0.0125/GB/month (after 30 days)
-- **Glacier IR**: ~$0.004/GB/month (after 90 days)
-
-For ~10GB of daily backups with 30-day retention:
-- Month 1-30: ~300GB × $0.023 = ~$6.90/month
-- With transitions: ~$3-4/month
-
-Tips:
-- Use lifecycle policies to transition old backups
-- Compress backups (already done with gzip)
-- Review and prune old test data
-- Consider longer intervals for large, rarely-changing databases
-
-## References
-
-- [AWS S3 Lifecycle Policies](https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html)
-- [PostgreSQL pg_dump Documentation](https://www.postgresql.org/docs/current/app-pgdump.html)
-- [TimescaleDB Backup Best Practices](https://docs.timescale.com/self-hosted/latest/backup-and-restore/)
-- [Sealed Secrets Documentation](https://sealed-secrets.netlify.app/)
+| Symptom | Check |
+|---|---|
+| Job fails at the dump | Database credentials secret, and that the database Service is reachable from the job |
+| Job fails at the upload | Keys in the AWS secret, the IAM policy, and the bucket region |
+| Job succeeds but the file is tiny | The dump step guards against empty output; compare with the previous day's size in S3 |
+| No job was created | `kubectl describe cronjob <name> -n <namespace>` for a suspended CronJob or a missed schedule |

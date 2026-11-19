@@ -1,283 +1,128 @@
 # Architecture & Principles
 
-A short guide to how this GitOps setup is structured and why.
+How this GitOps repository is structured, and why.
 
-## Core Principle: Git as Single Source of Truth
+## Git is the source of truth
 
-Everything in the cluster is declared in Git. No manual `kubectl apply`. No surprises.
-
-```
-Git Commit → Flux Detects Change → Cluster Converges to Desired State
-```
-
-This is **declarative infrastructure**: we describe the *what*, not the *how*.
-
-## Bounded Contexts (DDD)
-
-The repository is organized into clear domains, each with distinct responsibilities:
-
-### 1. Infrastructure Domain (`gitops/infrastructure/`)
-
-**Responsibility**: Platform capabilities - the foundation everything else runs on.
-
-**Aggregates**:
-- **Controllers**: Flux, cert-manager, sealed-secrets, Traefik
-- **Sources**: Helm repositories, container registries
-- **Policies**: Network policies, RBAC, resource quotas
-
-**Invariants**:
-- Infrastructure must be ready before applications
-- Controllers are cluster-scoped (no namespace ownership)
-
-### 2. Application Domain (`gitops/apps/`)
-
-**Responsibility**: Business workloads - the actual services that do useful work.
-
-**Aggregates**:
-- **Redpanda**: Message streaming platform
-- **Monitoring**: Prometheus, Grafana, Alloy, Loki
-- **Custom Apps**: heatpump-mqtt, mqtt-input, redpanda-sink
-
-**Invariants**:
-- Apps depend on infrastructure being healthy
-- Each app owns its namespace
-- Apps can't modify infrastructure
-
-### 3. Cluster Domain (`gitops/clusters/`)
-
-**Responsibility**: Environment-specific configuration and orchestration.
-
-**Aggregates**:
-- **Homelab**: Production configuration
-- **Local**: Development configuration
-
-**Invariants**:
-- One cluster = one set of Kustomizations
-- Each app is one plain kustomize directory; the cluster config points at it directly
-- No cross-cluster dependencies
-
-## Domain Events & Reconciliation
-
-In DDD, domain events trigger behavior. In GitOps, **git commits are domain events**:
+Everything running in the cluster is declared in this repository. FluxCD reads `main`
+and makes the cluster match it.
 
 ```
-Developer commits → GitHub webhook → Flux polls repository →
-Reconciliation loop → Cluster state converges → Event: Reconciled
+commit on main → Flux pulls the repo → Flux applies the manifests → cluster converges
 ```
 
-**Reconciliation** is the core domain service:
-- Reads desired state (Git)
-- Compares with actual state (Cluster)
-- Takes corrective action (Apply changes)
-- Repeats every N minutes
+Nothing is applied by hand. A manual `kubectl edit` is overwritten on the next
+reconcile, and that is intended.
 
-This is **eventual consistency** by design.
-
-## Layered Architecture
+## Repository structure
 
 ```
-┌─────────────────────────────────────┐
-│   Clusters (Environment Configs)   │  ← Orchestration Layer
-├─────────────────────────────────────┤
-│         Apps (Overlays)             │  ← Business Logic Layer
-├─────────────────────────────────────┤
-│      Apps (Base Manifests)          │  ← Domain Model Layer
-├─────────────────────────────────────┤
-│  Infrastructure (Controllers)       │  ← Platform Layer
-├─────────────────────────────────────┤
-│      Kubernetes Cluster (K3s)       │  ← Infrastructure Layer
-└─────────────────────────────────────┘
+gitops/
+├── clusters/homelab/     # What Flux reads first: infrastructure.yaml and apps.yaml
+├── infrastructure/       # The platform: sources, CRDs, storage, controllers
+└── apps/<app>/           # One directory per workload
 ```
 
-**Dependency Rule**: Outer layers depend on inner layers, never the reverse.
+| Layer | Path | Contains |
+|---|---|---|
+| Cluster | `gitops/clusters/homelab/` | One Flux `Kustomization` per app and per infrastructure group, with the `dependsOn` ordering between them |
+| Infrastructure | `gitops/infrastructure/` | Helm repositories, vendored CRDs, Longhorn, cert-manager, sealed-secrets, Traefik, the Cloudflare tunnel, etcd snapshot config |
+| Apps | `gitops/apps/<app>/` | The manifests for one workload, usually in its own namespace |
 
-- Clusters can reference Apps and Infrastructure
-- Apps can reference Infrastructure (via dependencies)
-- Infrastructure is self-contained
-- Base manifests have zero dependencies
+Dependencies point one way: apps depend on infrastructure, never the reverse.
+Infrastructure is applied in the order `sources`, `crds`, `storage`, then `controllers`.
+Apps declare what they need, for example `mqtt-kafka-bridge` waits for `mosquitto` and
+`redpanda-v2`.
 
-## Ubiquitous Language
+### One cluster, no overlays
 
-Terms we use consistently across the codebase:
+There is a single cluster, so each app directory is plain kustomize and is applied as it
+is. The repository used to have a `base/` and `homelab/` overlay split; 22 of the 24
+overlays did nothing but re-export their base, so it was removed. If a second
+environment is ever needed, add overlays then.
+
+New features are developed and tested locally in the application's own source tree
+(`applications/<app>/`) and then deployed to the homelab.
+
+## Design decisions
+
+**Kustomize for our own apps, Helm for third-party charts.** Plain manifests show
+exactly what gets applied. Charts are used where upstream maintains them: Prometheus,
+Grafana, Loki, Alloy, Redpanda, Pi-hole, Traefik, Longhorn, cert-manager,
+sealed-secrets.
+
+**A namespace per app.** It gives each workload its own RBAC and resource boundary and
+lets Flux prune one app without touching another.
+
+**Secrets as SealedSecrets.** Only the cluster's controller can decrypt them, so the
+encrypted form is safe to commit. Plain `Secret` manifests are never committed.
+
+**Database migrations as Jobs.** Schema changes are SQL files in the app's directory,
+applied by a Kubernetes Job that Flux manages. See [CLAUDE.md](../CLAUDE.md) for the
+workflow.
+
+**Checks before merge.** Every PR is rendered and schema-validated
+(`scripts/validate-gitops.sh`), linted, and reviewed by an AI agent. See the CI/CD
+section of the [README](../README.md).
+
+## Terms
 
 | Term | Meaning |
-|------|---------|
-| **Reconciliation** | Process of making cluster state match Git |
-| **Kustomization** | Flux resource that applies a directory of manifests |
-| **HelmRelease** | Flux resource that manages a Helm chart |
-| **Source** | Git repo or Helm repo that Flux watches |
-| **Overlay** | Environment-specific patches to base configs |
-| **Sealed Secret** | Encrypted secret safe to commit to Git |
-| **Bootstrap** | Initial Flux installation connecting to Git |
+|---|---|
+| Reconciliation | Flux comparing Git with the cluster and applying the difference |
+| Kustomization (Flux) | A Flux resource that applies one directory of manifests |
+| kustomization.yaml | The kustomize file inside a directory that lists its resources |
+| HelmRelease | A Flux resource that installs and upgrades a Helm chart |
+| Source | A Git or Helm repository that Flux watches |
+| SealedSecret | An encrypted secret that is safe to commit |
 
-## Strategic Design Decisions
+## What happens when something fails
 
-### Why GitOps?
+| Situation | Result |
+|---|---|
+| GitHub is unreachable | The cluster keeps running on its current state. Flux retries; no new changes arrive until it recovers. |
+| A Flux controller crashes | Workloads are unaffected. The controller restarts and reconciliation resumes. |
+| A broken manifest is merged | The Flux Kustomization for that app goes `Ready=False` and the previous objects stay in place. Revert the commit. |
+| Someone edits the cluster by hand | The change is overwritten on the next reconcile. |
 
-- **Audit Trail**: Every change is a git commit
-- **Rollback**: `git revert` is instant disaster recovery
-- **Review**: Pull requests before production changes
-- **Declarative**: Describe desired state, not imperative steps
+Check the state with:
 
-### Why Kustomize over Helm for Apps?
-
-- **Transparency**: See exactly what gets applied
-- **Simplicity**: Base + patches, no templating magic
-- **Flexibility**: Mix Helm charts with raw manifests
-
-We use Helm for third-party charts (Prometheus, Redpanda), Kustomize for our apps.
-
-### Why Separate Local from Production?
-
-**Local** (Development):
-- Plain Kubernetes secrets (never committed)
-- Reduced resources
-- Direct `kubectl apply -k`
-- Fast iteration
-
-**Production**:
-- Sealed secrets (safe to commit)
-- Full resources
-- Flux reconciliation
-- Audit trail
-
-This is **context mapping** in DDD - two contexts with different rules.
-
-### Why Namespace-per-App?
-
-Each application is a **bounded context**. Namespaces provide:
-- Resource isolation
-- RBAC boundaries
-- Clear ownership
-- Independent lifecycle
-
-## Data Flow
-
-```
-┌──────────┐     ┌──────────┐     ┌────────────┐     ┌─────────┐
-│Developer │────>│   Git    │────>│    Flux    │────>│Cluster  │
-│  (Edit)  │     │ (Source) │     │(Controller)│     │ (State) │
-└──────────┘     └──────────┘     └────────────┘     └─────────┘
-                                         │
-                                         ↓
-                                   ┌────────────┐
-                                   │  Metrics   │
-                                   │  Logs      │
-                                   │  Alerts    │
-                                   └────────────┘
-```
-
-1. Developer edits manifests locally
-2. Commits to Git (GitHub)
-3. Flux polls repository (1min interval)
-4. Flux applies changes to cluster
-5. Cluster converges to desired state
-6. Observability captures metrics/logs
-
-## Anti-Patterns We Avoid
-
-❌ **Manual Changes**: `kubectl edit` creates drift from Git
-✅ **Edit Git, let Flux sync**
-
-❌ **Imperative Scripts**: `kubectl apply -f` in CI/CD
-✅ **Declarative manifests in Git**
-
-❌ **Secrets in Git**: Plain secrets committed
-✅ **Sealed secrets encrypted**
-
-❌ **Monolithic Configs**: One giant YAML
-✅ **Modular, composable manifests**
-
-❌ **Speculative environments**: base/overlay layers for clusters that do not exist
-✅ **One directory per app**, applied as-is to the single cluster
-
-## Failure Modes & Recovery
-
-**What happens if...**
-
-**Git is down?**
-- Cluster keeps running (Git is source of truth, not runtime dependency)
-- Flux retries on interval
-- No new changes until Git recovers
-
-**Flux crashes?**
-- Cluster keeps running
-- Flux restarts automatically (Deployment)
-- Reconciliation resumes
-
-**Bad manifest committed?**
-- Flux applies it (eventual consistency)
-- Errors appear in Flux logs
-- `git revert` and push to fix
-- Flux reconciles to last good state
-
-**Manual change in cluster?**
-- Flux detects drift on next reconcile
-- Overwrites manual change with Git state
-- This is a feature, not a bug
-
-## Testing Strategy
-
-**Deployment**:
 ```bash
-git commit -m "feat: update redpanda"
-git push
-# Flux reconciles in ~1 minute
+flux get kustomizations
+flux get helmreleases -A
 ```
 
-**Validation**:
-```bash
-flux get kustomizations  # Check health
-flux logs --follow       # Watch reconciliation
-```
+## Changing things
+
+**Add an app**
+
+1. Create `gitops/apps/myapp/` with its manifests and a `kustomization.yaml`.
+2. Add a Flux `Kustomization` for it in `gitops/clusters/homelab/apps.yaml`, with
+   `dependsOn` for anything it needs.
+3. Run `make lint`, open a PR, merge.
+
+**Add infrastructure**
+
+1. Add a directory under `gitops/infrastructure/controllers/` and list it in that
+   directory's `kustomization.yaml`.
+2. If it comes from a Helm chart, add its `HelmRepository` under
+   `gitops/infrastructure/sources/`.
+3. Apps that need it declare `dependsOn: infrastructure-controllers`.
+
+**Roll back**
+
+Revert the commit on a branch and merge it. Flux applies the previous state.
 
 ## Observability
 
-**Three Pillars**:
+- **Metrics**: Prometheus (kube-prometheus-stack), including Flux's own metrics.
+- **Logs**: Alloy ships pod logs to Loki.
+- **Dashboards**: Grafana at `grafana.k12n.com`.
+- **Alerts**: Alertmanager to Slack, plus a health-check CronJob for data freshness.
 
-1. **Metrics**: Prometheus scrapes all services
-2. **Logs**: Alloy ships to Loki
-3. **Traces**: (Future) OpenTelemetry
-
-**GitOps-specific**:
-- Flux exports Prometheus metrics
-- Reconciliation status in Flux CRDs
-- Git commit SHA in annotations
-
-## Evolution & Extensions
-
-**Adding a New App**:
-1. Create `gitops/apps/myapp/` with a `kustomization.yaml`
-2. Add a Flux Kustomization for it to `gitops/clusters/homelab/apps.yaml`
-3. Commit, push, done
-
-**Adding a New Environment**:
-1. Create `gitops/clusters/staging/`
-2. Create environment-specific overlays
-3. Bootstrap Flux pointing to new path
-4. Independent lifecycle from production
-
-**Adding Infrastructure**:
-1. Add to `gitops/infrastructure/controllers/`
-2. Ensure apps have `dependsOn: infrastructure-controllers`
-3. Commit, push, Flux handles ordering
-
-## Key Metrics
-
-**DORA Metrics** (DevOps Research & Assessment):
-
-- **Deployment Frequency**: Every git push (continuous)
-- **Lead Time**: ~1 minute (Git commit → deployed)
-- **MTTR**: ~2 minutes (git revert → fixed)
-- **Change Failure Rate**: Low (Git review + Flux validation)
+See [monitoring.md](monitoring.md).
 
 ## References
 
-- [Flux Architecture](https://fluxcd.io/flux/concepts/)
-- [Domain-Driven Design](https://martinfowler.com/bliki/DomainDrivenDesign.html)
-- [GitOps Principles](https://opengitops.dev/)
-- [Kustomize Overlay Pattern](https://kubectl.docs.kubernetes.io/references/kustomize/)
-
----
-
-**TL;DR**: Git is truth. Flux reconciles. Apps are domains. Environments are contexts. Everything is declarative. Recovery is `git revert`.
+- [Flux concepts](https://fluxcd.io/flux/concepts/)
+- [OpenGitOps principles](https://opengitops.dev/)

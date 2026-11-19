@@ -1,98 +1,48 @@
 # API Documentation
 
-This directory contains OpenAPI/AsyncAPI specifications for all Homelab APIs.
+Specifications for the homelab APIs. Every service is reached at
+`https://homelab.k12n.com`.
 
-## Specifications
+| File | Format | Covers |
+|---|---|---|
+| `openapi.json` | OpenAPI 3 | homelab-api (read-only telemetry), homelab-settings-api (heat pump settings, power plugs and schedules) and the `/ws/energy` endpoint |
+| `energy-ws.yaml` | AsyncAPI 2.6 | The WebSocket message protocol for real-time energy data |
+| [IOS_MACOS_GUIDE.md](IOS_MACOS_GUIDE.md) | Guide | Building a native Swift client |
 
-| File | Format | Description |
-|------|--------|-------------|
-| `homelab-api.yaml` | OpenAPI 3.0 | Read-only REST API for telemetry data |
-| `heatpump-settings-api.yaml` | OpenAPI 3.0 | Settings management API with transactional outbox |
-| `energy-ws.yaml` | AsyncAPI 2.6 | WebSocket API for real-time energy streaming |
+The spot price API is described in
+[../SPOTPRICE_APP_INTEGRATION.md](../SPOTPRICE_APP_INTEGRATION.md).
 
-## Usage
+## Services
 
-### Validate Specs
-
-```bash
-# Install OpenAPI tools
-npm install -g @redocly/cli
-
-# Validate OpenAPI specs
-redocly lint homelab-api.yaml
-redocly lint heatpump-settings-api.yaml
-
-# Validate AsyncAPI spec
-npm install -g @asyncapi/cli
-asyncapi validate energy-ws.yaml
-```
-
-### Generate Documentation
-
-```bash
-# Generate HTML docs with Redoc
-redocly build-docs homelab-api.yaml -o homelab-api.html
-redocly build-docs heatpump-settings-api.yaml -o heatpump-settings-api.html
-
-# Generate AsyncAPI docs
-asyncapi generate fromTemplate energy-ws.yaml @asyncapi/html-template -o energy-ws-docs
-```
-
-### Generate Client Code
-
-See [IOS_MACOS_GUIDE.md](./IOS_MACOS_GUIDE.md) for Swift client generation.
-
-For other languages:
-
-```bash
-# TypeScript
-openapi-generator generate -i homelab-api.yaml -g typescript-fetch -o ts-client
-
-# Kotlin
-openapi-generator generate -i homelab-api.yaml -g kotlin -o kotlin-client
-
-# Python
-openapi-generator generate -i homelab-api.yaml -g python -o python-client
-
-# Go
-openapi-generator generate -i homelab-api.yaml -g go -o go-client
-```
-
-## API Overview
-
-### Homelab API
-
-Base URL: `https://api.k12n.com`
-
-Read-only REST API serving:
-- Energy consumption data (smart meter)
-- Heatpump telemetry (IVT 495)
-- Temperature/humidity readings (Shelly sensors)
-
-All `/api/v1/*` endpoints require JWT authentication.
-
-### Heatpump Settings API
-
-Base URL: `https://heatpump-settings.k12n.com`
-
-Settings management using transactional outbox pattern:
-1. `PATCH` requests queue commands
-2. Background worker publishes to Kafka
-3. Heatpump controller applies settings
-4. Status tracked via outbox endpoints
-
-### Energy WebSocket
-
-URL: `wss://energy-ws.k12n.com/ws/energy?token=<jwt>`
-
-Real-time streaming of energy data from Redpanda/Kafka.
+| Service | Paths | Notes |
+|---|---|---|
+| homelab-api | `/api/v1/energy/*`, `/api/v1/heatpump/*`, `/api/v1/temperature/*` | Read-only, served from TimescaleDB |
+| homelab-settings-api | `/api/v1/heatpump/settings/*`, `/api/v1/plugs/*` | Writes go through a transactional outbox to MQTT; command status is available from the outbox endpoints |
+| energy-ws | `wss://homelab.k12n.com/ws/energy?token=<access token>` | Streams energy readings from Redpanda |
 
 ## Authentication
 
-All APIs use JWT tokens from Authentik (OIDC provider).
+All APIs take access tokens from Authelia (`https://auth.k12n.com`) and authorize by
+scope, for example `read:energy` or `write:plugs`.
 
-- **Web apps**: Authorization Code flow
-- **Native apps**: Authorization Code with PKCE
-- **Machine-to-machine**: Client Credentials flow
+| Caller | Flow |
+|---|---|
+| Browser | Session cookie through oauth2-proxy |
+| Native app | Authorization Code with PKCE, client `homelab-macos` |
+| Service | Client Credentials |
 
-See [../AUTHENTICATION.md](../AUTHENTICATION.md) for details.
+See [../AUTHENTICATION.md](../AUTHENTICATION.md).
+
+## Working with the specs
+
+```bash
+# Validate
+npx @redocly/cli lint openapi.json
+npx @asyncapi/cli validate energy-ws.yaml
+
+# Render HTML
+npx @redocly/cli build-docs openapi.json -o homelab-api.html
+
+# Generate a client (TypeScript shown; see the iOS guide for Swift)
+openapi-generator generate -i openapi.json -g typescript-fetch -o ts-client
+```

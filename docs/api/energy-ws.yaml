@@ -10,7 +10,7 @@ info:
 
     ## Authentication
     JWT token must be provided as a query parameter. Token is validated against
-    Authentik's JWKS endpoint.
+    Authelia's JWKS endpoint (`https://auth.k12n.com/jwks.json`).
 
     ## Protocol
     - Client sends JSON messages to subscribe/unsubscribe to streams
@@ -23,7 +23,7 @@ info:
 
 servers:
   production:
-    url: wss://energy-ws.k12n.com/ws/energy
+    url: wss://homelab.k12n.com/ws/energy
     protocol: wss
     description: Production WebSocket server
   development:

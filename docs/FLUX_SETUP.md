@@ -1,228 +1,124 @@
-# Flux Setup for Production
+# Flux Setup
 
-This guide covers installing and configuring Flux CD on your **production cluster only**.
+How Flux is installed on the cluster, and how to bootstrap it again on an empty one.
 
-> ⚠️ **Never install Flux on localhost** - Local development uses `kubectl apply -k` to avoid the risk of committing secrets to git.
+Flux is managed by the [Flux Operator](https://fluxcd.control-plane.io/operator/). The
+operator reads one `FluxInstance` resource, [`flux.yaml`](../flux.yaml) in the repository
+root, and from it installs the Flux controllers and points them at this repository.
 
-## Prerequisites
-
-- Production Kubernetes cluster (K3s, K8s, etc.)
-- kubectl configured for production cluster
-- Flux CLI installed
-- GitHub repository with GitOps manifests
-
-## Install Flux CLI
-
-**macOS:**
-```bash
-brew install fluxcd/tap/flux
+```
+flux-operator (Helm)  →  FluxInstance (flux.yaml)  →  Flux controllers
+                                                         │
+                              syncs gitops/clusters/homelab from main
 ```
 
-**Linux:**
+`flux.yaml` sets:
+
+- **Sync source**: this repository, `refs/heads/main`, path `gitops/clusters/homelab`.
+- **Auth**: `provider: github` with the pull secret `flux-system`, which holds GitHub
+  App credentials.
+- **Controllers**: source, kustomize, helm, notification, image-reflector and
+  image-automation.
+- **Version**: `2.x`, so the operator follows Flux minor releases.
+
+## Bootstrapping an empty cluster
+
+Prerequisites: `kubectl` pointed at the cluster, plus the `flux` and `helm` CLIs.
+
+### 1. Restore the sealed-secrets key
+
+Do this before Flux starts. SealedSecrets in this repository only decrypt with the
+original controller key. Without it, every secret has to be sealed again.
+
 ```bash
-curl -s https://fluxcd.io/install.sh | bash
+kubectl apply -f sealed-secrets-keys-backup.yaml
 ```
 
-Verify:
+### 2. Install the Flux Operator
+
 ```bash
-flux version
+helm install flux-operator \
+  oci://ghcr.io/controlplaneio-fluxcd/charts/flux-operator \
+  --namespace flux-system --create-namespace
 ```
 
-## Bootstrap Flux on Production
+The operator is the one component that is not managed from Git.
 
-### Option 1: GitHub App (Recommended)
+### 3. Create the GitHub App secret
 
-Using a GitHub App is more secure than personal tokens.
-
-#### 1. Create GitHub App
-
-1. Go to GitHub Settings → Developer settings → GitHub Apps
-2. Create new GitHub App:
-   - **Name**: `homelab-flux`
-   - **Repository permissions**:
-     - Contents: Read
-     - Metadata: Read
-   - **Webhook**: Disabled
-3. Install the app on your GitOps repository
-4. Note the **App ID** and **Installation ID**
-5. Generate and download private key (.pem file)
-
-#### 2. Create GitHub App Secret
+Flux reads the repository through a GitHub App with read access to **Contents** and
+**Metadata**, installed on this repository. Generate a private key for the app, then:
 
 ```bash
-# Switch to production cluster context
-kubectl config use-context <production-context>
-
-# Create Flux namespace
-kubectl create namespace flux-system
-
-# Create GitHub App secret
 flux create secret githubapp flux-system \
-  --app-id=YOUR_APP_ID \
-  --app-installation-id=YOUR_INSTALLATION_ID \
-  --app-private-key=./path/to/private-key.pem
+  --app-id=<app id> \
+  --app-installation-id=<installation id> \
+  --app-private-key=./private-key.pem
 ```
 
-#### 3. Bootstrap Flux
+Delete the `.pem` file afterwards.
 
-Create `flux-instance.yaml`:
-
-```yaml
-apiVersion: fluxcd.controlplane.io/v1
-kind: FluxInstance
-metadata:
-  name: flux
-  namespace: flux-system
-spec:
-  distribution:
-    version: "2.x"
-    registry: "ghcr.io/fluxcd"
-  components:
-    - source-controller
-    - kustomize-controller
-    - helm-controller
-    - notification-controller
-  cluster:
-    type: kubernetes
-    multitenant: false
-    networkPolicy: true
-    domain: "cluster.local"
-  sync:
-    kind: GitRepository
-    provider: github
-    url: "https://github.com/YOUR_USERNAME/YOUR_REPO.git"
-    ref: "refs/heads/main"
-    path: "clusters/homelab"  # Path to your cluster config
-    pullSecret: "flux-system"
-```
-
-Apply:
-```bash
-kubectl apply -f flux-instance.yaml
-```
-
-### Option 2: Personal Access Token
-
-If you don't want to use a GitHub App:
+### 4. Apply the FluxInstance
 
 ```bash
-flux bootstrap github \
-  --owner=YOUR_USERNAME \
-  --repository=YOUR_REPO \
-  --branch=main \
-  --path=clusters/homelab \
-  --personal
+kubectl apply -f flux.yaml
 ```
 
-This will:
-1. Create Flux namespace
-2. Install Flux controllers
-3. Create deploy key
-4. Configure sync with your repository
-
-## Verify Flux Installation
+### 5. Watch it converge
 
 ```bash
-# Check Flux components
-flux check
-
-# View all Flux resources
-flux get all
-
-# Watch reconciliation
-flux get kustomizations --watch
-
-# View logs
-flux logs --all-namespaces --follow
+flux get kustomizations
+flux get helmreleases -A
+kubectl get sealedsecrets -A
 ```
 
-## Production Cluster Structure
+Infrastructure is applied first (`sources`, `crds`, `storage`, then `controllers`),
+followed by the apps in dependency order. The first run takes several minutes.
 
-Your production cluster should reference:
+[MIGRATION_M720Q.md](MIGRATION_M720Q.md) records the problems hit during the last
+rebuild, including a CRD ordering issue on an empty cluster.
 
-```
-clusters/homelab/
-├── infrastructure.yaml  # Points to gitops/infrastructure/controllers
-└── apps.yaml           # One Flux Kustomization per directory in gitops/apps/
-```
-
-These use **sealed secrets** (not plain secrets like localhost).
-
-## Managing Secrets in Production
-
-Production uses sealed-secrets controller:
+## Day-to-day commands
 
 ```bash
-# Install kubeseal CLI
-KUBESEAL_VERSION='0.32.2'
-curl -OL "https://github.com/bitnami-labs/sealed-secrets/releases/download/v${KUBESEAL_VERSION}/kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz"
-tar -xvzf kubeseal-${KUBESEAL_VERSION}-linux-amd64.tar.gz kubeseal
-sudo install -m 755 kubeseal /usr/local/bin/kubeseal
-
-# Fetch the public key from your cluster
-kubeseal --fetch-cert > pub-sealed-secrets.pem
-
-# Create a sealed secret
-kubectl create secret generic my-secret \
-  --from-literal=password=supersecret \
-  --dry-run=client -o yaml | \
-  kubeseal --cert pub-sealed-secrets.pem -o yaml > my-sealed-secret.yaml
-
-# Commit the sealed secret (safe to commit!)
-git add my-sealed-secret.yaml
-git commit -m "Add sealed secret"
-git push
+flux get kustomizations                              # status of every app
+flux reconcile kustomization <name> --with-source    # pull and apply now
+flux suspend kustomization <name>                    # pause during maintenance
+flux resume kustomization <name>
 ```
-
-Flux will decrypt it on the cluster using the private key.
 
 ## Troubleshooting
 
-### Flux Not Syncing
+**Nothing is syncing**
 
 ```bash
-# Check source
 flux get sources git
-
-# Force reconciliation
-flux reconcile source git flux-system
-flux reconcile kustomization flux-system
-
-# Check for errors
 flux logs --level=error
 ```
 
-### Reconciliation Failures
+An authentication error here usually means the GitHub App key was rotated; recreate the
+`flux-system` secret (step 3).
+
+**One Kustomization is not Ready**
 
 ```bash
-# Describe the resource
-flux describe kustomization infrastructure-controllers
-
-# Check events
-kubectl get events -n flux-system --sort-by='.lastTimestamp'
+flux get kustomizations
+kubectl describe kustomization <name> -n flux-system
 ```
 
-### Suspend/Resume Sync
+The message names the object that failed. Run `make lint` locally to reproduce
+rendering and schema errors before pushing a fix.
+
+**A HelmRelease is stuck**
 
 ```bash
-# Suspend (for maintenance)
-flux suspend kustomization infrastructure-controllers
-
-# Resume
-flux resume kustomization infrastructure-controllers
+flux get helmreleases -A
+kubectl describe helmrelease <name> -n <namespace>
+flux reconcile helmrelease <name> -n <namespace> --force
 ```
-
-## Best Practices
-
-1. **Never commit plain secrets** - Always use sealed-secrets
-2. **Use GitHub Apps** instead of personal tokens
-3. **Monitor Flux logs** regularly
-4. **Test locally first** with `kubectl apply -k`
-5. **Use branches** for testing major changes
-6. **Set up notifications** (Slack, Discord, etc.)
 
 ## References
 
-- [Flux Documentation](https://fluxcd.io/flux/)
-- [Bootstrap with GitHub App](https://fluxcd.io/blog/2025/04/flux-operator-github-app-bootstrap/)
+- [Flux documentation](https://fluxcd.io/flux/)
+- [Flux Operator](https://fluxcd.control-plane.io/operator/)
 - [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets)

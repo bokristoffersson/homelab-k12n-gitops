@@ -5,6 +5,11 @@
 **Deciders:** Bo Kristoffersson
 **Decision Type:** Type 1 (Hard to reverse)
 
+> **Note (2026-11):** This record is kept as written. Since then `heatpump-settings` was
+> renamed `homelab-settings` (namespace, database, services), the outbox was extended to
+> power plugs, and the `redpanda-sink` service it mentions was replaced by Redpanda
+> Connect. The decision itself still stands and is implemented.
+
 ## Context and Problem Statement
 
 Users need to update heatpump settings through the heatpump-web interface. The update flow requires:

@@ -1250,7 +1250,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT token obtained from Authentik OIDC provider at `https://authentik.k12n.com`. Use the Authorization Code flow with PKCE for native apps."
+        "description": "Access token from the Authelia OIDC provider at `https://auth.k12n.com`. Use the Authorization Code flow with PKCE for native apps."
       }
     },
     "parameters": {
