@@ -34,7 +34,7 @@ Heatpump Web is a frontend application that communicates with backend services v
 - Displays hourly totals, status, and charts
 
 ### Authentication Flow
-1. User accesses https://heatpump.k12n.com
+1. User accesses https://homelab.k12n.com
 2. Traefik routes to heatpump-web service (public)
 3. Frontend makes API call to /api/v1/user/info
 4. oauth2-proxy middleware validates session
@@ -59,7 +59,7 @@ Cloudflare Tunnel
 Environment configuration is injected at container startup via nginx envsubst:
 
 - `VITE_API_URL`: Backend API base URL
-- `VITE_AUTHENTIK_URL`: Authentik OIDC provider URL
+- `VITE_AUTHENTIK_URL`: Authelia OIDC provider URL
 - `VITE_OAUTH_CLIENT_ID`: OAuth2 client ID
 - `VITE_OAUTH_REDIRECT_URI`: OAuth2 redirect URI
 

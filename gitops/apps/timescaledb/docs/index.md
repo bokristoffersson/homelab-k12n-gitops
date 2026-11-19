@@ -1,82 +1,47 @@
 # TimescaleDB
 
-## Overview
-
-TimescaleDB is a PostgreSQL-based time-series database that stores all IoT sensor data for the homelab. It provides fast queries over historical data and powers dashboards and analytics.
-
-## Purpose
-
-- **Store** time-series data from Kafka topics
-- **Query** historical data for dashboards and analysis
-- **Aggregate** data for efficient storage and querying
-- **Backup** critical data with automated S3 backups
-
-## Architecture
+The time-series database that stores the homelab's telemetry. It runs in the
+`timescaledb` namespace as a single instance on a 50 Gi Longhorn volume; the database
+is called `telemetry`.
 
 ```
-Redpanda (Kafka) → Redpanda Connect Sink → TimescaleDB → Grafana/API
+Redpanda ──► Redpanda Connect sink ──► TimescaleDB ──► homelab-api, spotprice-api
 ```
 
-## Components
+## What runs here
 
-### TimescaleDB Server
+| Workload | Purpose |
+|---|---|
+| `timescaledb` Deployment | The database |
+| `redpanda-connect` Deployment | The sink: reads telemetry topics and inserts rows. See [Redpanda Sink](redpanda-sink.md). |
+| `timescaledb-migration` Job | Applies the SQL files in `migrations/`. See [Migrations](migrations.md). |
+| `timescaledb-backup` CronJob | Daily `pg_dump` to S3 at 02:00 UTC |
 
-- **Image**: `timescale/timescaledb:latest-pg16`
-- **Storage**: 20Gi persistent volume
-- **Port**: 5432
-- **Namespace**: timescaledb
+## Data
 
-### Redpanda Connect Sink
+| Source topic | Table | Written by |
+|---|---|---|
+| `homelab-energy-realtime` | `energy_consumption` | sink |
+| `homelab-heatpump-telemetry` | `heatpump_status` | sink |
+| `homelab-temperature-indoor`, `homelab-temperature-outdoor` | `temperature_sensors` | sink |
+| (Nord Pool API) | `spot_prices` | spotprice-api |
 
-Streams data from Kafka topics into TimescaleDB tables:
+Raw tables keep 90 days (`spot_prices`: 30 days). Longer ranges come from continuous
+aggregates. See [Schema](schema.md).
 
-- **Consumer Groups**:
-  - `timescaledb-energy`: Energy consumption data
-  - `timescaledb-heatpump`: Heat pump telemetry
-  - `timescaledb-temperature`: Temperature readings
+## Who reads it
 
-## Data Sources
+- **homelab-api** serves energy, heat pump and temperature data. It only reads.
+- **spotprice-api** reads and writes `spot_prices` and its device-token table.
 
-| Kafka Topic | Table | Update Frequency |
-|-------------|-------|------------------|
-| `homelab.energy` | `energy_readings` | Real-time |
-| `homelab.heatpump` | `heatpump_status` | Every 30s |
-| `homelab.temperature` | `temperature_readings` | Every 5m |
+## Access
 
-## Features
-
-### Hypertables
-
-All time-series tables are converted to TimescaleDB hypertables for optimal performance:
-
-```sql
-SELECT create_hypertable('energy_readings', 'timestamp');
+```bash
+kubectl exec -it -n timescaledb deployment/timescaledb -- psql -U postgres -d telemetry
 ```
 
-### Continuous Aggregates
+Use this to look, not to change. Schema changes go through migrations.
 
-Pre-computed aggregates for fast dashboard queries:
+## Backup and restore
 
-- `energy_hourly`: Hourly energy consumption
-- `heatpump_daily`: Daily heat pump statistics
-- `temperature_stats`: Temperature statistics per room
-
-### Data Retention
-
-Automated data retention policies:
-
-- Raw data: 90 days
-- Hourly aggregates: 2 years
-- Daily aggregates: 5 years
-
-## Monitoring
-
-- **Grafana**: Visualizes metrics from TimescaleDB
-- **Homelab API**: Serves data to web applications
-- **Backups**: Daily automated backups to S3
-
-## Related Components
-
-- **Redpanda Sink (TimescaleDB)**: Ingests data from Kafka
-- **Homelab API**: Queries data for web applications
-- **Grafana**: Visualization and alerting
+See [docs/BACKUP_SETUP.md](https://github.com/bokristoffersson/homelab-k12n-gitops/blob/main/docs/BACKUP_SETUP.md).

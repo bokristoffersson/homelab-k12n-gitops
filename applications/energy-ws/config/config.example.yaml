@@ -10,9 +10,11 @@ server:
   max_connections: 1000
 
 auth:
-  # JWKS-based validation (RS256) for Authentik tokens
-  jwks_url: "https://authentik.k12n.com/application/o/oauth2-proxy/jwks/"
-  issuer: "https://authentik.k12n.com/application/o/oauth2-proxy/"
+  # JWKS-based validation (RS256) of Authelia access tokens
+  issuers:
+    - name: authelia
+      issuer: "https://auth.k12n.com"
+      jwks_url: "https://auth.k12n.com/jwks.json"
 
   # Legacy HS256 configuration (optional, for local auth)
   # jwt_secret: "$(JWT_SECRET)"

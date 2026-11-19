@@ -2,9 +2,8 @@
 
 ## Prerequisites
 
-- Node.js 20+
-- npm or yarn
-- Access to homelab-api backend (for development)
+- Node.js 20+ and npm
+- `kubectl` access to the cluster, to reach the API through a port-forward
 
 ## Setup
 
@@ -19,15 +18,24 @@ cd applications/heatpump-web
 npm install
 ```
 
-3. Create a `.env.local` file for development:
-```env
-VITE_API_URL=http://localhost:8000
-VITE_AUTHENTIK_URL=https://authentik.k12n.com
-VITE_OAUTH_CLIENT_ID=heatpump-web
-VITE_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+3. Forward the API from the cluster in a second terminal:
+```bash
+kubectl port-forward -n homelab-api svc/homelab-api 8080:8080
 ```
 
-4. Start the development server:
+4. Create a `.env.local` file:
+```env
+VITE_API_URL=http://localhost:8080
+VITE_AUTHENTIK_URL=https://auth.k12n.com
+VITE_OAUTH_CLIENT_ID=heatpump-web
+VITE_OAUTH_REDIRECT_URI=http://localhost:5173/auth/callback
+```
+
+`VITE_AUTHENTIK_URL` is the OIDC provider URL. The name predates the move to Authelia.
+The redirect URI above is registered for the `heatpump-web` client, and
+`http://localhost:5173` is in the API's CORS allow-list.
+
+5. Start the development server:
 ```bash
 npm run dev
 ```
@@ -78,14 +86,11 @@ npm run lint
 
 Build the multi-arch Docker image:
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t heatpump-web:latest .
+docker buildx build --platform linux/amd64,linux/arm64 -t heatpump-web:dev .
 ```
 
 ## CI/CD
 
-GitHub Actions automatically builds and publishes Docker images to GHCR on push to main:
-- Runs lint checks
-- Builds TypeScript
-- Builds and pushes multi-arch Docker image
-
-See `.github/workflows/heatpump-web.yml` for details.
+`.github/workflows/heatpump-web.yml` runs on every PR and on `main`:
+- `npm audit`, lint and a type-checked build
+- on `main`, a multi-arch image pushed to GHCR as `:main`

@@ -4,13 +4,13 @@
 
 ### Prerequisites
 
-- Valid JWT token from Authentik
+- Valid JWT token from Authelia
 - WebSocket-capable client (browser, wscat, etc.)
 
 ### Web Browser
 
 ```javascript
-// Get JWT token from Authentik OAuth flow
+// Get JWT token from Authelia OAuth flow
 const token = localStorage.getItem('auth_token');
 
 // Connect with token in query string

@@ -14,7 +14,7 @@ conversation and streams back tokens, tool invocations, and tool results.
 - **MCP clients** — async JSON-RPC 2.0 over HTTP against the homelab-api and
   homelab-settings-api MCP endpoints. Tools from both servers are merged; calls are
   routed back to the server that advertised the tool.
-- **Agent identity** — client_credentials OAuth2 token obtained from Authentik,
+- **Agent identity** — client_credentials OAuth2 token obtained from Authelia,
   cached in-process until 5 minutes before expiry.
 
 ## Endpoints
@@ -38,7 +38,7 @@ Required environment variables:
 
 | Variable | Purpose |
 |----------|---------|
-| `AUTHENTIK_TOKEN_URL` | Authentik token endpoint (client_credentials grant). |
+| `AUTHENTIK_TOKEN_URL` | Authelia token endpoint (client_credentials grant). |
 | `AGENT_CLIENT_ID` | Confidential OAuth2 client ID for the agent. |
 | `AGENT_CLIENT_SECRET` | Client secret for the agent. |
 | `HOMELAB_API_MCP_URL` | MCP JSON-RPC endpoint of homelab-api. |

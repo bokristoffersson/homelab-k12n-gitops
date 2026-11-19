@@ -65,7 +65,7 @@ Mosquitto is an open-source MQTT broker that handles pub/sub messaging for all I
 2. **Mosquitto** receives and stores messages
 3. **mqtt-kafka-bridge** subscribes to all relevant topics
 4. **Bridge** transforms and forwards messages to Redpanda (Kafka)
-5. **Redpanda-sink** persists data to TimescaleDB
+5. The **Redpanda Connect sink** persists data to TimescaleDB
 
 ## Topic Structure
 

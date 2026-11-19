@@ -26,15 +26,15 @@ metadata:
   name: heatpump-web-config
   namespace: heatpump-web
 data:
-  VITE_API_URL: "https://heatpump.k12n.com"
-  VITE_AUTHENTIK_URL: "https://authentik.k12n.com"
+  VITE_API_URL: "https://homelab.k12n.com"
+  VITE_AUTHENTIK_URL: "https://auth.k12n.com"
   VITE_OAUTH_CLIENT_ID: "heatpump-web"
-  VITE_OAUTH_REDIRECT_URI: "https://heatpump.k12n.com/auth/callback"
+  VITE_OAUTH_REDIRECT_URI: "https://homelab.k12n.com/auth/callback"
 ```
 
 ### Deployment Resource
 
-- **Image**: `ghcr.io/bokristoffersson/heatpump-web:latest`
+- **Image**: `ghcr.io/bokristoffersson/heatpump-web:main`
 - **Replicas**: 1
 - **Resources**:
   - Requests: 50m CPU, 64Mi memory
@@ -53,7 +53,7 @@ Traefik IngressRoute configuration:
 
 ```yaml
 # Frontend (public)
-- match: Host(`heatpump.k12n.com`)
+- match: Host(`homelab.k12n.com`)
   kind: Rule
   middlewares:
     - name: https-scheme
@@ -64,7 +64,7 @@ Traefik IngressRoute configuration:
       port: 80
 
 # API (protected by oauth2-proxy)
-- match: Host(`heatpump.k12n.com`) && PathPrefix(`/api`)
+- match: Host(`homelab.k12n.com`) && PathPrefix(`/api`)
   kind: Rule
   priority: 90
   middlewares:
@@ -84,16 +84,24 @@ External access is provided via Cloudflare Tunnel:
 
 ```yaml
 ingress:
-  - hostname: heatpump.k12n.com
+  - hostname: homelab.k12n.com
     service: http://traefik.traefik.svc.cluster.local:80
 ```
 
 ## Deployment Process
 
-1. **Update code**: Push changes to main branch
-2. **GitHub Actions**: Automatically builds and pushes Docker image
-3. **Flux CD**: Detects new image and updates deployment
-4. **Kubernetes**: Performs rolling update
+1. Merge the change to `main`.
+2. GitHub Actions builds and pushes the `:main` image.
+3. Restart the Deployment to pull it. Kubernetes does not notice a rebuilt `:main` tag
+   on its own:
+
+   ```bash
+   kubectl rollout restart deployment/heatpump-web -n heatpump-web
+   kubectl rollout status deployment/heatpump-web -n heatpump-web
+   ```
+
+Manifest changes under `gitops/apps/heatpump-web/` are applied by Flux after the merge.
+A changed ConfigMap also needs the restart above.
 
 ## Manual Deployment
 
@@ -113,6 +121,6 @@ kubectl logs -n heatpump-web -l app=heatpump-web
 ```
 
 View in Backstage:
-- Navigate to https://backstage.k12n.com
+- Navigate to https://homelab.k12n.com/admin/backstage
 - Open the heatpump-web component
 - Click "Kubernetes" tab to see live pod status

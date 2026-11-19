@@ -9,7 +9,7 @@
 - **NEVER** create database write operations (INSERT, UPDATE, DELETE)
 - **NEVER** add Redpanda/Kafka consumer logic
 - **Purpose**: Query and serve existing telemetry data only
-- **Data writes**: Handled exclusively by redpanda-sink service
+- **Data writes**: Handled exclusively by the Redpanda Connect sink (ns `timescaledb`)
 
 This architectural constraint ensures:
 - Clear separation of concerns
@@ -45,9 +45,9 @@ This architectural constraint ensures:
 
 ## Authentication Flow
 
-1. **Frontend** requests access token from Authentik (OIDC Authorization Code Flow)
+1. **Frontend** requests access token from Authelia (OIDC Authorization Code Flow)
 2. **Frontend** stores JWT and includes in API requests
-3. **homelab-api** validates JWT signature using Authentik's JWKS endpoint
+3. **homelab-api** validates JWT signature using Authelia's JWKS endpoint
 4. If valid, query executes; if invalid, returns 401
 
 ### JWT Validation
