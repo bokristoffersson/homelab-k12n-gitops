@@ -4,35 +4,29 @@ This guide covers building native iOS/macOS apps for the Homelab API.
 
 ## API Specifications
 
-| Service | Spec File | Protocol |
-|---------|-----------|----------|
-| Homelab API | `homelab-api.yaml` | OpenAPI 3.0 (REST) |
-| Heatpump Settings API | `heatpump-settings-api.yaml` | OpenAPI 3.0 (REST) |
-| Energy WebSocket | `energy-ws.yaml` | AsyncAPI 2.6 (WebSocket) |
+| Spec file | Covers | Format |
+|---|---|---|
+| `openapi.json` | homelab-api and homelab-settings-api (REST), plus the `/ws/energy` endpoint | OpenAPI 3 |
+| `energy-ws.yaml` | The WebSocket message protocol | AsyncAPI 2.6 |
+
+All services are reached at `https://homelab.k12n.com`.
 
 ## Swift Code Generation
 
-### Option 1: Swift OpenAPI Generator (Recommended)
+### Option 1: Swift OpenAPI Generator (recommended)
 
-Apple's official OpenAPI generator for Swift. Generates type-safe, async/await Swift code.
+Apple's OpenAPI generator. It produces type-safe async/await Swift code.
 
 ```bash
-# Install the generator
 brew install swift-openapi-generator
 
-# Generate client code
 swift-openapi-generator generate \
   --mode types+client \
   --output-directory Sources/HomelabAPI \
-  homelab-api.yaml
-
-swift-openapi-generator generate \
-  --mode types+client \
-  --output-directory Sources/HeatpumpSettingsAPI \
-  heatpump-settings-api.yaml
+  openapi.json
 ```
 
-Add to your `Package.swift`:
+Add to `Package.swift`:
 
 ```swift
 dependencies: [
@@ -41,44 +35,29 @@ dependencies: [
 ]
 ```
 
-### Option 2: OpenAPI Generator (Alternative)
-
-More mature, supports many languages. Use the `swift5` generator.
+### Option 2: OpenAPI Generator
 
 ```bash
-# Install
 brew install openapi-generator
 
-# Generate Swift 5 client
 openapi-generator generate \
-  -i homelab-api.yaml \
+  -i openapi.json \
   -g swift5 \
   -o HomelabAPIClient \
   --additional-properties=projectName=HomelabAPI,responseAs=AsyncAwait
-
-openapi-generator generate \
-  -i heatpump-settings-api.yaml \
-  -g swift5 \
-  -o HeatpumpSettingsAPIClient \
-  --additional-properties=projectName=HeatpumpSettingsAPI,responseAs=AsyncAwait
 ```
 
 ### Option 3: CreateAPI
 
-Flexible Swift code generator with excellent customization.
-
 ```bash
-# Install
 brew install create-api
 
-# Generate
-create-api generate homelab-api.yaml --output Sources/HomelabAPI
-create-api generate heatpump-settings-api.yaml --output Sources/HeatpumpSettingsAPI
+create-api generate openapi.json --output Sources/HomelabAPI
 ```
 
 ## Authentication
 
-All APIs use JWT tokens from Authentik (OIDC provider).
+All APIs take access tokens from Authelia, the OIDC provider at `https://auth.k12n.com`. Native apps use the `homelab-macos` client, which is issued JWT access tokens.
 
 ### PKCE Authorization Flow
 
@@ -88,10 +67,10 @@ For native apps, use **Authorization Code with PKCE** (Proof Key for Code Exchan
 import AuthenticationServices
 
 class AuthManager: NSObject, ASWebAuthenticationPresentationContextProviding {
-    private let clientId = "your-client-id"
+    private let clientId = "homelab-macos"
     private let redirectUri = "homelab://oauth/callback"
-    private let authorizationEndpoint = "https://auth.k12n.com/application/o/authorize/"
-    private let tokenEndpoint = "https://auth.k12n.com/application/o/token/"
+    private let authorizationEndpoint = "https://auth.k12n.com/api/oidc/authorization"
+    private let tokenEndpoint = "https://auth.k12n.com/api/oidc/token"
 
     func authenticate() async throws -> OAuthTokens {
         // Generate PKCE values
@@ -104,7 +83,7 @@ class AuthManager: NSObject, ASWebAuthenticationPresentationContextProviding {
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "redirect_uri", value: redirectUri),
             URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: "openid profile email"),
+            URLQueryItem(name: "scope", value: "openid profile email offline_access read:energy read:heatpump read:temperature read:settings write:settings read:plugs write:plugs read:spotprice"),
             URLQueryItem(name: "code_challenge", value: codeChallenge),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
         ]
@@ -222,7 +201,7 @@ class TokenStorage {
 import Foundation
 
 actor HomelabAPIClient {
-    private let baseURL = URL(string: "https://api.k12n.com")!
+    private let baseURL = URL(string: "https://homelab.k12n.com")!
     private let session: URLSession
     private let tokenProvider: TokenProvider
 
@@ -314,7 +293,7 @@ actor EnergyWebSocketClient {
 
     init(tokenProvider: TokenProvider) {
         self.tokenProvider = tokenProvider
-        self.url = URL(string: "wss://energy-ws.k12n.com/ws/energy")!
+        self.url = URL(string: "wss://homelab.k12n.com/ws/energy")!
     }
 
     func connect() async throws {
@@ -582,18 +561,20 @@ struct DashboardView: View {
 </array>
 ```
 
-## Authentik Client Configuration
+## Authelia Client Configuration
 
-Register a new OAuth2 application in Authentik:
+Native apps use the existing public client `homelab-macos`, defined in
+`gitops/apps/authelia/configuration.yaml`:
 
-1. Go to Authentik Admin > Applications > Providers
-2. Create new OAuth2/OpenID Provider:
-   - Name: `Homelab iOS/macOS App`
-   - Client Type: `Public` (for native apps)
-   - Redirect URIs: `homelab://oauth/callback`
-   - Scopes: `openid profile email`
-3. Create Application linked to the provider
-4. Note the Client ID for your app configuration
+| Setting | Value |
+|---|---|
+| Client type | Public, PKCE (S256) required |
+| Redirect URIs | `homelab-macos://oauth/callback`, `homelab://oauth/callback`, `http://127.0.0.1:9876/callback` |
+| Scopes | `openid`, `profile`, `email`, `offline_access` and the `read:*` / `write:*` API scopes |
+| Access token | JWT (RS256), validated by the APIs through JWKS |
+
+To add a redirect URI or scope, edit that file and open a PR; Authelia has no admin UI.
+See [../AUTHENTICATION.md](../AUTHENTICATION.md).
 
 ## API Endpoints Summary
 
@@ -611,7 +592,7 @@ Register a new OAuth2 application in Authentik:
 | `GET /api/v1/temperature/all-latest` | All sensors |
 | `GET /api/v1/temperature/history` | Sensor history |
 
-### Heatpump Settings API
+### Homelab Settings API
 
 | Endpoint | Description |
 |----------|-------------|
@@ -619,6 +600,9 @@ Register a new OAuth2 application in Authentik:
 | `GET /api/v1/heatpump/settings/{device_id}` | Device settings |
 | `PATCH /api/v1/heatpump/settings/{device_id}` | Update settings |
 | `GET /api/v1/heatpump/settings/{device_id}/outbox` | Command status |
+| `GET /api/v1/plugs` | All power plugs |
+| `GET` / `PATCH /api/v1/plugs/{plug_id}` | Read or switch one plug |
+| `/api/v1/plugs/{plug_id}/schedules` | Manage a plug's schedules |
 
 ### Energy WebSocket
 

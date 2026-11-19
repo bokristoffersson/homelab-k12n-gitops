@@ -9,8 +9,10 @@ Documentation:
 - [Authentication](docs/AUTHENTICATION.md)
 - [Data Flow](docs/data-flow.md) and [Kafka topics](docs/kafka-topics.md)
 - [Monitoring](docs/monitoring.md)
-- [Database Backup Setup](docs/BACKUP_SETUP.md)
+- [Backups](docs/BACKUP_SETUP.md)
 - [Flux Setup](docs/FLUX_SETUP.md)
+- [API specifications](docs/api/README.md)
+- [AI architectural review](docs/ARCH_REVIEW.md)
 - [M720q migration runbook](docs/MIGRATION_M720Q.md)
 - [Ansible provisioning](ansible/README.md)
 
@@ -48,10 +50,15 @@ gitops/
 │   └── controllers/         # cert-manager, sealed-secrets, Traefik, cloudflared
 └── apps/
     └── <app>/               # One kustomize directory per app (one Flux Kustomization each)
-applications/                # Source code for the in-house services (Rust, React)
+applications/                # Source code for the in-house services (Rust, React, Python)
 ansible/                     # Node provisioning and k3s hardening
 docs/                        # Architecture, runbooks, ADRs (also served as Backstage TechDocs)
+scripts/                     # Manifest validation and migration helpers
+tools/arch-review/           # The AI review script that runs on every PR
 ```
+
+There is one cluster, so there are no kustomize overlays: each directory under
+`gitops/apps/` is applied as it is.
 
 Flux reconciles `gitops/clusters/homelab` from `main`. Infrastructure comes first
 (`sources`, `crds`, `storage` → `controllers`); apps declare `dependsOn` among
@@ -86,6 +93,7 @@ IoT device → Mosquitto (MQTT) → mqtt-kafka-bridge → Redpanda → Timescale
 | `homelab-chat-api` | LLM-backed chat agent (SSE) with tools over the homelab APIs |
 | `gasa` | Driving-practice booking app at `gasa.k12n.com` (API + web + PostgreSQL) |
 | `backstage` | Developer portal and TechDocs at `homelab.k12n.com/admin/backstage` |
+| `granbok` | Bookkeeping app, LAN-only at `granbok.k12n.com`. Source lives in its own private repo; only the manifests are here |
 
 **Platform and home services**
 
@@ -103,14 +111,34 @@ covers both.
 
 ## CI/CD
 
-- Each service in `applications/` has a GitHub Actions workflow that runs tests and then
-  builds a multi-arch image (native `ubuntu-24.04` and `ubuntu-24.04-arm` runners) and
-  pushes it to GHCR.
-- Every PR gets an AI architectural review against [CLAUDE.md](CLAUDE.md)
-  (`.github/workflows/arch-review.yml`, see [docs/ARCH_REVIEW.md](docs/ARCH_REVIEW.md)).
-- Work goes on feature branches with PRs. Flux deploys what lands on `main`.
-- Kubernetes does not pick up a new image or ConfigMap on its own, so a deployment needs
-  `kubectl rollout restart` after its image is rebuilt.
+**Applications.** Each service in `applications/` has a workflow that tests it and, on
+`main`, builds a multi-arch image and pushes it to GHCR as `:main` plus the short commit
+SHA. The Rust services share one test workflow (`cargo audit`, `fmt`, `clippy` and tests,
+with warnings treated as errors) and all services share one build workflow (a native build
+on `ubuntu-24.04` and `ubuntu-24.04-arm`, joined into one manifest).
+
+**Every PR** also gets:
+
+| Check | What it does |
+|---|---|
+| `Validate` | Runs the [prek](https://github.com/j178/prek) hooks on the changed files: gitleaks, actionlint, zizmor, shellcheck, shfmt, the Renovate config validator, and `scripts/validate-gitops.sh`, which renders every path Flux reconciles and checks it against the Kubernetes and CRD schemas |
+| `AI Architectural Review` | Reviews the diff against [CLAUDE.md](CLAUDE.md) and comments on the PR (see [docs/ARCH_REVIEW.md](docs/ARCH_REVIEW.md)) |
+
+Run the same checks locally with `make lint` (manifests only) or `make hooks` (all hooks).
+`prek install` adds them as a git pre-commit hook.
+
+**Dependencies.** [Renovate](renovate.json) opens update PRs on Monday mornings for Helm
+charts, container images, Dockerfiles, Cargo, npm, uv and GitHub Actions, and refreshes
+lock files weekly. Database major versions are never proposed, and granbok only gets
+patch updates.
+
+**Deploying.** Work goes on feature branches with PRs, and Flux applies what lands on
+`main`. Kubernetes does not pick up a rebuilt `:main` image or a changed ConfigMap on its
+own, so restart the deployment afterwards:
+
+```bash
+kubectl rollout restart deployment/<app> -n <namespace>
+```
 
 ## Secrets
 
@@ -141,6 +169,7 @@ Migrations are SQL files run by Kubernetes Jobs. Add a file under the app's
 | homelab-settings PostgreSQL | CronJob to S3, daily 02:15 |
 | gasa PostgreSQL | CronJob to S3, daily 02:45 |
 | Backstage PostgreSQL | CronJob to S3, daily 02:00 |
+| granbok | Database dump and document sync to its own object-locked bucket, daily 03:30 UTC |
 | etcd | k3s snapshots daily 03:00 UTC, kept locally on `m720q` and uploaded to S3 (`etcd-snapshots/`, 14 retained). S3 config comes from the `k3s-etcd-snapshot-s3-config` SealedSecret. A restore also needs the server token (`/var/lib/rancher/k3s/server/token`), so keep a copy outside the cluster |
 
 ## Rebuilding from scratch
@@ -161,5 +190,6 @@ Migrations are SQL files run by Kubernetes Jobs. Add a file under the app's
 flux get kustomizations                                   # sync status
 flux reconcile kustomization <name> --with-source         # pull and apply now
 kubectl rollout restart deployment/<app> -n <namespace>   # pick up a new image/ConfigMap
+make lint                                                 # render and validate all manifests
 make help                                                 # port-forwards, Redpanda/MQTT helpers
 ```

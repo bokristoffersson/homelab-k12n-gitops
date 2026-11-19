@@ -2,109 +2,49 @@
 
 ## Overview
 
-This homelab implements a complete IoT data streaming pipeline using open-source technologies to collect, process, store, and visualize sensor data from various devices.
+The homelab collects readings from the heat pump, the energy meter, temperature sensors
+and smart plugs, stores them, and shows them in a web dashboard. Commands to the heat
+pump and the plugs travel the other way.
 
 ## High-Level Architecture
 
 ```
-┌─────────────┐     ┌──────────┐     ┌────────────┐     ┌─────────────┐
-│ IoT Devices │────▶│ Mosquitto│────▶│ MQTT-Kafka │────▶│  Redpanda   │
-│  (MQTT)     │     │  Broker  │     │   Bridge   │     │   (Kafka)   │
-└─────────────┘     └──────────┘     └────────────┘     └─────────────┘
-                                                                │
-                         ┌──────────────────────────────────────┴────────┐
-                         │                                                │
-                         ▼                                                ▼
-                  ┌─────────────┐                              ┌─────────────────┐
-                  │ TimescaleDB │                              │  Energy WebSocket│
-                  │   (Sink)    │                              │     Server       │
-                  └─────────────┘                              └─────────────────┘
-                         │                                                │
-                         ▼                                                ▼
-                  ┌─────────────┐                              ┌─────────────────┐
-                  │   Grafana   │                              │   Heatpump Web  │
-                  │  (Dashboards)│                              │    Dashboard    │
-                  └─────────────┘                              └─────────────────┘
+Devices ──► Mosquitto ──► mqtt-kafka-bridge ──► Redpanda ──┬──► sink ──► TimescaleDB ──► homelab-api ──┐
+ (MQTT)                                                    │                                           ├──► heatpump-web
+                                                           └──► energy-ws (WebSocket) ─────────────────┘
+
+heatpump-web ──► homelab-settings-api ──► outbox ──► Mosquitto ──► devices
 ```
 
 ## Components
 
-### Data Ingestion
+| Stage | Component | Role |
+|---|---|---|
+| Ingestion | Mosquitto | MQTT broker the devices publish to |
+| Ingestion | mqtt-kafka-bridge | Redpanda Connect pipelines that move MQTT messages into Redpanda |
+| Streaming | Redpanda | Single-node, Kafka-compatible log. Topics are created by an `rpk` Job |
+| Storage | Redpanda Connect sink | Writes telemetry topics into TimescaleDB |
+| Storage | TimescaleDB | Time-series database: 90 days of raw data plus continuous aggregates |
+| Serving | homelab-api | Read-only REST API over TimescaleDB |
+| Serving | energy-ws | Pushes live energy readings to WebSocket clients |
+| Serving | homelab-settings-api | Changes heat pump settings and switches plugs through a transactional outbox |
+| UI | heatpump-web | The dashboard at `homelab.k12n.com` |
+| UI | Grafana | Infrastructure dashboards at `grafana.k12n.com` |
 
-- **IoT Devices**: Heat pumps, energy meters, temperature sensors
-- **Mosquitto**: MQTT broker for device communication
-- **MQTT-Kafka Bridge**: Converts MQTT messages to Kafka events
+Each component has its own TechDocs page in Backstage.
 
-### Streaming Platform
+## Properties
 
-- **Redpanda**: Kafka-compatible streaming platform
-- **Topics**: homelab.energy, homelab.heatpump, homelab.temperature
-- **Consumer Groups**: Multiple consumers for different purposes
+- **At-least-once delivery.** Consumers commit their offset after processing, so a
+  restart replays rather than drops. Device commands are level-triggered (ON/OFF), which
+  makes replays safe.
+- **Decoupled consumers.** The database sink, the WebSocket server and the settings
+  service read the same topics independently.
+- **Not highly available.** Redpanda and the databases are single instances. Longhorn
+  keeps two replicas of each volume, and the databases are backed up to S3 daily.
 
-### Data Storage
+## Further reading
 
-- **TimescaleDB**: PostgreSQL-based time-series database
-- **Redpanda Sink**: Streams Kafka data into TimescaleDB
-- **Retention**: 90 days raw data, 2 years aggregates
-
-### Data Processing
-
-- **Redpanda Connect**: Stream processing and transformations
-- **Continuous Aggregates**: Pre-computed metrics in TimescaleDB
-- **Real-time Processing**: WebSocket server for live data
-
-### Visualization & APIs
-
-- **Grafana**: Dashboards and alerting
-- **Homelab API**: REST API for web applications
-- **Energy WebSocket**: Real-time data streaming to browsers
-- **Heatpump Web**: SPA dashboard for heat pump monitoring
-
-## Key Features
-
-### Reliability
-
-- **At-least-once delivery**: Messages are not lost
-- **Consumer groups**: Multiple consumers can process same data
-- **Dead-letter queues**: Failed messages are retained
-- **Automated backups**: Daily TimescaleDB backups to S3
-
-### Scalability
-
-- **Horizontal scaling**: Add more consumers as needed
-- **Partitioning**: Kafka topics can be partitioned
-- **Continuous aggregates**: Pre-computed for fast queries
-- **Efficient storage**: TimescaleDB compression
-
-### Observability
-
-- **Metrics**: Prometheus metrics from all components
-- **Logging**: Centralized logging with kubectl
-- **Tracing**: Kafka consumer group lag monitoring
-- **Dashboards**: Grafana visualization of system health
-
-## Technologies
-
-| Component | Technology | Version |
-|-----------|-----------|---------|
-| Message Broker | Mosquitto | 2.x |
-| Streaming Platform | Redpanda | latest |
-| Stream Processing | Redpanda Connect | latest |
-| Database | TimescaleDB | 2.x (PG16) |
-| Visualization | Grafana | 11.x |
-| Container Orchestration | Kubernetes (K3s) | 1.33 |
-| GitOps | Flux CD | 2.x |
-
-## Getting Started
-
-1. **View Services**: Navigate to Backstage catalog
-2. **Check Health**: View Kubernetes tab on each service
-3. **Monitor Data**: Check Kafka consumer group lag
-4. **Query Data**: Use Grafana or Homelab API
-5. **View Docs**: Each component has detailed TechDocs
-
-## Related Documentation
-
-- [Data Flow](data-flow.md): Detailed data pipeline explanation
-- [Kafka Topics](kafka-topics.md): Topic naming and configuration
-- [Monitoring](monitoring.md): How to monitor the system
+- [Data Flow](data-flow.md): the path of a reading and of a command
+- [Kafka Topics](kafka-topics.md): topics, retention and consumer groups
+- [Monitoring](monitoring.md): alerts, dashboards and how to investigate

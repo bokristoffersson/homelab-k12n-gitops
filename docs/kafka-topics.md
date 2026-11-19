@@ -1,269 +1,70 @@
 # Kafka Topics
 
-## Overview
+Telemetry flows through a single-node Redpanda cluster in the `redpanda-v2` namespace.
+Topics are created by a Job that runs `rpk`
+(`gitops/apps/redpanda-v2/topics/topic-creator-job.yaml`); there is no operator.
 
-All IoT data flows through Redpanda (Kafka-compatible) topics. This document describes topic naming, configuration, and usage.
+## Topics
 
-## Topic Structure
+Every topic has one partition and one replica.
 
-### Naming Convention
+| Topic | Retention | MQTT source | Consumers |
+|---|---|---|---|
+| `homelab-energy-realtime` | 24 h | `saveeye/telemetry` | `timescaledb-energy`, `energy-ws` |
+| `homelab-heatpump-telemetry` | 1 h | `thermiq_heatpump/data` | `timescaledb-heatpump`, `homelab-settings`, `homelab-settings-api` |
+| `homelab-plug-telemetry` | 24 h | `tele/+/STATE`, `stat/+/POWER` | `homelab-settings-api` |
+| `homelab-temperature-indoor` | 24 h | `shellyhtg3-e4b32322a0f4/events/rpc` | `timescaledb-temperature` |
+| `homelab-temperature-outdoor` | 24 h | none yet | `timescaledb-temperature` |
 
-```
-<namespace>.<category>.<optional-subcategory>
-```
+Retention is short on purpose. TimescaleDB is the store of record; the topics only need
+to cover a consumer being down for a while.
 
-**Examples:**
-- `homelab.energy` - Energy consumption data
-- `homelab.heatpump` - Heat pump telemetry
-- `homelab.temperature` - Temperature sensors
-- `homelab.heatpump.settings` - Heat pump configuration changes
+## Producers
 
-## Active Topics
+`mqtt-kafka-bridge` (Redpanda Connect) is the only producer. It has one pipeline per
+source in `gitops/apps/mqtt-kafka-bridge/configs/`, and each pipeline maps the device
+payload to the message format its topic carries. Read those files for the exact fields.
 
-### homelab.energy
+The bridge only matches single-channel Tasmota topics. A plug with several channels
+(`POWER1`, `POWER2`) needs new topic filters.
 
-**Purpose**: Real-time energy consumption data from smart meters
+## Consumer groups
 
-**Schema:**
-```json
-{
-  "timestamp": "2026-01-03T16:00:00Z",
-  "device_id": "meter1",
-  "total_energy_kwh": 12.45,
-  "power_kw": 3.2,
-  "voltage": 230,
-  "current": 13.9
-}
-```
+| Group | Service | Namespace | Purpose |
+|---|---|---|---|
+| `timescaledb-energy` | Redpanda Connect sink | `timescaledb` | Write energy readings to TimescaleDB |
+| `timescaledb-heatpump` | Redpanda Connect sink | `timescaledb` | Write heat pump telemetry |
+| `timescaledb-temperature` | Redpanda Connect sink | `timescaledb` | Write temperature readings |
+| `homelab-settings` | Redpanda Connect | `homelab-settings` | Keep the reported heat pump settings current |
+| `homelab-settings-api` | homelab-settings-api | `homelab-settings` | Confirm plug commands and adopt state changes made outside the API |
+| `energy-ws` | energy-ws | `energy-ws` | Stream energy readings to WebSocket clients |
 
-**Configuration:**
-- **Partitions**: 3
-- **Replication Factor**: 3
-- **Retention**: 7 days
-- **Compression**: snappy
-
-**Producers:**
-- mqtt-kafka-bridge
-
-**Consumers:**
-- timescaledb-energy (sink to database)
-- energy-ws (WebSocket streaming)
-
-### homelab.heatpump
-
-**Purpose**: Heat pump status and telemetry
-
-**Schema:**
-```json
-{
-  "timestamp": "2026-01-03T16:00:00Z",
-  "device_id": "heatpump1",
-  "mode": "heating",
-  "target_temp": 22.0,
-  "actual_temp": 21.5,
-  "compressor_running": true,
-  "power_consumption_kw": 2.5
-}
-```
-
-**Configuration:**
-- **Partitions**: 1
-- **Replication Factor**: 3
-- **Retention**: 7 days
-- **Compression**: snappy
-
-**Producers:**
-- mqtt-kafka-bridge
-
-**Consumers:**
-- timescaledb-heatpump (sink to database)
-
-### homelab.temperature
-
-**Purpose**: Temperature and humidity sensor readings
-
-**Schema:**
-```json
-{
-  "timestamp": "2026-01-03T16:00:00Z",
-  "sensor_id": "temp_living_room",
-  "room": "Living Room",
-  "temperature": 22.3,
-  "humidity": 45.2
-}
-```
-
-**Configuration:**
-- **Partitions**: 2
-- **Replication Factor**: 3
-- **Retention**: 7 days
-- **Compression**: snappy
-
-**Producers:**
-- mqtt-kafka-bridge
-
-**Consumers:**
-- timescaledb-temperature (sink to database)
-
-### homelab.heatpump.settings
-
-**Purpose**: Heat pump configuration change requests
-
-**Schema:**
-```json
-{
-  "timestamp": "2026-01-03T16:00:00Z",
-  "device_id": "heatpump1",
-  "setting_type": "target_temperature",
-  "value": 23.0,
-  "user": "bo.kristoffersson"
-}
-```
-
-**Configuration:**
-- **Partitions**: 1
-- **Replication Factor**: 3
-- **Retention**: 30 days
-- **Compression**: gzip
-
-**Producers:**
-- homelab-api
-
-**Consumers:**
-- heatpump-settings (processor)
-
-## Topic Management
-
-### List Topics
+## Working with topics
 
 ```bash
+# List topics and groups
 kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk topic list
-```
+kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group list
 
-### Describe Topic
-
-```bash
-kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk topic describe homelab.energy
-```
-
-### View Messages
-
-```bash
+# Inspect a topic and read a few messages
+kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk topic describe homelab-energy-realtime
 kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
-  rpk topic consume homelab.energy --num 10 --format json
+  rpk topic consume homelab-energy-realtime --num 5
+
+# Check consumer lag
+kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe timescaledb-energy
 ```
 
-### Create New Topic
+`make redpanda-list` and `make redpanda-consume TOPIC=<name>` wrap the first two.
 
-```bash
-kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
-  rpk topic create homelab.new-topic \
-    --partitions 3 \
-    --replicas 3 \
-    --topic-config retention.ms=604800000
-```
+## Adding a topic
 
-## Partition Strategy
+1. Add a `create_topic <name> <retention ms>` line to
+   `gitops/apps/redpanda-v2/topics/topic-creator-job.yaml`.
+2. Add a pipeline under `gitops/apps/mqtt-kafka-bridge/configs/` that produces to it,
+   and list the file in that app's `kustomization.yaml`.
+3. Add or extend a consumer.
+4. Name it `homelab-<domain>-<kind>`, in lowercase with hyphens.
 
-### Energy Topic (3 partitions)
-
-Partitioned by device_id for parallel processing:
-
-```
-Partition 0: meter1
-Partition 1: meter2
-Partition 2: meter3
-```
-
-**Benefits:**
-- Parallel consumption
-- Order preserved per device
-- Better throughput
-
-### Heatpump Topic (1 partition)
-
-Single partition for strict ordering:
-
-**Reason:** Heat pump settings must be applied in order
-
-## Retention Policies
-
-| Topic | Retention | Reason |
-|-------|-----------|--------|
-| homelab.energy | 7 days | Data in TimescaleDB, Kafka for recent replay |
-| homelab.heatpump | 7 days | Same as energy |
-| homelab.temperature | 7 days | Same as energy |
-| homelab.heatpump.settings | 30 days | Audit trail of changes |
-
-## Consumer Groups
-
-### timescaledb-* Groups
-
-Write data to database:
-
-```bash
-# View all database sink consumer groups
-kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group list | grep timescaledb
-```
-
-### energy-ws Group
-
-Stream real-time data to WebSockets:
-
-```bash
-kubectl exec -n redpanda-v2 redpanda-v2-0 -- rpk group describe energy-ws
-```
-
-### Monitoring Lag
-
-High lag indicates consumers are falling behind:
-
-```bash
-kubectl exec -n redpanda-v2 redpanda-v2-0 -- \
-  rpk group describe timescaledb-energy --output json | \
-  jq '.partitions[] | {partition, lag}'
-```
-
-**Alert Thresholds:**
-- **Warning**: lag > 100 messages
-- **Critical**: lag > 1000 messages
-
-## Best Practices
-
-### Topic Naming
-
-- ✅ Use lowercase
-- ✅ Use dots for hierarchy
-- ✅ Be descriptive
-- ❌ Don't use underscores
-- ❌ Don't use abbreviations
-
-### Partitioning
-
-- Start with 1-3 partitions
-- Partition by key (device_id, sensor_id)
-- Don't over-partition (overhead)
-- Can increase partitions later (can't decrease)
-
-### Retention
-
-- Balance storage vs replay capability
-- Kafka is not primary storage
-- Use compression for longer retention
-- Consider data volume and disk space
-
-### Compression
-
-- **snappy**: Fast, good compression, recommended
-- **gzip**: Better compression, slower
-- **lz4**: Fastest, less compression
-- **zstd**: Best compression, newer
-
-## Future Topics
-
-Planned for future implementation:
-
-- `homelab.alerts` - System alerts and notifications
-- `homelab.weather` - External weather data
-- `homelab.automation` - Home automation events
-- `homelab.solar` - Solar panel production (if installed)
+Do not create topics by hand with `rpk topic create`; the Job is what recreates them
+on a rebuilt cluster.
