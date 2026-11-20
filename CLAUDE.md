@@ -39,7 +39,7 @@ This is a Kubernetes homelab managed with GitOps using FluxCD. The infrastructur
 - **mqtt-kafka-bridge**: MQTT to Kafka/Redpanda bridge (Redpanda Connect)
 - **gasa-api / gasa-web**: driving-practice booking app at `https://gasa.k12n.com` (Rust/Axum + React) with dedicated PostgreSQL in ns `gasa`. Auth differs from the other apps: the whole subdomain sits behind oauth2-proxy ForwardAuth and the API trusts only `X-Auth-Request-*` headers (no JWT validation); admin = email allowlist in `gitops/apps/gasa/configs/gasa-api-config.yaml`. Migrations live in `gitops/apps/gasa/migrations/`.
 - **minecraft**: itzg/minecraft-server in ns `minecraft`, pinned to `m720q` (Longhorn PVC), LAN-exposed via ServiceLB
-- **granbok**: bookkeeping for Bo's company (private repo `bokristoffersson/granbok`; requirements in its `deploy/HOMELAB.md`). ns `granbok`: core + Slack agent (exactly 1 replica each, Recreate), own PostgreSQL 18 and RustFS object store on `longhorn-retain` PVCs pinned to `m720q`. **LAN-only**: `https://granbok.k12n.com` resolves via Pi-hole to an nginx gateway (ServiceLB 443, ufw LAN-only) that blocks `/api/`; no tunnel hostname, no Traefik route. Legal 7-year retention: **never delete the namespace or its PVCs, never edit the DB/object store directly** (namespace + PVCs carry Flux `prune: disabled`).
+- **granbok**: bookkeeping for Bo's company (private repo `bokristoffersson/granbok`; requirements in its `deploy/HOMELAB.md`). ns `granbok`: core + Slack agent (exactly 1 replica each, Recreate), own PostgreSQL 18 and RustFS object store on `longhorn-retain` PVCs pinned to `m720q`. Web login is OIDC via Authelia (client `granbok`, only `group:granbok`, `two_factor`); `GRANBOK_OWNER_USERNAME` must equal the owner's Authelia username (`bo`). **LAN-only**: `https://granbok.k12n.com` resolves via Pi-hole to an nginx gateway (ServiceLB 443, ufw LAN-only) that blocks `/api/`; no tunnel hostname, no Traefik route. Legal 7-year retention: **never delete the namespace or its PVCs, never edit the DB/object store directly** (namespace + PVCs carry Flux `prune: disabled`).
 
 ### IoT Devices
 - Tasmota smart plugs (single-channel)
@@ -541,6 +541,7 @@ docs/                   # Architecture, authentication, backups, runbooks
 
 ## Recent Changes
 
+- Upgraded granbok to 0.5.0: web login moved to Authelia OIDC (client `granbok`, user `bo` in group `granbok`), schema migrated to v15 with role `granbok_app` and row level security (2026-11-20)
 - Repo cleanup: flattened `gitops/apps` (no kustomize base/overlay), removed the unused ARC runners, heatpump-web-leptos, mqtt-generator and old plans/scripts; added manifest validation + prek hooks, shared CI workflows with strict lints, and Renovate (2026-11-17)
 - Deployed granbok 0.4.0 (bookkeeping, LAN-only) with nightly object-locked backup to AWS; added `longhorn-retain` StorageClass; ClusterIssuers now select by `dnsZones: k12n.com` (2026-11-13)
 - Added Pi-hole metrics (pihole-exporter sidecar + PodMonitor via the mojo2600 chart) and a Grafana "Pi-hole" dashboard in the Homelab folder (2026-09-25)

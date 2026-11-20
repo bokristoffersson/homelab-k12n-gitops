@@ -28,7 +28,7 @@ spec:
       containers:
         - name: core
           # Upgrade core and agent together, after a verified backup
-          image: ghcr.io/bokristoffersson/granbok-core:0.4.0
+          image: ghcr.io/bokristoffersson/granbok-core:0.5.0
           env:
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres:5432/granbok
@@ -56,8 +56,13 @@ spec:
             # The LAN gateway terminates TLS and sets X-Forwarded-*
             - name: SERVER_FORWARD_HEADERS_STRATEGY
               value: native
+            # Web login via Authelia; the core fetches the issuer metadata on startup
+            - name: GRANBOK_OIDC_ISSUER
+              value: https://auth.k12n.com
+            - name: GRANBOK_OIDC_CLIENT_ID
+              value: granbok
           envFrom:
-            # Owner login, the three API passwords, Bolagsverket client
+            # Owner username, OIDC client secret, the three API passwords, Bolagsverket client
             - secretRef:
                 name: granbok-core
           ports:
