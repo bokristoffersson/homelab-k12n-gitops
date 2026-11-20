@@ -27,6 +27,9 @@ spec:
             app: granbok-backup
         spec:
           restartPolicy: Never
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           # Co-locate with postgres and object storage on m720q
           nodeSelector:
             kubernetes.io/hostname: m720q
