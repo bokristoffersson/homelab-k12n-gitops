@@ -23,6 +23,8 @@ spec:
         - name: ghcr-pull
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
         runAsUser: 10001
         runAsGroup: 10001
       containers:

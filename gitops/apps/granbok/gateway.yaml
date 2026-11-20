@@ -76,6 +76,8 @@ spec:
         kubernetes.io/hostname: m720q
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
         runAsUser: 101
         runAsGroup: 101
       containers:

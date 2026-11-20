@@ -21,6 +21,8 @@ spec:
       # The alpine image's postgres user is uid/gid 70 (999 is the Debian image)
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
         runAsUser: 70
         runAsGroup: 70
         fsGroup: 70
