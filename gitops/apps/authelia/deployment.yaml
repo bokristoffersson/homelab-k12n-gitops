@@ -27,9 +27,17 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: authelia
           image: ghcr.io/authelia/authelia:4.39.20
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           # Non-secret config + a secret fragment (session/storage/jwt/hmac/jwks key)
           # merged at load time. List-item secrets (the jwks key) can't be injected via
           # *_FILE env vars, so they live in the merged fragment instead.
