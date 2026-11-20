@@ -58,6 +58,7 @@ Authorization is scope-based. There are no groups or roles.
 | `homelab-macos` | public, PKCE | The native macOS and iOS apps | JWT (RS256) |
 | `backstage` | confidential | Backstage sign-in | opaque |
 | `redpanda-console` | confidential | Redpanda Console sign-in | opaque |
+| `granbok` | confidential | granbok's web login (LAN-only). Policy `granbok`: only `group:granbok`, always `two_factor` | opaque |
 | `homelab-chat-agent` | client credentials | homelab-chat-api calling the other APIs as itself | opaque |
 | `homelab-api-backend` | client credentials | homelab-api's token introspection calls | opaque |
 | `homelab-settings-api-backend` | client credentials | homelab-settings-api's token introspection calls | opaque |
@@ -144,7 +145,9 @@ Higher priority wins.
 
 Other hosts: `auth.k12n.com` is Authelia itself. `grafana.k12n.com` and
 `pihole.k12n.com` use their applications' built-in logins. `granbok.k12n.com` is
-LAN-only and does not go through Traefik.
+LAN-only and does not go through Traefik. Its core logs users in itself with the
+`granbok` client and reads the username from `preferred_username`. Its `/api/` is
+blocked at the gateway; the Slack agent uses it in-cluster with HTTP Basic.
 
 ## CORS
 
@@ -164,6 +167,7 @@ All are SealedSecrets next to the app that uses them.
 | `oauth2-proxy-secrets` | `oauth2-proxy` | Client secret and cookie secret |
 | `homelab-api-introspection` | `homelab-api` | Client ID and secret for introspection |
 | `homelab-settings-api-introspection` | `homelab-settings` | Client ID and secret for introspection |
+| `granbok-core` | `granbok` | `GRANBOK_OIDC_CLIENT_SECRET`, plus the app's other values |
 
 ## Exception: Homebridge
 
