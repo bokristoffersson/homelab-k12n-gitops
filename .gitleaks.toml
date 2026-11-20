@@ -1,0 +1,8 @@
+# Keep the default rules; only sealed secrets are exempt. Their values are encrypted with
+# the sealed-secrets controller's public key and are meant to be committed.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Sealed secrets (kubeseal output)"
+paths = ['''-sealed\.yaml$''']

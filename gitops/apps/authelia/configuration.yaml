@@ -119,6 +119,14 @@ data:
           'read:spotprice':
             claims: []
 
+        # granbok holds a company's books: only the 'granbok' group, always two factors.
+        authorization_policies:
+          granbok:
+            default_policy: 'deny'
+            rules:
+              - policy: 'two_factor'
+                subject: 'group:granbok'
+
         clients:
           # --- Public browser SPA (PKCE, opaque access tokens) ---
           - client_id: 'heatpump-web'
@@ -229,6 +237,24 @@ data:
               - 'profile'
               - 'email'
               - 'offline_access'
+
+          # --- granbok (confidential, bookkeeping web UI on the LAN) ---
+          - client_id: 'granbok'
+            client_name: 'granbok'
+            client_secret: '$pbkdf2-sha512$310000$8QVaJNWl5AHoa8miSKszzA$IjXHkRftBmdfCHwVqS3lnxcsyTYzCAICbQve/Eq6jz4mtobjTfK9bZNbkafIJKzQEnq3MFb7RASep0AFsVjjPg'
+            authorization_policy: 'granbok'
+            consent_mode: 'implicit'
+            token_endpoint_auth_method: 'client_secret_basic'
+            redirect_uris:
+              - 'https://granbok.k12n.com/login/oauth2/code/oidc'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
 
           # --- Redpanda Console (confidential) ---
           - client_id: 'redpanda-console'
