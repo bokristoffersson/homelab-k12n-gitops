@@ -541,6 +541,7 @@ docs/                   # Architecture, authentication, backups, runbooks
 
 ## Recent Changes
 
+- Upgraded granbok to 0.11.0: scanned PDF receipts, open-period dates for receipts in locked periods, app reports, mobile web; no config or schema changes (2026-11-25)
 - Upgraded granbok to 0.10.0 (schema v15 -> v23): agent works per linked chat, mailbox moved to the core, iOS app API `/app/v1` (Authelia client `granbok-app`), APNs push via `granbok-push`, per-task agent models (2026-11-25)
 - Upgraded granbok to 0.5.0: web login moved to Authelia OIDC (client `granbok`, user `bo` in group `granbok`), schema migrated to v15 with role `granbok_app` and row level security (2026-11-20)
 - Repo cleanup: flattened `gitops/apps` (no kustomize base/overlay), removed the unused ARC runners, heatpump-web-leptos, mqtt-generator and old plans/scripts; added manifest validation + prek hooks, shared CI workflows with strict lints, and Renovate (2026-11-17)
