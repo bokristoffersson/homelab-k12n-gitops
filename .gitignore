@@ -50,3 +50,6 @@ ansible/*.retry
 
 # Flux GitHub App private key (bootstrap only, never commit)
 flux-app.pem
+
+# Apple push keys (sealed into secrets, never committed)
+*.p8

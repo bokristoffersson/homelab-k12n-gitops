@@ -10,6 +10,7 @@ resources:
   - granbok-agent-sealed.yaml
   - granbok-backup-aws-sealed.yaml
   - ghcr-pull-sealed.yaml
+  - granbok-push-sealed.yaml
   - postgres.yaml
   - object-storage.yaml
   - core.yaml
