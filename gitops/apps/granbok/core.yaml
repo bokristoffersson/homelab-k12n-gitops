@@ -30,7 +30,7 @@ spec:
       containers:
         - name: core
           # Upgrade core and agent together, after a verified backup
-          image: ghcr.io/bokristoffersson/granbok-core:0.5.0
+          image: ghcr.io/bokristoffersson/granbok-core:0.10.0
           env:
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres:5432/granbok
@@ -63,8 +63,28 @@ spec:
               value: https://auth.k12n.com
             - name: GRANBOK_OIDC_CLIENT_ID
               value: granbok
+            # iOS app API under /app/v1: exactly the audience of the Authelia client granbok-app
+            - name: GRANBOK_APP_AUDIENCE
+              value: https://granbok.k12n.com
+            # The core reads this mailbox over IMAP; each account gets a plus address in it
+            - name: GRANBOK_RECEIPT_MAILBOX
+              value: kvittogranskogen@gmail.com
+            # APNs push to the iOS app; the core reaches api(.sandbox).push.apple.com:443
+            - name: GRANBOK_PUSH_KEY_FILE
+              value: /push/AuthKey.p8
+            - name: GRANBOK_PUSH_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: granbok-push
+                  key: KEY_ID
+            - name: GRANBOK_PUSH_TEAM_ID
+              valueFrom:
+                secretKeyRef:
+                  name: granbok-push
+                  key: TEAM_ID
           envFrom:
-            # Owner username, OIDC client secret, the three API passwords, Bolagsverket client
+            # Owner username (kept: Flyway reads it), OIDC client secret, the three agent
+            # API passwords, receipt mailbox IMAP login, Bolagsverket client
             - secretRef:
                 name: granbok-core
           ports:
@@ -105,10 +125,19 @@ spec:
             # Uploads of up to 30 MB are buffered here
             - name: tmp
               mountPath: /tmp
+            - name: push
+              mountPath: /push
+              readOnly: true
       volumes:
         - name: tmp
           emptyDir:
             sizeLimit: 512Mi
+        - name: push
+          secret:
+            secretName: granbok-push
+            items:
+              - key: AuthKey.p8
+                path: AuthKey.p8
 ---
 apiVersion: v1
 kind: Service

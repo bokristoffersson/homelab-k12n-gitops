@@ -1,6 +1,7 @@
 # Slack agent. Exactly one replica, Recreate: two agents with the same Slack
 # tokens steal each other's messages and read the same receipts twice.
-# No port and no Service; it connects out to the core, Slack, Anthropic and IMAP.
+# No port and no Service; it connects out to the core, Slack and Anthropic.
+# Since 0.8.0 the core, not the agent, reads the receipt mailbox.
 # It never gets the database password, the object storage keys or the owner's
 # web password (separate secret from the core).
 apiVersion: apps/v1
@@ -33,14 +34,24 @@ spec:
         runAsGroup: 10001
       containers:
         - name: agent
-          image: ghcr.io/bokristoffersson/granbok-agent:0.5.0
+          image: ghcr.io/bokristoffersson/granbok-agent:0.10.0
           env:
             - name: GRANBOK_CORE_URL
               value: http://granbok-core:8080
+            # Where the agent points people who have not linked their chat yet
+            - name: GRANBOK_WEB_URL
+              value: https://granbok.k12n.com
             - name: GRANBOK_AGENT_CHAT_MODEL
               value: anthropic
+            # Per-task models (measured 2026-11-24 in granbok's HOMELAB.md)
+            - name: GRANBOK_AGENT_RECEIPT_MODEL
+              value: claude-haiku-5-5
+            - name: GRANBOK_AGENT_ASSISTANT_MODEL
+              value: claude-sonnet-5-5
+            - name: GRANBOK_AGENT_ONBOARDING_MODEL
+              value: claude-sonnet-5-5
           envFrom:
-            # Owner username, the three API passwords, Slack, Anthropic, mailbox
+            # The three agent API passwords, Slack tokens, Anthropic key
             - secretRef:
                 name: granbok-agent
           resources:
