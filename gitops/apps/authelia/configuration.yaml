@@ -119,6 +119,13 @@ data:
           'read:spotprice':
             claims: []
 
+        # The granbok app's access token carries the user name, which the granbok core
+        # reads to tell who is calling (the web client reads it from userinfo instead).
+        claims_policies:
+          granbok-app:
+            access_token:
+              - 'preferred_username'
+
         # granbok holds a company's books: only the 'granbok' group, always two factors.
         authorization_policies:
           granbok:
@@ -255,6 +262,35 @@ data:
               - 'openid'
               - 'profile'
               - 'email'
+
+          # --- granbok app (native iOS, PKCE, JWT access tokens validated by the granbok core) ---
+          # The audience must equal GRANBOK_APP_AUDIENCE on the core, which takes only
+          # tokens issued to this client for that audience.
+          - client_id: 'granbok-app'
+            client_name: 'granbok-appen'
+            public: true
+            require_pkce: true
+            pkce_challenge_method: 'S256'
+            token_endpoint_auth_method: 'none'
+            authorization_policy: 'granbok'
+            consent_mode: 'implicit'
+            access_token_signed_response_alg: 'RS256'
+            claims_policy: 'granbok-app'
+            audience:
+              - 'https://granbok.k12n.com'
+            requested_audience_mode: 'implicit'
+            redirect_uris:
+              - 'se.granskogen.granbok://oauth/callback'
+            response_types:
+              - 'code'
+            grant_types:
+              - 'authorization_code'
+              - 'refresh_token'
+            scopes:
+              - 'openid'
+              - 'profile'
+              - 'email'
+              - 'offline_access'
 
           # --- Redpanda Console (confidential) ---
           - client_id: 'redpanda-console'

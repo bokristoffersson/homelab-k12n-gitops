@@ -59,6 +59,7 @@ Authorization is scope-based. There are no groups or roles.
 | `backstage` | confidential | Backstage sign-in | opaque |
 | `redpanda-console` | confidential | Redpanda Console sign-in | opaque |
 | `granbok` | confidential | granbok's web login (LAN-only). Policy `granbok`: only `group:granbok`, always `two_factor` | opaque |
+| `granbok-app` | public, PKCE | The granbok iOS app. Same policy as `granbok`. Audience `https://granbok.k12n.com`, and claims policy `granbok-app` puts `preferred_username` in the access token for the granbok core | JWT (RS256) |
 | `homelab-chat-agent` | client credentials | homelab-chat-api calling the other APIs as itself | opaque |
 | `homelab-api-backend` | client credentials | homelab-api's token introspection calls | opaque |
 | `homelab-settings-api-backend` | client credentials | homelab-settings-api's token introspection calls | opaque |
