@@ -30,7 +30,7 @@ spec:
       containers:
         - name: core
           # Upgrade core and agent together, after a verified backup
-          image: ghcr.io/bokristoffersson/granbok-core:0.13.0
+          image: ghcr.io/bokristoffersson/granbok-core:0.13.1
           env:
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://postgres:5432/granbok
